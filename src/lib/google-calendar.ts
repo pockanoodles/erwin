@@ -1,4 +1,4 @@
-import { calendar_v3, google } from "googleapis";
+import type { calendar_v3 } from "googleapis";
 
 import { useSettingsStore } from "@/store/settings";
 
@@ -40,7 +40,8 @@ export async function getGoogleCalendarClient(
     refresh_token: tokens.refreshToken,
   });
 
-  // Create calendar client
+  // Create calendar client (lazy-load googleapis)
+  const { google } = await import("googleapis");
   return google.calendar({ version: "v3", auth: oauth2Client });
 }
 

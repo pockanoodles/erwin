@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Added `scripts/create-user.js` CLI utility to create a local credentials user with a bcrypt-hashed password stored in `Account.id_token`
 - Added a button to mark tasks as completed directly from the task quick view popup
 - Added visual indicator for externally synced tasks in task list view
 - Added Stripe configuration file (`src/lib/stripe.saas.ts`) for SAAS payment processing
@@ -63,6 +64,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- `Dockerfile`: development stage runs `next dev` with `--hostname 0.0.0.0` for Docker port mapping; production builder fails fast if core source files are missing from the build context
+- `docker-compose.yml`: app image builds with `target: development` so Compose uses the dev stage (no production `next build` inside the image; runs `npm run dev` after entrypoint)
+- `docker-compose.yml`: app service now builds from the local `Dockerfile` instead of pulling `eibrahim/fluid-calendar:latest`
 - Removed "Upcoming:" prefix from due dates in task views to reduce confusion with the "upcoming" label used for tasks with future start dates
 - Updated future task detection to consider tasks as "upcoming" only if they are scheduled for tomorrow or later
 - Added new `isFutureDate` utility function in date-utils
@@ -96,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Avoid eager `googleapis` imports at module load (lazy `import("googleapis")` in `src/lib/google.ts`, Google calendar helpers, and Google task provider) to prevent `TypeError: Cannot read properties of undefined (reading 'prototype')` during `next build` page data collection
 - Improved all-day event UI by removing time selection when "All day" is checked, showing only date picker instead
 - Fixed Google Calendar event deletion by adding missing userId parameter for authentication
 - Fixed Outlook task sync issues with recurring tasks

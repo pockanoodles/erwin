@@ -1,6 +1,11 @@
 services:
   app:
-    image: eibrahim/fluid-calendar:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Use development stage: no `next build` in the image (avoids webpack
+      # production compile issues); entrypoint still runs prisma + `npm run dev`.
+      target: development
     ports:
       - "3000:3000"
     env_file:

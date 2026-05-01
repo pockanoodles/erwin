@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { GaxiosError } from "gaxios";
-import { calendar_v3 } from "googleapis";
+import type { calendar_v3 } from "googleapis";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import {

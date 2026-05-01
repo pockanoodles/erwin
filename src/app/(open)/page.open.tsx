@@ -3,7 +3,6 @@
 import React from "react";
 
 import { useSession } from "next-auth/react";
-import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 
@@ -23,28 +22,6 @@ export default function OpenSourceHomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-white">
-      {/* GitHub Button in Top Right */}
-      <div className="absolute right-4 top-4">
-        <Link
-          href="https://github.com/dotnetfactory/fluid-calendar"
-          target="_blank"
-        >
-          <Button size="sm" className="bg-black text-white hover:bg-gray-800">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="currentColor"
-              viewBox="0 0 16 16"
-              className="mr-2"
-            >
-              <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
-            </svg>
-            View on GitHub
-          </Button>
-        </Link>
-      </div>
-
       {/* Main Content */}
       <main className="flex flex-grow flex-col items-center justify-center px-4 py-12">
         {/* Logo */}
@@ -62,7 +39,6 @@ export default function OpenSourceHomePage() {
         {/* Title and Description */}
         <h1 className="mb-6 text-center text-5xl font-bold md:text-6xl">
           <span className="text-blue-600">FluidCalendar</span>
-          <span className="text-gray-800"> Open Source</span>
         </h1>
         <p className="mx-auto mb-4 max-w-3xl text-center text-xl text-gray-600">
           The open-source intelligent calendar that adapts to your workflow.
@@ -70,10 +46,9 @@ export default function OpenSourceHomePage() {
           your time management effortless.
         </p>
         <p className="mb-8 text-center text-lg text-gray-500">
-          Your open-source alternative to Motion
+          Your intelligent calendar.
         </p>
 
-        {/* Login and GitHub Buttons */}
         <div className="mb-12 flex flex-col gap-4 sm:flex-row">
           <Button
             size="lg"
@@ -82,24 +57,6 @@ export default function OpenSourceHomePage() {
           >
             {session ? "Go to App" : "Sign In"}
           </Button>
-          <Link
-            href="https://github.com/dotnetfactory/fluid-calendar"
-            target="_blank"
-          >
-            <Button size="lg" variant="outline" className="px-8 py-6 text-lg">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                fill="currentColor"
-                viewBox="0 0 16 16"
-                className="mr-2"
-              >
-                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z" />
-              </svg>
-              View on GitHub
-            </Button>
-          </Link>
         </div>
 
         {/* Open Source Features */}
@@ -203,14 +160,6 @@ export default function OpenSourceHomePage() {
             >
               {session ? "Go to Your Calendar" : "Sign In to Your Instance"}
             </Button>
-            <Link
-              href="https://github.com/dotnetfactory/fluid-calendar#installation"
-              target="_blank"
-            >
-              <Button size="lg" variant="outline" className="px-8 py-4">
-                Installation Guide
-              </Button>
-            </Link>
           </div>
         </div>
       </main>
@@ -229,17 +178,7 @@ export default function OpenSourceHomePage() {
               />
               <span className="text-xl font-bold">FluidCalendar</span>
             </div>
-            <div className="text-sm text-gray-500">
-              Licensed under MIT. Contribute on{" "}
-              <a
-                href="https://github.com/dotnetfactory/fluid-calendar"
-                className="text-blue-600 hover:underline"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                GitHub
-              </a>
-            </div>
+            <div className="text-sm text-gray-500">Licensed under MIT.</div>
           </div>
         </div>
       </footer>

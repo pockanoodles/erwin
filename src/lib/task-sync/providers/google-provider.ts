@@ -1,5 +1,3 @@
-import { google } from "googleapis";
-
 import { logger } from "@/lib/logger";
 import { TokenManager } from "@/lib/token-manager";
 
@@ -22,11 +20,11 @@ const LOG_SOURCE = "GoogleTaskProvider";
  * Task provider implementation for Google Tasks
  */
 export class GoogleTaskProvider implements TaskProviderInterface {
-  private client: ReturnType<typeof google.tasks>;
+  private client: tasks_v1.Tasks;
   private accountId: string;
   private userId: string;
 
-  constructor(client: ReturnType<typeof google.tasks>, accountId: string, userId: string) {
+  constructor(client: tasks_v1.Tasks, accountId: string, userId: string) {
     this.client = client;
     this.accountId = accountId;
     this.userId = userId;
@@ -328,6 +326,7 @@ export async function getGoogleTasksClient(accountId: string, userId: string) {
   // Set credentials
   oauth2Client.setCredentials({ access_token: tokens.accessToken, refresh_token: tokens.refreshToken });
 
-  // Create tasks client
+  // Create tasks client (lazy-load googleapis to avoid eager module init issues)
+  const { google } = await import("googleapis");
   return google.tasks({ version: "v1", auth: oauth2Client });
 }

@@ -2,7 +2,7 @@
 
 /**
  * Open source version of the Waitlist Admin page
- * This shows a message that the feature is only available in the SAAS version
+ * This shows a neutral unavailable message in the open source build
  */
 export default function WaitlistPage() {
   return (
@@ -25,25 +25,11 @@ export default function WaitlistPage() {
           </div>
           <div className="ml-3">
             <p className="text-sm text-yellow-700">
-              <strong>SAAS Feature Only:</strong> The Beta Waitlist Management
-              feature is only available in the SAAS version of FluidCalendar.
+              This page is not available in this build.
             </p>
           </div>
         </div>
       </div>
-      <p className="mb-4 text-gray-700">
-        The Beta Waitlist Management feature allows you to:
-      </p>
-      <ul className="mb-6 list-disc space-y-2 pl-5 text-gray-700">
-        <li>Manage a waitlist for your beta program</li>
-        <li>Send invitations to users on the waitlist</li>
-        <li>Track referrals and prioritize users</li>
-        <li>Configure waitlist settings and email templates</li>
-      </ul>
-      <p className="text-gray-700">
-        To access this feature, please upgrade to the SAAS version of Fluid
-        Calendar.
-      </p>
     </div>
   );
 }

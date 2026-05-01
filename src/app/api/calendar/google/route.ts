@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { GaxiosError } from "gaxios";
-import { calendar_v3, google } from "googleapis";
+import type { calendar_v3 } from "googleapis";
 import { v4 as uuidv4 } from "uuid";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
       const tokenResponse = await oauth2Client.getToken(code);
       const tokens = tokenResponse.tokens;
       oauth2Client.setCredentials(tokens);
+
+      const { google } = await import("googleapis");
 
       // Get user info to get email
       const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });

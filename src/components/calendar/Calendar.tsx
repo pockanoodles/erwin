@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 
-import dynamic from "next/dynamic";
 import { HiMenu } from "react-icons/hi";
 import { IoChevronBack, IoChevronForward } from "react-icons/io5";
 
@@ -11,10 +10,8 @@ import { FeedManager } from "@/components/calendar/FeedManager";
 import { MonthView } from "@/components/calendar/MonthView";
 import { MultiMonthView } from "@/components/calendar/MultiMonthView";
 import { WeekView } from "@/components/calendar/WeekView";
-import { SponsorshipBanner } from "@/components/ui/sponsorship-banner";
 
 import { addDays, formatDate, newDate, subDays } from "@/lib/date-utils";
-import { isSaasEnabled } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 import {
@@ -25,14 +22,6 @@ import {
 import { useTaskStore } from "@/store/task";
 
 import { CalendarEvent, CalendarFeed } from "@/types/calendar";
-
-// Dynamically import the appropriate version of the LifetimeAccessBanner
-const LifetimeAccessBanner = dynamic(
-  () => import(`./LifetimeAccessBanner.${isSaasEnabled ? "saas" : "open"}`).then(
-    (mod) => mod.LifetimeAccessBanner
-  ),
-  { ssr: false } // Disable SSR for this component to prevent import errors
-);
 
 interface CalendarProps {
   initialFeeds?: CalendarFeed[];
@@ -110,16 +99,11 @@ export function Calendar({
           <div className="flex-1 overflow-y-auto">
             <FeedManager />
           </div>
-
-          {/* Sponsorship Banner */}
-          <SponsorshipBanner />
         </div>
       </aside>
 
       {/* Main Content */}
       <main className="flex min-w-0 flex-1 flex-col bg-background">
-        {/* Lifetime Access Banner */}
-        <LifetimeAccessBanner />
         {/* Header */}
         <header className="flex h-16 flex-none items-center border-b border-border px-4">
           <button
