@@ -1,4 +1,4 @@
-import { compare } from "bcrypt";
+import { compare } from "bcryptjs";
 
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";

@@ -5,6 +5,7 @@ import {
   HiOutlineClipboardList,
   HiOutlineCog,
   HiOutlineLightningBolt,
+  HiOutlineTrendingUp,
 } from "react-icons/hi";
 
 import { Command } from "../types";
@@ -42,6 +43,17 @@ export function useNavigationCommands(): Command[] {
       shortcut: "gf",
       perform: (router?: AppRouterInstance) => {
         if (router) router.push("/focus");
+      },
+    },
+    {
+      id: "navigation.progress",
+      title: "Go to Progress",
+      keywords: ["navigation", "stats"],
+      icon: HiOutlineTrendingUp,
+      section: "navigation",
+      shortcut: "gp",
+      perform: (router?: AppRouterInstance) => {
+        if (router) router.push("/progress");
       },
     },
     {

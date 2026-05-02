@@ -85,6 +85,25 @@ export function FocusedTask({ task }: FocusedTaskProps) {
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4">
+        {task.courseName && (
+          <div className="col-span-2">
+            <h3 className="mb-1 text-sm font-medium">Course</h3>
+            <p className="text-muted-foreground">{task.courseName}</p>
+          </div>
+        )}
+        {task.externalUrl && (
+          <div className="col-span-2">
+            <h3 className="mb-1 text-sm font-medium">Open in Canvas</h3>
+            <a
+              href={task.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary underline-offset-4 hover:underline"
+            >
+              View assignment
+            </a>
+          </div>
+        )}
         {task.dueDate && (
           <div>
             <h3 className="mb-1 text-sm font-medium">Due Date</h3>

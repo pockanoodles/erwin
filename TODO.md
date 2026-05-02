@@ -1,3 +1,9 @@
+# Erwin (May 2026)
+
+Phased implementation from the Erwin technical spec: see [`docs/ERWIN-SPEC.md`](docs/ERWIN-SPEC.md) (foundation: Canvas sync, schema, ranking stub). Upstream FluidCalendar backlog follows below.
+
+---
+
 # IMPORTANT
 
 - pending waitlist - need a way to resend emails with new tokens or for users that signup again to get a new email

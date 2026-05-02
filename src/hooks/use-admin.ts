@@ -25,7 +25,7 @@ export function useAdmin(): { isAdmin: boolean; isLoading: boolean } {
     }
 
     // Check client-side based on session data
-    // This avoids importing server-side code that uses bcrypt
+    // This avoids importing server-side code used by password hashing
     const clientSideIsAdmin = session?.user?.role === "admin";
     setIsAdmin(clientSideIsAdmin);
 

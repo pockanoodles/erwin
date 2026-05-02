@@ -1,22 +1,24 @@
 export const getTitleFromPathname = (pathname: string) => {
   switch (pathname) {
     case "/calendar":
-      return "Calendar | FluidCalendar";
+      return "Calendar | Erwin";
     case "/tasks":
-      return "Tasks | FluidCalendar";
+      return "Tasks | Erwin";
     case "/focus":
-      return "Focus | FluidCalendar";
+      return "Focus | Erwin";
+    case "/progress":
+      return "Progress | Erwin";
     case "/settings":
-      return "Settings | FluidCalendar";
+      return "Settings | Erwin";
     case "/setup":
-      return "Setup | FluidCalendar";
+      return "Setup | Erwin";
     case "/auth/signin":
-      return "Sign In | FluidCalendar";
+      return "Sign In | Erwin";
     case "/auth/signup":
-      return "Sign Up | FluidCalendar";
+      return "Sign Up | Erwin";
     case "/auth/reset-password":
-      return "Reset Password | FluidCalendar";
+      return "Reset Password | Erwin";
     default:
-      return "FluidCalendar";
+      return "Erwin";
   }
 };

@@ -85,6 +85,7 @@ model User {
   taskProviders        TaskProvider[]
   TaskChange           TaskChange[]
   PasswordReset        PasswordReset[]
+  rankerState          RankerState?
 }
 
 model VerificationToken {
@@ -141,6 +142,8 @@ model CalendarEvent {
   lastModified    DateTime?
   organizer       Json? // Stored as JSON { name?: string, email: string }
   attendees       Json? // Stored as JSON array of { name?: string, email: string, status?: string }
+  /** iCal TRANSP: OPAQUE (busy) or TRANSPARENT (free) — used by Erwin availability */
+  transparency    String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -222,6 +225,28 @@ model Task {
   source         String?
   lastSyncedAt   DateTime?
 
+  // Erwin: Canvas LMS + ranking (optional; legacy FluidCalendar tasks omit these)
+  lockAt              DateTime?
+  unlockAt            DateTime?
+  taskProviderId      String?
+  taskProvider        TaskProvider? @relation(fields: [taskProviderId], references: [id], onDelete: SetNull)
+  gradeImpactScore    Float?
+  urgencyTier         String?       @default("NONE")
+  skipCount           Int           @default(0)
+  lastSkippedAt       DateTime?
+  timesSurfaced       Int           @default(0)
+  courseId            String?
+  courseName          String?
+  assignmentGroupName String?
+  pointsPossible      Float?
+  groupWeight         Float?
+  submissionTypes     Json?
+  gradingType         String?
+  submissionStatus    String?
+  omitFromFinalGrade  Boolean       @default(false)
+  category            String?       @default("PERSONAL")
+  externalUrl         String?
+
   // Enhanced sync fields
   externalListId    String? // The external list/folder ID this task belongs to
   externalCreatedAt DateTime? // When the task was created in the external system
@@ -233,6 +258,8 @@ model Task {
 
   // Change tracking relation
   changes TaskChange[]
+
+  interactions TaskInteraction[]
 
   // User relationship
   userId String?
@@ -260,6 +287,40 @@ model Task {
   @@index([externalTaskId, source])
   @@index([syncStatus])
   @@index([externalListId])
+  @@index([taskProviderId])
+  @@index([urgencyTier])
+}
+
+/** Erwin: implicit feedback for learning-to-rank (Done / Skip / Surfaced) */
+model TaskInteraction {
+  id          String   @id @default(cuid())
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  action      String // COMPLETED | SKIPPED | SURFACED
+  contextJson Json
+  sessionId   String
+  createdAt   DateTime @default(now())
+
+  @@index([taskId])
+  @@index([sessionId])
+  @@index([createdAt])
+}
+
+/** Erwin: per-user learned ranker weights and blend metadata */
+model RankerState {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightVector           Json
+  learningRate           Float    @default(0.01)
+  totalUpdates           Int      @default(0)
+  alpha                  Float    @default(0.8)
+  completionRate         Float?
+  avgSkipsBeforeComplete Float?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Tag {
@@ -518,11 +579,15 @@ model TaskProvider {
   id               String            @id @default(cuid())
   userId           String
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type             String // 'outlook', 'google', etc.
+  type             String // 'outlook', 'google', 'CANVAS', etc.
   name             String
   enabled          Boolean           @default(true)
   syncEnabled      Boolean           @default(true)
   syncInterval     String            @default("hourly") // 'hourly', 'daily', 'manual'
+  /** Erwin: polling interval in minutes (Canvas default 120) */
+  syncIntervalMinutes Int?           @default(120)
+  /** Erwin: Canvas base URL or other provider base */
+  serverUrl        String?
   lastSyncedAt     DateTime?
   accessToken      String?
   refreshToken     String?
@@ -536,6 +601,7 @@ model TaskProvider {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   TaskChange       TaskChange[]
+  tasks            Task[]
 
   @@unique([userId, type])
   @@index([userId])

@@ -39,6 +39,7 @@ import { logger } from "@/lib/logger";
 import { useProjectStore } from "@/store/project";
 import { useSettingsStore } from "@/store/settings";
 
+import { CanvasLmsSettings } from "./CanvasLmsSettings";
 import { SettingRow, SettingsSection } from "./SettingsSection";
 
 // Logging source
@@ -887,6 +888,8 @@ export function TaskSyncSettings() {
   };
 
   return (
+    <>
+      <CanvasLmsSettings />
     <SettingsSection
       title="Task Synchronization"
       description="Manage task synchronization with external services such as Outlook or Google Tasks."
@@ -935,5 +938,6 @@ export function TaskSyncSettings() {
         </>
       )}
     </SettingsSection>
+    </>
   );
 }

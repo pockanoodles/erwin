@@ -66,6 +66,17 @@ export interface Task {
   source?: string | null;
   externalListId?: string | null;
   lastSyncedAt?: Date | null;
+
+  // Erwin / Canvas (optional)
+  lockAt?: Date | null;
+  unlockAt?: Date | null;
+  courseName?: string | null;
+  courseId?: string | null;
+  gradeImpactScore?: number | null;
+  skipCount?: number;
+  submissionStatus?: string | null;
+  externalUrl?: string | null;
+  category?: string | null;
 }
 
 export interface NewTask

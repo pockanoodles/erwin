@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const bcrypt = require("bcrypt");
+const passwordHasher = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient({
@@ -37,7 +37,7 @@ async function main() {
     process.exit(1);
   }
 
-  const hashedPassword = await bcrypt.hash(password, 12);
+  const hashedPassword = await passwordHasher.hash(password, 12);
 
   const user = await prisma.$transaction(async (tx) => {
     const createdUser = await tx.user.create({

@@ -1,4 +1,10 @@
-# FluidCalendar
+# Erwin (fork of FluidCalendar)
+
+**Erwin** is a personal task-intelligence fork: Canvas LMS assignments + calendar-aware ranking toward a Focus-first workflow. This repo retains FluidCalendar&apos;s MIT license and upstream DNA; product direction is documented in-repo (see `TODO.md` Erwin section).
+
+---
+
+# FluidCalendar (upstream lineage)
 
 An open-source alternative to Motion, designed for intelligent task scheduling and calendar management. FluidCalendar helps you stay on top of your tasks with smart scheduling capabilities, calendar integration, and customizable workflows.
 

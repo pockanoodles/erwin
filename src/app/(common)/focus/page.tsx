@@ -1,11 +1,11 @@
 "use client";
 
-import { FocusMode } from "@/components/focus/FocusMode";
+import { ErwinFocusMode } from "@/components/focus/ErwinFocusMode";
 
 export default function FocusModePage() {
   return (
     <div className="h-full">
-      <FocusMode />
+      <ErwinFocusMode />
     </div>
   );
 }

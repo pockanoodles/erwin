@@ -17,19 +17,31 @@ export async function GET(request: NextRequest) {
     // Get system settings
     const settings = await prisma.systemSettings.findFirst();
 
-    // Only return boolean status of whether integrations are configured
+    const hasGoogleFromSettings = !!(
+      settings?.googleClientId && settings?.googleClientSecret
+    );
+    const hasGoogleFromEnv = !!(
+      process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+    );
+
+    const hasOutlookFromSettings = !!(
+      settings?.outlookClientId &&
+      settings?.outlookClientSecret &&
+      settings?.outlookTenantId
+    );
+    const hasOutlookFromEnv = !!(
+      process.env.AZURE_AD_CLIENT_ID &&
+      process.env.AZURE_AD_CLIENT_SECRET &&
+      process.env.AZURE_AD_TENANT_ID
+    );
+
+    // Return whether each provider is configured from system settings or environment variables
     return NextResponse.json({
       google: {
-        configured: !!(
-          settings?.googleClientId && settings?.googleClientSecret
-        ),
+        configured: hasGoogleFromSettings || hasGoogleFromEnv,
       },
       outlook: {
-        configured: !!(
-          settings?.outlookClientId &&
-          settings?.outlookClientSecret &&
-          settings?.outlookTenantId
-        ),
+        configured: hasOutlookFromSettings || hasOutlookFromEnv,
       },
     });
   } catch (error) {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { hash } from "bcrypt";
+import { hash } from "bcryptjs";
 
 import { isPublicSignupEnabled } from "@/lib/auth/public-signup";
 import { logger } from "@/lib/logger";
