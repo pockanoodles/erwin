@@ -1,17 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { usePathname } from "next/navigation";
 
 import { BsListTask, BsCalendar } from "react-icons/bs";
 import { HiOutlineLightBulb, HiOutlineSearch } from "react-icons/hi";
-import { IoStatsChartOutline } from "react-icons/io5";
-import { RiKeyboardLine } from "react-icons/ri";
 
 import { cn } from "@/lib/utils";
-
-import { useShortcutsStore } from "@/store/shortcuts";
 
 import { ThemeToggle } from "./ThemeToggle";
 import { UserMenu } from "./UserMenu";
@@ -22,7 +17,6 @@ interface AppNavProps {
 
 export function AppNav({ className }: AppNavProps) {
   const pathname = usePathname();
-  const { setOpen: setShortcutsOpen } = useShortcutsStore();
 
   // Function to trigger command palette
   const openCommandPalette = () => {
@@ -38,7 +32,6 @@ export function AppNav({ className }: AppNavProps) {
   const links = [
     { href: "/focus", label: "Focus", icon: HiOutlineLightBulb },
     { href: "/calendar", label: "Calendar", icon: BsCalendar },
-    { href: "/progress", label: "Progress", icon: IoStatsChartOutline },
     { href: "/tasks", label: "Tasks", icon: BsListTask },
   ];
 
@@ -52,21 +45,6 @@ export function AppNav({ className }: AppNavProps) {
       <div className="h-full px-4">
         <div className="flex h-full items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link
-              href="/calendar"
-              className={cn(
-                "flex items-center mr-8",
-                pathname === "/calendar" ? "text-primary" : "text-foreground hover:text-primary"
-              )}
-            >
-              <Image
-                src="/logo.svg"
-                alt="Calendar Logo"
-                width={28}
-                height={28}
-                className="mr-2"
-              />
-            </Link>
             {links.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -101,17 +79,6 @@ export function AppNav({ className }: AppNavProps) {
               </kbd>
             </button>
             <ThemeToggle />
-            <button
-              onClick={() => setShortcutsOpen(true)}
-              className="flex items-center gap-1 rounded-md px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="View Keyboard Shortcuts (Press ?)"
-            >
-              <RiKeyboardLine className="h-4 w-4" />
-              <span className="hidden sm:inline">Shortcuts</span>
-              <kbd className="ml-1 hidden rounded bg-muted px-1 py-0.5 text-xs sm:inline">
-                ?
-              </kbd>
-            </button>
             <UserMenu />
           </div>
         </div>

@@ -14,6 +14,14 @@ import { SchedulingService } from "./SchedulingService";
 
 const LOG_SOURCE = "TaskSchedulingService";
 
+/** Defaults when a user has no row yet (matches setup-migration / first-run expectations). */
+const DEFAULT_AUTO_SCHEDULE_CREATE = {
+  workDays: "[1,2,3,4,5]",
+  workHourStart: 8,
+  workHourEnd: 23,
+  bufferMinutes: 15,
+} as const;
+
 // Define a type for the database result
 type DbTaskWithRelations = {
   id: string;
@@ -103,12 +111,22 @@ export async function scheduleAllTasksForUser(
     logger.info("Starting task scheduling for user", { userId }, LOG_SOURCE);
 
     // If settings are not provided, fetch them from the database
-    const userSettings = await prisma.autoScheduleSettings.findUnique({
+    let userSettings = await prisma.autoScheduleSettings.findUnique({
       where: { userId },
     });
 
     if (!userSettings) {
-      throw new Error("Auto-schedule settings not found for user");
+      userSettings = await prisma.autoScheduleSettings.create({
+        data: {
+          userId,
+          ...DEFAULT_AUTO_SCHEDULE_CREATE,
+        },
+      });
+      logger.info(
+        "Created default auto-schedule settings for user",
+        { userId },
+        LOG_SOURCE
+      );
     }
 
     // Get all tasks marked for auto-scheduling that are not locked

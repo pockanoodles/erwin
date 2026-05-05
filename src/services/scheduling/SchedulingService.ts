@@ -148,10 +148,16 @@ export class SchedulingService {
 
         let bestScore = 0;
         for (const window of windows) {
+          const windowEnd = addDays(now, window.days);
+          const deadlineCeiling = task.lockAt ?? task.dueDate ?? null;
+          const scoreEndDate =
+            deadlineCeiling && deadlineCeiling < windowEnd
+              ? deadlineCeiling
+              : windowEnd;
           const slots = await timeSlotManager.findAvailableSlots(
             task,
             now,
-            addDays(now, window.days),
+            scoreEndDate,
             userId
           );
           if (slots.length > 0) {
@@ -253,7 +259,13 @@ export class SchedulingService {
         taskId: task.id,
       });
 
-      const endDate = addDays(now, window.days);
+      const windowEnd = addDays(now, window.days);
+      // Hard ceiling: never schedule past the deadline
+      const deadlineCeiling = task.lockAt ?? task.dueDate ?? null;
+      const endDate =
+        deadlineCeiling && deadlineCeiling < windowEnd
+          ? deadlineCeiling
+          : windowEnd;
       const availableSlots = await timeSlotManager.findAvailableSlots(
         task,
         now,
@@ -304,6 +316,18 @@ export class SchedulingService {
       this.endMetric("tryWindow", windowStart);
     }
 
+    if (task.dueDate || task.lockAt) {
+      logger.warn(
+        "No slot found before deadline — task is unschedulable",
+        {
+          taskId: task.id,
+          title: task.title,
+          dueDate: task.dueDate?.toISOString() ?? null,
+          lockAt: task.lockAt?.toISOString() ?? null,
+        },
+        LOG_SOURCE
+      );
+    }
     this.endMetric("scheduleTask", taskStart);
     return null;
   }

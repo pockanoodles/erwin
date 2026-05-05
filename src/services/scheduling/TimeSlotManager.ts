@@ -236,14 +236,17 @@ export class TimeSlotManagerImpl implements TimeSlotManager {
       // Add minimum buffer to current time
       localCurrentStart = addMinutes(localCurrentStart, MINIMUM_BUFFER_MINUTES);
 
-      // If this pushes us past work hours, move to next day at work start
       if (localCurrentStart.getHours() >= this.settings.workHourEnd) {
+        // Past end of work hours → push to next work day
         localCurrentStart = addDays(
-          setMinutes(
-            setHours(localCurrentStart, this.settings.workHourStart),
-            0
-          ),
+          setMinutes(setHours(localCurrentStart, this.settings.workHourStart), 0),
           1
+        );
+      } else if (localCurrentStart.getHours() < this.settings.workHourStart) {
+        // Before work hours start → snap forward to work start today
+        localCurrentStart = setMinutes(
+          setHours(localCurrentStart, this.settings.workHourStart),
+          0
         );
       }
     } else {

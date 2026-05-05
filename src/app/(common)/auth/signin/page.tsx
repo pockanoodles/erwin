@@ -6,8 +6,8 @@ import { SignInForm } from "@/components/auth/SignInForm";
 import { getAuthOptions } from "@/lib/auth/auth-options";
 
 export const metadata = {
-  title: "Sign In | FluidCalendar",
-  description: "Sign in to your FluidCalendar account",
+  title: "Sign In | Erwin",
+  description: "Sign in to your Erwin account",
 };
 
 export default async function SignInPage() {
@@ -16,14 +16,14 @@ export default async function SignInPage() {
   const session = await getServerSession(authOptions);
 
   if (session) {
-    redirect("/calendar");
+    redirect("/focus");
   }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold">Sign in to FluidCalendar</h1>
+          <h1 className="text-3xl font-bold">Sign in to Erwin</h1>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             Manage your calendar and tasks efficiently
           </p>

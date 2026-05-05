@@ -74,7 +74,7 @@ export function SignInForm() {
         // to ensure the token is available for the next request
         setTimeout(() => {
           // Force a hard navigation to ensure the middleware re-evaluates with the new token
-          window.location.href = "/calendar";
+          window.location.href = "/focus";
         }, 100);
       }
     } catch (error) {
@@ -138,7 +138,7 @@ export function SignInForm() {
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
-          Welcome to FluidCalendar
+          Welcome to Erwin
         </CardTitle>
         <CardDescription>Sign in to your account to continue</CardDescription>
       </CardHeader>

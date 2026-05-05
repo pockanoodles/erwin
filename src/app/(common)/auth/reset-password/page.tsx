@@ -1,8 +1,8 @@
 import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
 
 export const metadata = {
-  title: "Reset Password - FluidCalendar",
-  description: "Reset your FluidCalendar account password",
+  title: "Reset Password - Erwin",
+  description: "Reset your Erwin account password",
 };
 
 export default function ResetPasswordPage() {
