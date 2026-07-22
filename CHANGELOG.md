@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Month view event display (upstream #175):** timed events show their start time and calendar color in the month and multi-month grids (`calendar-event-display.ts`, `CalendarEventContent`).
 - **Focus Mode & Daily Briefing (docs/focus-mode.md):** `GET /api/erwin/focus/briefing`, first-open-of-day full briefing (`DailyBriefing`), `localStorage` gate (`erwin-last-briefing`), collapsible `CompactBriefing`, enriched queue (`countdownHuman`, `gradeImpactPercent`, `gradeProjection`, `effortEstimate`, `lastSkippedAgo`), `POST /api/erwin/focus/interact` alias, Canvas weighted grade projection helper (`grade-projection.ts`), `gradeWeightPercent` on `Task`, `FocusTaskCard` / `UpNext` / bottom-sheet `QuickAdd`, framer-motion card transitions; default post-auth navigation to `/focus` (sign-in client redirect, setup completed redirect, existing session redirect)
 - **Full technical spec in-repo:** `docs/ERWIN-SPEC.md` now includes the complete May 1, 2026 Erwin technical specification plus a living implementation tracker.
 - **Stage 1 ranking (spec §5.2):** sigmoid deadline pressure, effort fit vs current slot, weighted base score (0.35/0.45/0.20), pool-normalized grade impact, long-horizon visibility boost, personal filler lane when Canvas is DANGER/HIGH, skip-spiral DANGER escalation; Focus API returns `urgencyTier` and `baseScore`.
@@ -17,6 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Upstream port round 1 (2026-07)** — robustness fixes from `dotnetfactory/fluid-calendar` upstream, hand-applied to the fork:
+  - Google OAuth token expiry uses the absolute `expiry_date` rather than a recomputed offset (upstream #196; `token-manager.ts`, `google-calendar.ts`)
+  - Task "hide upcoming" filter now matches the badge count; priority/energy columns sort by rank (upstream #109/#131/#180; `task-list-utils.ts`, `TaskList`, `TaskRow`)
+  - Auto-Schedule time dropdowns honor the 12h/24h preference (`AutoScheduleSettings`, `autoSchedule.ts`)
+  - CalDAV: correct `VALUE=DATE` all-day handling and timed events carrying `TZID`/`VTIMEZONE` (upstream #100/#135; `caldav-calendar.ts`, `caldav-vtimezone.ts`, with unit tests)
+  - CalDAV: connection/TLS failures reported distinctly from auth failures (upstream #206; `available-calendars-error.ts`, `AvailableCalendars`)
+  - Google: single-occurrence delete removes only the clicked instance, not the series (upstream #199; `calendar/google/route.ts`)
 - **Task scheduling after create:** `scheduleAllTasksForUser` no longer fails when `AutoScheduleSettings` is missing — creates the same weekday 9–17 defaults as setup migration so `POST /api/tasks/schedule-all` succeeds for new users
 - **Zustand + `localStorage` on `/` (500):** all `persist` stores use `ssrSafeJsonStorage` so SSR and Node’s experimental / broken `localStorage` (`getItem is not a function`) no longer crash; `CommandPaletteHint` guards `localStorage` access; `src/instrumentation.ts` replaces broken Node `globalThis.localStorage` at server startup; `getClientLocalStorage` also checks `globalThis.localStorage`
 - **Worker + Prisma:** `start:worker` now loads project `.env` first (`src/saas/jobs/load-env.ts` + `dotenv`) so `DATABASE_URL=...@localhost:5432` applies — plain `node` did not read `.env`, which led to wrong DB host (`db:5432`) / connection failures
