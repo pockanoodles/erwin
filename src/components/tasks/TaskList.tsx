@@ -21,7 +21,12 @@ import { useTaskListViewSettings } from "@/store/taskListViewSettings";
 import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 
 import { SortableHeader, StatusFilter, TaskRow } from "./components";
-import { formatEnumValue } from "./utils/task-list-utils";
+import {
+  compareTaskEnergyLevel,
+  compareTaskPriority,
+  formatEnumValue,
+  taskMatchesListFilters,
+} from "./utils/task-list-utils";
 
 interface TaskListProps {
   tasks: Task[];
@@ -70,61 +75,19 @@ export function TaskList({
       : tasks.filter((task) => task.projectId === activeProject.id)
     : tasks;
 
-  // Then apply other filters
+  // Then apply other filters (single source of truth in task-list-utils so the
+  // "Hide upcoming tasks" filter stays consistent with the "Upcoming" badge).
   const filteredTasks = useMemo(() => {
-    const now = newDate();
-
-    return projectFilteredTasks.filter((task) => {
-      // Status filter
-      if (status?.length && !status.includes(task.status)) {
-        return false;
-      }
-
-      // Hide future tasks
-      if (
-        hideUpcomingTasks &&
-        task.startDate &&
-        newDate(task.startDate) > now
-      ) {
-        return false;
-      }
-
-      // Energy level filter
-      if (
-        energyLevel?.length &&
-        (!task.energyLevel || !energyLevel.includes(task.energyLevel))
-      ) {
-        return false;
-      }
-
-      // Time preference filter
-      if (
-        timePreference?.length &&
-        (!task.preferredTime || !timePreference.includes(task.preferredTime))
-      ) {
-        return false;
-      }
-
-      // Tags filter
-      if (tagIds?.length) {
-        const taskTagIds = task.tags.map((t) => t.id);
-        if (!tagIds.some((id) => taskTagIds.includes(id))) {
-          return false;
-        }
-      }
-
-      // Search
-      if (search) {
-        const searchLower = search.toLowerCase();
-        return (
-          task.title.toLowerCase().includes(searchLower) ||
-          task.description?.toLowerCase().includes(searchLower) ||
-          task.tags.some((tag) => tag.name.toLowerCase().includes(searchLower))
-        );
-      }
-
-      return true;
-    });
+    return projectFilteredTasks.filter((task) =>
+      taskMatchesListFilters(task, {
+        status,
+        energyLevel,
+        timePreference,
+        tagIds,
+        search,
+        hideUpcomingTasks,
+      })
+    );
   }, [
     projectFilteredTasks,
     status,
@@ -163,13 +126,12 @@ export function TaskList({
           if (!b.project?.name) return -1;
           return direction * a.project.name.localeCompare(b.project.name);
         case "priority":
-          if (!a.priority) return 1;
-          if (!b.priority) return -1;
-          return direction * a.priority.localeCompare(b.priority);
+          // Sort by semantic rank (low < medium < high, no-priority last), not
+          // the alphabetical order of the labels. See task-list-utils.
+          return compareTaskPriority(a, b, direction);
         case "energyLevel":
-          if (!a.energyLevel) return 1;
-          if (!b.energyLevel) return -1;
-          return direction * a.energyLevel.localeCompare(b.energyLevel);
+          // Sort by semantic rank (low < medium < high), not alphabetically.
+          return compareTaskEnergyLevel(a, b, direction);
         case "preferredTime":
           if (!a.preferredTime) return 1;
           if (!b.preferredTime) return -1;
