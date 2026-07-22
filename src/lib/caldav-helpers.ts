@@ -411,6 +411,18 @@ export function convertVEventToCalendarEvent(
       ? convertICalRRuleToRRuleString(rrule as unknown as ICalRRule)
       : null;
 
+    const statusRaw = vevent.getFirstPropertyValue("status");
+    const statusStr = statusRaw ? String(statusRaw).toUpperCase() : null;
+
+    const transpRaw = vevent.getFirstPropertyValue("transp");
+    let transparency: string | null = null;
+    if (transpRaw) {
+      const t = String(transpRaw).toUpperCase();
+      transparency = t === "TRANSPARENT" ? "TRANSPARENT" : "OPAQUE";
+    } else {
+      transparency = "OPAQUE";
+    }
+
     // Create a partial CalendarEvent object
     return {
       id: uid,
@@ -424,7 +436,8 @@ export function convertVEventToCalendarEvent(
       isRecurring: isMaster, // Only master events are recurring
       recurrenceRule: recurrenceRuleString,
       allDay: isAllDay,
-      status: null,
+      status: statusStr,
+      transparency,
       sequence: null,
       created: null,
       lastModified: null,

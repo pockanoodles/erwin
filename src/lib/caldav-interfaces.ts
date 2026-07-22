@@ -81,6 +81,8 @@ export interface SyncResult {
   added: CalendarEvent[];
   updated: CalendarEvent[];
   deleted: string[];
+  /** True when CalDAV CTag matched and full sync was skipped */
+  unchanged?: boolean;
 }
 
 /**

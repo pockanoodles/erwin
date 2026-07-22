@@ -211,7 +211,9 @@ export async function POST(request: NextRequest) {
         );
 
         const caldavService = new CalDAVCalendarService(account);
-        await caldavService.syncCalendar(newCalendar.id, calendarId, userId);
+        await caldavService.syncCalendar(newCalendar.id, calendarId, userId, {
+          forceFullSync: true,
+        });
 
         // Update the last sync time
         await prisma.calendarFeed.update({

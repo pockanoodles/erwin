@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 
 import { CalendarEventWithFeed } from "@/types/calendar";
 
+import { fetchCalendarCtag } from "./caldav-ctag";
 import { convertVEventToCalendarEvent } from "./caldav-helpers";
 import {
   CalDAVCalendarObject,
@@ -448,9 +449,12 @@ export class CalDAVCalendarService {
   async syncCalendar(
     feedId: string,
     calendarPath: string,
-    userId: string
+    userId: string,
+    options?: { forceFullSync?: boolean }
   ): Promise<SyncResult> {
     try {
+      const forceFullSync = options?.forceFullSync ?? false;
+
       // Get the calendar feed from the database
       const feed = await prisma.calendarFeed.findFirst({
         where: {
@@ -464,6 +468,29 @@ export class CalDAVCalendarService {
       if (!feed) {
         throw new Error(`Calendar feed not found for path: ${calendarPath}`);
       }
+
+      let remoteCtag: string | null = null;
+      if (!forceFullSync && this.account.caldavUrl) {
+        remoteCtag = await fetchCalendarCtag({
+          accountBaseUrl: this.account.caldavUrl,
+          calendarPathOrUrl: calendarPath,
+          username: this.account.caldavUsername || this.account.email,
+          password: this.account.accessToken,
+        });
+        if (remoteCtag && feed.ctag === remoteCtag) {
+          await prisma.calendarFeed.update({
+            where: { id: feed.id, userId },
+            data: { lastSync: newDate() },
+          });
+          return {
+            added: [],
+            updated: [],
+            deleted: [],
+            unchanged: true,
+          };
+        }
+      }
+
       //delete all events from the database
       await prisma.calendarEvent.deleteMany({
         where: {
@@ -488,12 +515,24 @@ export class CalDAVCalendarService {
       // const result = await this.processEvents(events, existingEvents, feed.id);
 
       const result = await this.createAllEvents(events, feed.id);
+
+      const newCtag =
+        !forceFullSync && this.account.caldavUrl
+          ? await fetchCalendarCtag({
+              accountBaseUrl: this.account.caldavUrl,
+              calendarPathOrUrl: calendarPath,
+              username: this.account.caldavUsername || this.account.email,
+              password: this.account.accessToken,
+            })
+          : remoteCtag;
+
       // Update the feed's last sync time and sync token
       await prisma.calendarFeed.update({
         where: { id: feed.id, userId },
         data: {
           lastSync: newDate(),
           syncToken: feed.syncToken ? String(feed.syncToken) : null,
+          ...(newCtag ? { ctag: newCtag } : {}),
         },
       });
 
@@ -694,7 +733,8 @@ export class CalDAVCalendarService {
       const syncResult = await this.syncCalendar(
         eventWithFeed.feedId,
         calendarPath,
-        userId
+        userId,
+        { forceFullSync: true }
       );
 
       // Find the updated event in the sync results
@@ -887,7 +927,9 @@ export class CalDAVCalendarService {
       }
 
       // Sync the calendar to update our local database
-      await this.syncCalendar(event.feedId, calendarPath, userId);
+      await this.syncCalendar(event.feedId, calendarPath, userId, {
+        forceFullSync: true,
+      });
     } catch (error) {
       logger.error(
         "Failed to delete CalDAV event",
@@ -1130,7 +1172,9 @@ export class CalDAVCalendarService {
       }
 
       // Sync the calendar to get the newly created event
-      const syncResult = await this.syncCalendar(feed.id, calendarPath, userId);
+      const syncResult = await this.syncCalendar(feed.id, calendarPath, userId, {
+        forceFullSync: true,
+      });
 
       // Find the newly created event in the sync results
       const createdEvent = syncResult.added.find(
@@ -1238,6 +1282,7 @@ export class CalDAVCalendarService {
           recurrenceRule: event.recurrenceRule,
           allDay: event.allDay || false,
           status: event.status,
+          transparency: event.transparency ?? "OPAQUE",
           isMaster: true,
           masterEventId: null,
           recurringEventId: null,
@@ -1300,6 +1345,7 @@ export class CalDAVCalendarService {
           recurrenceRule: event.recurrenceRule, // Instance events don't have recurrence rules
           allDay: event.allDay || false,
           status: event.status,
+          transparency: event.transparency ?? "OPAQUE",
           isMaster: false,
           masterEventId,
           recurringEventId: event.recurringEventId,

@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 import { newDate, normalizeAllDayDate } from "@/lib/date-utils";
 import { DEFAULT_TASK_COLOR } from "@/lib/task-utils";
 
@@ -36,6 +37,7 @@ export const useViewStore = create<ViewStore>()(
     }),
     {
       name: "calendar-view-store",
+      storage: ssrSafeJsonStorage,
       // Only persist the date as ISO string
       partialize: (state) => ({
         view: state.view,
@@ -70,6 +72,7 @@ export const useCalendarUIStore = create<UIStore>()(
     }),
     {
       name: "calendar-ui-store",
+      storage: ssrSafeJsonStorage,
       partialize: (state) => ({
         isSidebarOpen: state.isSidebarOpen,
       }),
