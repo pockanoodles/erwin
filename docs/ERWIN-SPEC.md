@@ -60,11 +60,12 @@ Migration folder: `prisma/migrations/20260501140000_erwin_foundation/`
 
 ### Phasing
 
-- **v2.0** — land v1 WIP (this commit); verify Canvas purge against live Canvas.
+- **v2.0** — land v1 WIP ✅; purge stale Canvas tasks from DB ✅ (979 deleted, 2026-07-22). Remaining: new Canvas access token (old one expired 2026-07-18) + one live sync to verify the active-enrollment filter end-to-end.
 - **v2.1** — Discord webhook briefing push (morning cron). Smallest slice that makes Erwin exist in daily life again.
 - **v2.2** — `GoalCycle`/`Goal` models + quick goal capture; cycle header in briefing.
-- **v2.3** — goal-task ranking integration; end-of-cycle review flow.
-- **Fall prep (before ~Sept 2026)** — four courses incoming: re-verify Canvas sync, grade-impact pool, and adaptive polling with the new semester's data.
+- **v2.3** — task kind classifier at sync time: `kind` column (`EXAM | QUIZ | HOMEWORK | LAB | PROJECT | DISCUSSION | OTHER`) from `assignmentGroupName` keywords → title regex → `submissionTypes`, default HOMEWORK. Exams are events, not deliverables: they generate study blocks in the days before (lead time scaled by `groupWeight`) instead of surfacing as a "do now" task on exam day. Also lets the briefing speak in kinds ("2 homeworks, exam Friday") and auto-junk 0-point admin noise. One evening: migration + classifier + `kind` badge on the focus card.
+- **v2.4** — goal-task ranking integration; end-of-cycle review flow.
+- **Fall prep (before ~Sept 2026)** — four courses incoming: re-verify Canvas sync, grade-impact pool, adaptive polling, and tune the classifier keyword map against the new semester's real assignment groups.
 
 ---
 
