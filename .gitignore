@@ -58,3 +58,8 @@ data/*
 /src/saas/
 /dist
 scripts/test-outlook-task-api.sh
+
+# Local working notes / build plans (kept local per code standards)
+docs/v*-cleanup.md
+docs/focus-mode.md
+docs/weekly-checkin.md

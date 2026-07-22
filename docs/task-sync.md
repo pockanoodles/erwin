@@ -142,7 +142,7 @@ export interface TaskProviderInterface {
   getName(): string; // Returns human-readable provider name
 
   // Task list operations
-  getTaskLists(): Promise<TaskList[]>;
+  getTaskLists(): Promise<TaskList[]>;\
 
   // Task operations
   getTasks(listId: string, options?: SyncOptions): Promise<ExternalTask[]>;

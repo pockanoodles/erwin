@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Focus Mode & Daily Briefing (docs/focus-mode.md):** `GET /api/erwin/focus/briefing`, first-open-of-day full briefing (`DailyBriefing`), `localStorage` gate (`erwin-last-briefing`), collapsible `CompactBriefing`, enriched queue (`countdownHuman`, `gradeImpactPercent`, `gradeProjection`, `effortEstimate`, `lastSkippedAgo`), `POST /api/erwin/focus/interact` alias, Canvas weighted grade projection helper (`grade-projection.ts`), `gradeWeightPercent` on `Task`, `FocusTaskCard` / `UpNext` / bottom-sheet `QuickAdd`, framer-motion card transitions; default post-auth navigation to `/focus` (sign-in client redirect, setup completed redirect, existing session redirect)
+- **Full technical spec in-repo:** `docs/ERWIN-SPEC.md` now includes the complete May 1, 2026 Erwin technical specification plus a living implementation tracker.
+- **Stage 1 ranking (spec §5.2):** sigmoid deadline pressure, effort fit vs current slot, weighted base score (0.35/0.45/0.20), pool-normalized grade impact, long-horizon visibility boost, personal filler lane when Canvas is DANGER/HIGH, skip-spiral DANGER escalation; Focus API returns `urgencyTier` and `baseScore`.
+- **Focus UX:** calendar `slotNarrative` in the daily briefing header; floating quick-add (manual `LOCAL` task, 30m default); authenticated home when homepage is disabled redirects to `/focus`.
+- **Canvas sync:** per-user normalization of `gradeImpactScore` to 0–1 after each sync; BullMQ Canvas polling uses 30 min when any open task is due within 48h, else the provider `syncIntervalMinutes` (default 2h).
+
+### Fixed
+
+- **Task scheduling after create:** `scheduleAllTasksForUser` no longer fails when `AutoScheduleSettings` is missing — creates the same weekday 9–17 defaults as setup migration so `POST /api/tasks/schedule-all` succeeds for new users
+- **Zustand + `localStorage` on `/` (500):** all `persist` stores use `ssrSafeJsonStorage` so SSR and Node’s experimental / broken `localStorage` (`getItem is not a function`) no longer crash; `CommandPaletteHint` guards `localStorage` access; `src/instrumentation.ts` replaces broken Node `globalThis.localStorage` at server startup; `getClientLocalStorage` also checks `globalThis.localStorage`
+- **Worker + Prisma:** `start:worker` now loads project `.env` first (`src/saas/jobs/load-env.ts` + `dotenv`) so `DATABASE_URL=...@localhost:5432` applies — plain `node` did not read `.env`, which led to wrong DB host (`db:5432`) / connection failures
+- **`.env.example`:** document `DATABASE_URL` — use `localhost` for host-side dev (`npm run dev`, Prisma CLI); use hostname `db` only from containers on the Compose network
+- **`redis:up`:** use root `docker-compose.yml` (added `redis:7-alpine` on port 6379); removed reference to missing `docker-compose.saas.yml`
+
+### Added
+
+- **BullMQ worker (Phase C):** `src/saas/jobs/worker.ts` runs repeatable Canvas + CalDAV sync via `src/lib/erwin/job-sync-runner.ts` (`module-alias` resolves `@/` at runtime); `npm run build:worker` copies `worker-with-aliases.js`; configure `REDIS_URL`, optional `ERWIN_BACKGROUND_SYNC_INTERVAL_MS` (default 15 min), `ERWIN_CALDAV_POLL_INTERVAL_MINUTES` (default 15)
+- **Erwin availability (Phase A):** CalDAV `TRANSP`/`STATUS` → `CalendarEvent.transparency` + `status`; PROPFIND `getctag` short-circuit on sync (skipped when unchanged); `computeErwinAvailabilitySummary` + `GET /api/erwin/availability`; focus queue filters tasks when estimated duration exceeds current/next free window during work hours
 - **Focus (Erwin):** `/api/erwin/focus/queue` + `/api/erwin/focus/interaction` — Stage 1 ranked queue, daily briefing header, Done/Skip with `TaskInteraction` context snapshots (`timeOfDay`, `dayOfWeek`, `hour`, `tasksCompletedToday`)
 - **Progress tab:** `/progress` + `/api/erwin/progress/summary`; main nav order **Focus | Calendar | Progress | Tasks**; command palette **Go to Progress** (`gp`)
 - **Erwin foundation:** Prisma models `TaskInteraction` and `RankerState`; extended `Task`, `TaskProvider`, and `CalendarEvent` for Canvas sync and ranking metadata
