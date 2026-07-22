@@ -10,6 +10,11 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      # Inside the compose network, Postgres/Redis live at service hostnames —
+      # these override the host-oriented localhost values from .env.
+      - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
+      - REDIS_URL=redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
