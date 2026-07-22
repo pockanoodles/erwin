@@ -5,10 +5,11 @@ import { Card } from "@/components/ui/card";
 
 import { format } from "@/lib/date-utils";
 
-import { Task, TaskStatus } from "@/types/task";
+import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+import { TaskStatus } from "@/types/task";
 
 interface FocusedTaskProps {
-  task: Task | null;
+  task: FocusQueueTask | null;
 }
 
 // Function to convert URLs in text to hyperlinks
@@ -60,7 +61,12 @@ export function FocusedTask({ task }: FocusedTaskProps) {
     <Card className="flex h-full flex-col p-6">
       <div className="mb-6 flex items-start justify-between">
         <div>
-          <h2 className="task-title mb-2 text-2xl font-bold">{task.title}</h2>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h2 className="task-title text-2xl font-bold">{task.title}</h2>
+            {task.erwin?.urgencyTier ? (
+              <Badge variant="secondary">{task.erwin.urgencyTier}</Badge>
+            ) : null}
+          </div>
 
           {/* Display tags */}
           {task.tags && task.tags.length > 0 && (
@@ -126,9 +132,17 @@ export function FocusedTask({ task }: FocusedTaskProps) {
             <p className="text-muted-foreground">{task.duration} minutes</p>
           </div>
         )}
-        {task.scheduleScore && (
+        {task.erwin?.baseScore != null && (
           <div>
-            <h3 className="mb-1 text-sm font-medium">Focus Score</h3>
+            <h3 className="mb-1 text-sm font-medium">Stage 1 score</h3>
+            <p className="text-muted-foreground">
+              {task.erwin.baseScore.toFixed(2)}
+            </p>
+          </div>
+        )}
+        {task.scheduleScore != null && task.scheduleScore > 0 && (
+          <div>
+            <h3 className="mb-1 text-sm font-medium">Schedule score</h3>
             <p className="text-muted-foreground">
               {task.scheduleScore.toFixed(2)}
             </p>

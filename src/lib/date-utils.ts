@@ -3,6 +3,7 @@ import {
   addDays,
   addMinutes,
   areIntervalsOverlapping,
+  differenceInDays,
   differenceInHours,
   differenceInMinutes,
   endOfDay as fnEndOfDay,
@@ -22,7 +23,7 @@ import {
   subDays,
   subMinutes,
 } from "date-fns";
-import { formatInTimeZone, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 export function newDate(date?: Date | string | number): Date {
   if (date === undefined) {
@@ -252,6 +253,7 @@ export {
   setHours,
   setMinutes,
   getDay,
+  differenceInDays,
   differenceInHours,
   differenceInMinutes,
   format,
@@ -263,6 +265,7 @@ export {
   subDays,
   isSameDay,
   formatInTimeZone,
+  fromZonedTime,
   toZonedTime,
   areIntervalsOverlapping,
   isBefore,

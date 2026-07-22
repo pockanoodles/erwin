@@ -5,6 +5,7 @@ import { ActionType } from "@/components/ui/action-overlay";
 
 import { addDays, addHours, newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import { useTaskStore } from "@/store/task";
 
@@ -350,6 +351,7 @@ export const useFocusModeStore = create<FocusModeStore>()(
     }),
     {
       name: "focus-mode-storage",
+      storage: ssrSafeJsonStorage,
       partialize: (state) => ({
         currentTaskId: state.currentTaskId,
         // Don't persist processing state

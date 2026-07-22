@@ -9,7 +9,23 @@ import { TaskStatus } from "@/types/task";
 type ApiTask = Record<string, unknown>;
 
 /** Task row from `/api/erwin/focus/queue` (client-only `erwin` flags). */
-export type FocusQueueTask = Task & { erwin?: { danger?: boolean } };
+export type FocusQueueTask = Task & {
+  erwin?: {
+    danger?: boolean;
+    urgencyTier?: string;
+    baseScore?: number;
+    countdownHuman?: string | null;
+    gradeImpactPercent?: number | null;
+    gradeProjection?: {
+      currentGrade: number;
+      gradeIfMissed: number;
+      letterCurrent: string;
+      letterIfMissed: string;
+    } | null;
+    lastSkippedAgo?: string | null;
+    effortEstimate?: string;
+  };
+};
 
 function parseDate(v: unknown): Date | null {
   if (v == null || v === "") {
@@ -65,8 +81,13 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
     courseName: (raw.courseName as string | null | undefined) ?? null,
     courseId: (raw.courseId as string | null | undefined) ?? null,
     gradeImpactScore: (raw.gradeImpactScore as number | null | undefined) ?? null,
+    gradeWeightPercent:
+      raw.gradeWeightPercent == null
+        ? undefined
+        : Number(raw.gradeWeightPercent),
     skipCount:
       raw.skipCount == null ? undefined : Number(raw.skipCount),
+    lastSkippedAt: parseDate(raw.lastSkippedAt),
     submissionStatus: (raw.submissionStatus as string | null | undefined) ?? null,
     externalUrl: (raw.externalUrl as string | null | undefined) ?? null,
     category: (raw.category as string | null | undefined) ?? null,

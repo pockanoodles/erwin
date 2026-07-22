@@ -9,6 +9,9 @@ export function CommandPaletteHint() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+    if (typeof window === "undefined" || typeof localStorage?.getItem !== "function") {
+      return;
+    }
     // Check if the user has seen the hint before
     const hasSeenHint = localStorage.getItem("hasSeenCommandPaletteHint");
 
@@ -24,8 +27,9 @@ export function CommandPaletteHint() {
 
   const dismissHint = () => {
     setIsVisible(false);
-    // Mark that the user has seen the hint
-    localStorage.setItem("hasSeenCommandPaletteHint", "true");
+    if (typeof localStorage?.setItem === "function") {
+      localStorage.setItem("hasSeenCommandPaletteHint", "true");
+    }
   };
 
   // Trigger command palette

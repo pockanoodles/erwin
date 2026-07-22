@@ -5,7 +5,7 @@
 import { startOfDay } from "@/lib/date-utils";
 
 import type { TaskForRanking } from "@/lib/erwin/rank-stage1";
-import { isDangerForFocus } from "@/lib/erwin/rank-stage1";
+import { isDangerResolved } from "@/lib/erwin/rank-stage1";
 
 export interface FocusBriefing {
   /** ISO date label for the briefing (UTC calendar day) */
@@ -14,6 +14,10 @@ export interface FocusBriefing {
   dueThisWeekCount: number;
   dangerCount: number;
   pendingCount: number;
+  /** Minutes Erwin estimates as free in the current/next slot during work hours (optional) */
+  effectiveCapacityMinutes?: number | null;
+  /** Human-readable current slot line from the availability engine */
+  slotNarrative?: string | null;
 }
 
 function isSameUtcDay(a: Date, b: Date): boolean {
@@ -44,7 +48,7 @@ export function computeFocusBriefing(
       new Date(t.dueDate) <= horizon
   ).length;
 
-  const dangerCount = candidates.filter((t) => isDangerForFocus(t, now)).length;
+  const dangerCount = candidates.filter((t) => isDangerResolved(t, now)).length;
 
   return {
     dateLabel: now.toISOString().slice(0, 10),
