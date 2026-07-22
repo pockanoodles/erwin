@@ -112,7 +112,10 @@ export async function GET(request: NextRequest) {
         {
           accessToken: tokens.access_token!,
           refreshToken: tokens.refresh_token!,
-          expiresAt: newDate(Date.now() + (tokens.expiry_date || 3600 * 1000)),
+          // expiry_date from google-auth-library is an absolute epoch-ms
+          // timestamp, not a duration. Adding Date.now() pushed expiry decades
+          // out, so the token never refreshed and later calls 401'd silently.
+          expiresAt: newDate(tokens.expiry_date || Date.now() + 3600 * 1000),
         },
         userId ?? "unknown"
       );
