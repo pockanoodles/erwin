@@ -258,46 +258,52 @@ export async function deleteGoogleEvent(
   userId: string,
   calendarId: string,
   eventId: string,
-  mode: "single" | "series" = "single"
+  mode: "single" | "series" = "single",
+  // Test seam: lets callers inject a calendar client. Defaults to the real one.
+  getClient: typeof getGoogleCalendarClient = getGoogleCalendarClient
 ) {
-  const calendar = await getGoogleCalendarClient(accountId, userId);
+  const calendar = await getClient(accountId, userId);
 
   try {
-    // Get the event to check if it's part of a series
+    // Get the event so we can distinguish a recurring master from an expanded
+    // occurrence (a master has `recurrence` but no `recurringEventId`).
     const event = await calendar.events.get({
       calendarId,
       eventId,
     });
 
-    // For series deletion, use the recurring event ID if available
-    if (mode === "series" && event.data.recurringEventId) {
-      await calendar.events.delete({
-        calendarId,
-        eventId: event.data.recurringEventId,
-      });
-      return;
-    }
-
-    // For single instance deletions, we need to get the instance first
-    if (mode === "single") {
-      const instances = await calendar.events.instances({
-        calendarId,
-        eventId: event.data.recurringEventId || eventId,
-        timeMin: newDate().toISOString(),
-        maxResults: 1,
-      });
-
-      if (instances.data.items?.[0]) {
-        // Delete the specific instance
+    // For series deletion, target the master recurring event id.
+    if (mode === "series") {
+      if (event.data.recurringEventId) {
         await calendar.events.delete({
           calendarId,
-          eventId: instances.data.items[0].id!,
+          eventId: event.data.recurringEventId,
         });
         return;
       }
     }
 
-    // If not part of a series or no instance found, delete the event directly
+    // Safety guard: never single-delete a recurring master id. Google treats
+    // deleting a master as deleting the WHOLE series, which would be worse than
+    // the wrong-occurrence bug this fix addresses. A single delete must target
+    // an expanded occurrence; refuse a master and let the caller use series mode.
+    // Guard for ANY non-"series" mode (not just "single"): the DELETE route
+    // forwards `mode` from request JSON untyped, so a malformed/missing value
+    // must not slip past the guard and erase the series.
+    if (
+      mode !== "series" &&
+      event.data.recurrence &&
+      !event.data.recurringEventId
+    ) {
+      throw new Error(
+        "Refusing single-occurrence delete of a recurring master event; use series mode to delete the whole series."
+      );
+    }
+
+    // For single-occurrence deletions, the provided eventId already identifies
+    // the clicked occurrence (an expanded instance id for recurring events, or
+    // the event's own id otherwise), so delete it directly. Do NOT re-query for
+    // the "next upcoming" instance, which would delete the wrong occurrence.
     await calendar.events.delete({
       calendarId,
       eventId,
