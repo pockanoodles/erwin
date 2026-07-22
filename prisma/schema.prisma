@@ -231,6 +231,8 @@ model Task {
   taskProviderId      String?
   taskProvider        TaskProvider? @relation(fields: [taskProviderId], references: [id], onDelete: SetNull)
   gradeImpactScore    Float?
+  /** Canvas: % of final course grade (0–100) for display; not pool-normalized */
+  gradeWeightPercent  Float?
   urgencyTier         String?       @default("NONE")
   skipCount           Int           @default(0)
   lastSkippedAt       DateTime?

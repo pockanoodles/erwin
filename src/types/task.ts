@@ -73,7 +73,10 @@ export interface Task {
   courseName?: string | null;
   courseId?: string | null;
   gradeImpactScore?: number | null;
+  /** Canvas: approximate % of final course grade (Focus UI) */
+  gradeWeightPercent?: number | null;
   skipCount?: number;
+  lastSkippedAt?: Date | null;
   submissionStatus?: string | null;
   externalUrl?: string | null;
   category?: string | null;
