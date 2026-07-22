@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
+
 type ViewMode = "list" | "board";
 
 interface TaskPageSettings {
@@ -22,6 +24,7 @@ export const useTaskPageSettings = create<TaskPageSettings>()(
     }),
     {
       name: "task-page-settings",
+      storage: ssrSafeJsonStorage,
     }
   )
 );

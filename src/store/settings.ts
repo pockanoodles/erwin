@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { logger } from "@/lib/logger";
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import { Settings } from "@/types/settings";
 
@@ -480,6 +481,7 @@ export const useSettingsStore = create<SettingsStore>()(
     }),
     {
       name: "calendar-settings",
+      storage: ssrSafeJsonStorage,
       partialize: (state) => ({
         ...state,
         system: {

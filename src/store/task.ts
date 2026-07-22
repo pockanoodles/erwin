@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { isSaasEnabled } from "@/lib/config";
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import {
   NewTag,
@@ -399,6 +400,7 @@ export const useTaskStore = create<TaskState>()(
     }),
     {
       name: "task-data-storage",
+      storage: ssrSafeJsonStorage,
       partialize: (state) => ({
         tasks: state.tasks,
         tags: state.tags,

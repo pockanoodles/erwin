@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
+
 interface SetupStore {
   // Whether setup has been checked at least once
   hasChecked: boolean;
@@ -42,6 +44,7 @@ export const useSetupStore = create<SetupStore>()(
     }),
     {
       name: "fluid-calendar-setup-storage",
+      storage: ssrSafeJsonStorage,
     }
   )
 );

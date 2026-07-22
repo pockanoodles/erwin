@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
+
 import { EnergyLevel, TaskStatus, TimePreference } from "@/types/task";
 
 interface TaskListViewSettings {
@@ -73,6 +75,7 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
     }),
     {
       name: "task-list-view-settings",
+      storage: ssrSafeJsonStorage,
     }
   )
 );

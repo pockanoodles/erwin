@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { logger } from "@/lib/logger";
 import { LogLevel } from "@/lib/logger/types";
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import { Log } from "@/types/logging";
 
@@ -189,6 +190,7 @@ export const useLogViewStore = create<LogViewState>()(
     }),
     {
       name: "log-view-store",
+      storage: ssrSafeJsonStorage,
     }
   )
 );

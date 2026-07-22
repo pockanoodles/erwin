@@ -1,6 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
+
 import {
   NewProject,
   Project,
@@ -137,6 +139,7 @@ export const useProjectStore = create<ProjectState>()(
     }),
     {
       name: "project-store",
+      storage: ssrSafeJsonStorage,
       partialize: (state) => ({
         activeProject: state.activeProject,
       }),
