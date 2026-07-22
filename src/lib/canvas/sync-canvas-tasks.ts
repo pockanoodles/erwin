@@ -2,8 +2,16 @@
  * One-way Canvas → Erwin Task upsert. Read-only relative to Canvas.
  */
 
-import type { CanvasAssignment, CanvasAssignmentGroup } from "@/lib/canvas/types";
+import type {
+  CanvasAssignment,
+  CanvasAssignmentGroup,
+  CanvasCourse,
+} from "@/lib/canvas/types";
 import { createCanvasClient } from "@/lib/canvas/canvas-client";
+import {
+  hasLiveAssignment,
+  isTermNamedCourse,
+} from "@/lib/canvas/course-term-filter";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -151,17 +159,37 @@ export async function syncCanvasTasksForUser(userId: string): Promise<{
 
   const now = new Date();
   const courses = await client.listActiveCourses();
-  const activeCourseIds = courses.map((c) => String(c.id));
+
+  // NEU never concludes enrollments, so `enrollment_state=active` alone
+  // returns every course ever taken. Keep term-named current courses; keep
+  // undated instructor shells only if something is due recently/in future.
+  const assignmentsByCourse = new Map<number, CanvasAssignment[]>();
+  const liveCourses: CanvasCourse[] = [];
+  for (const course of courses) {
+    if (isTermNamedCourse(course, now)) {
+      liveCourses.push(course);
+      continue;
+    }
+    const assignments = await client.listAssignments(course.id);
+    if (hasLiveAssignment(assignments, now)) {
+      assignmentsByCourse.set(course.id, assignments);
+      liveCourses.push(course);
+    }
+  }
+
+  const activeCourseIds = liveCourses.map((c) => String(c.id));
   let upserted = 0;
 
-  for (const course of courses) {
+  for (const course of liveCourses) {
     const groups = await client.listAssignmentGroups(course.id);
     const groupById = new Map<number, CanvasAssignmentGroup>();
     for (const g of groups) {
       groupById.set(g.id, g);
     }
 
-    const assignments = await client.listAssignments(course.id);
+    const assignments =
+      assignmentsByCourse.get(course.id) ??
+      (await client.listAssignments(course.id));
 
     for (const a of assignments) {
       const extId = String(a.id);
@@ -272,11 +300,17 @@ export async function syncCanvasTasksForUser(userId: string): Promise<{
 
   logger.info(
     "Canvas sync completed",
-    { userId, upserted, purged, courseCount: courses.length },
+    {
+      userId,
+      upserted,
+      purged,
+      courseCount: liveCourses.length,
+      enrolledCourseCount: courses.length,
+    },
     LOG_SOURCE
   );
 
-  return { upserted, courseCount: courses.length, purged };
+  return { upserted, courseCount: liveCourses.length, purged };
 }
 
 /**
