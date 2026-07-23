@@ -18,6 +18,44 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Migrations run in this container's entrypoint, then `next dev` binds :3000.
+    # Once the port is listening the schema is up — the worker gates on this.
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 3000 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    restart: unless-stopped
+
+  # BullMQ scheduler + worker: periodic Canvas + CalDAV sync for all eligible
+  # users/feeds. Shares the app image (development stage) so the sync logic in
+  # src/lib/erwin/* and the queue wrapper in src/saas/jobs/* are already present.
+  # Separate process by design (see package.json start:worker / start:worker:prod).
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      # Wait for the app so migrations have applied before the worker queries.
+      app:
+        condition: service_healthy
+    # Override the app entrypoint (which runs migrate deploy) — the app owns
+    # migrations. Here: generate the client, compile the worker, then run it.
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["npx --yes prisma generate && npm run build:worker && npm run start:worker"]
     restart: unless-stopped
 
   db:
@@ -41,6 +79,11 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
 volumes:

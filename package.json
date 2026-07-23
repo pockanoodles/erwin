@@ -26,7 +26,7 @@
     "build:worker": "tsc -p tsconfig.worker.json && cp src/saas/jobs/worker-with-aliases.js dist/saas/jobs/",
     "start:worker": "node dist/saas/jobs/worker.js",
     "start:worker:prod": "infisical run --token=\"$INFISICAL_TOKEN\" --projectId=\"$PROJECT_ID\" --env=\"$INFISICAL_SECRET_ENV\" --domain=\"$INFISICAL_API_URL\" -- node dist/saas/jobs/worker-with-aliases.js",
-    "docker:publish": "docker build -t fluid-calendar:prod -f docker/production/Dockerfile . && docker tag fluid-calendar:prod eibrahim/fluid-calendar:latest && docker push eibrahim/fluid-calendar:latest",
+    "docker:publish": "docker build -t erwin:prod -f docker/production/Dockerfile . && docker tag erwin:prod pockanoodles/erwin:latest && docker push pockanoodles/erwin:latest",
     "prepare": "husky"
   },
   "dependencies": {
