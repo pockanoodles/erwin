@@ -33,7 +33,14 @@ export type TaskForRanking = Pick<
   | "courseId"
   | "skipCount"
   | "createdAt"
->;
+> & {
+  /**
+   * Erwin v2.2: importance (0–100) of the linked Goal, if any. Resolved by the
+   * orchestration layer (`focus-queue-core`) from the `goal` relation and fed
+   * into the impact term parallel to gradeImpactScore. `null` when unlinked.
+   */
+  goalImportanceScore?: number | null;
+};
 
 const COMPLETED_STATUSES = new Set(["completed"]);
 const DONE_SUBMISSION = new Set(["submitted", "graded"]);
@@ -136,6 +143,29 @@ export function effectiveGradeImpact(task: TaskForRanking, now: Date): number {
 }
 
 /**
+ * Erwin v2.2 — goal importance as a 0–1 impact signal parallel to grade impact.
+ * `goalImportanceScore` is a user-set 0–100 value on the linked Goal; unlinked
+ * tasks contribute 0 so grade-only behavior is unchanged.
+ */
+export function effectiveGoalImpact(task: TaskForRanking): number {
+  const g = task.goalImportanceScore;
+  if (g == null) {
+    return 0;
+  }
+  return Math.min(1, Math.max(0, g / 100));
+}
+
+/**
+ * Raw (pre-pool-normalization) impact for a task: the stronger of its grade
+ * impact and its goal impact. A task surfaces on its best reason to matter (a
+ * big grade OR an important personal goal); taking the max avoids
+ * double-counting a task that is both.
+ */
+function rawImpact(task: TaskForRanking, now: Date): number {
+  return Math.max(effectiveGradeImpact(task, now), effectiveGoalImpact(task));
+}
+
+/**
  * Spec §5.2.5 — effort fit vs available slot (0–1).
  */
 export function effortFit(estimatedMinutes: number, slotMinutes: number): number {
@@ -216,15 +246,19 @@ export function computeUrgencyTier(
   return "LOW";
 }
 
-function normalizeGradePool(
+/**
+ * Normalizes the combined impact signal (grade impact ∪ goal impact) across the
+ * candidate pool so grade-driven and goal-driven tasks compete on one 0–1 scale.
+ */
+function normalizeImpactPool(
   tasks: TaskForRanking[],
   now: Date
 ): Map<string, number> {
-  const raw = tasks.map((t) => effectiveGradeImpact(t, now));
-  const maxG = Math.max(...raw, 1e-9);
+  const raw = tasks.map((t) => rawImpact(t, now));
+  const maxImpact = Math.max(...raw, 1e-9);
   const map = new Map<string, number>();
   for (const t of tasks) {
-    map.set(t.id, effectiveGradeImpact(t, now) / maxG);
+    map.set(t.id, rawImpact(t, now) / maxImpact);
   }
   return map;
 }
@@ -244,6 +278,11 @@ function nominalSlotMinutes(slotMinutes: number | null): number {
  */
 export function isPersonalFillerCandidate(task: TaskForRanking): boolean {
   if (task.priority === "high") {
+    return false;
+  }
+  // Erwin v2.2: goal-linked tasks carry their own impact signal and compete in
+  // the main pool — they are never demoted to the personal filler lane.
+  if (task.goalImportanceScore != null) {
     return false;
   }
   return task.source !== "CANVAS";
@@ -275,7 +314,7 @@ export function computeStage1Scores(
   candidates: TaskForRanking[],
   now: Date,
   slotMinutes: number | null,
-  normGrade: Map<string, number>
+  normImpact: Map<string, number>
 ): Stage1Scores {
   const danger = isDangerResolved(task, now);
   const urgencyTier = computeUrgencyTier(task, now, danger);
@@ -283,12 +322,16 @@ export function computeStage1Scores(
     canvasHasDangerOrHigh(candidates, now) &&
     isPersonalFillerCandidate(task);
 
-  const ng = normGrade.get(task.id) ?? 0;
+  // Impact term (weight 0.35) is the pool-normalized max of grade impact and
+  // goal impact — a personal goal is a first-class reason to work on a task, so
+  // it competes in the main pool alongside grade-driven Canvas work rather than
+  // in the filler lane. Deadline (0.45) and effort (0.2) weights are unchanged.
+  const ni = normImpact.get(task.id) ?? 0;
   const dp = deadlinePressure(task, now);
   const slot = nominalSlotMinutes(slotMinutes);
   const ef = effortFit(task.duration ?? 30, slot);
   let base =
-    W_IMPACT * ng + W_DEADLINE * dp + W_EFFORT * ef;
+    W_IMPACT * ni + W_DEADLINE * dp + W_EFFORT * ef;
   base += visibilityBoost(task, candidates, now);
   base = Math.min(2, Math.max(0, base));
 
@@ -337,11 +380,11 @@ export function orderTasksStage1(
   if (tasks.length === 0) {
     return [];
   }
-  const normGrade = normalizeGradePool(tasks, now);
+  const normImpact = normalizeImpactPool(tasks, now);
 
   const scored = tasks.map((t) => ({
     task: t,
-    ...computeStage1Scores(t, tasks, now, slotMinutes, normGrade),
+    ...computeStage1Scores(t, tasks, now, slotMinutes, normImpact),
   }));
 
   scored.sort((a, b) => {
@@ -395,12 +438,12 @@ export function stage1MetaForTasks(
   now: Date,
   slotMinutes: number | null
 ): Map<string, Stage1Scores> {
-  const normGrade = normalizeGradePool(pool, now);
+  const normImpact = normalizeImpactPool(pool, now);
   const out = new Map<string, Stage1Scores>();
   for (const t of ordered) {
     out.set(
       t.id,
-      computeStage1Scores(t, pool, now, slotMinutes, normGrade)
+      computeStage1Scores(t, pool, now, slotMinutes, normImpact)
     );
   }
   return out;

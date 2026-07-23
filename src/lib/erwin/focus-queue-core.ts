@@ -35,6 +35,7 @@ export function toTaskForRanking(r: {
   courseId: string | null;
   skipCount: number;
   createdAt: Date;
+  goal?: { importanceScore: number | null } | null;
 }): TaskForRanking {
   return {
     id: r.id,
@@ -53,11 +54,14 @@ export function toTaskForRanking(r: {
     courseId: r.courseId,
     skipCount: r.skipCount,
     createdAt: r.createdAt,
+    // Erwin v2.2: surface the linked goal's importance so a personal goal
+    // competes in the main-pool impact term (see rank-stage1 computeStage1Scores).
+    goalImportanceScore: r.goal?.importanceScore ?? null,
   };
 }
 
 export type FocusQueueTaskRow = Prisma.TaskGetPayload<{
-  include: { tags: true; project: true };
+  include: { tags: true; project: true; goal: true };
 }>;
 
 export interface FocusQueueCoreResult {
@@ -85,6 +89,7 @@ export async function buildFocusQueueCore(userId: string): Promise<FocusQueueCor
     include: {
       tags: true,
       project: true,
+      goal: true,
     },
   });
 

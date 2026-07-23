@@ -86,6 +86,8 @@ model User {
   TaskChange           TaskChange[]
   PasswordReset        PasswordReset[]
   rankerState          RankerState?
+  goalCycles           GoalCycle[]
+  goals                Goal[]
 }
 
 model VerificationToken {
@@ -274,6 +276,10 @@ model Task {
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id])
 
+  // Erwin v2.2: optional link to a Goal; goal-linked tasks compete in the main ranking pool
+  goalId String?
+  goal   Goal?   @relation(fields: [goalId], references: [id], onDelete: SetNull)
+
   @@index([status])
   @@index([dueDate])
   @@index([startDate])
@@ -291,6 +297,57 @@ model Task {
   @@index([externalListId])
   @@index([taskProviderId])
   @@index([urgencyTier])
+  @@index([goalId])
+}
+
+/** Erwin v2.2: a two-month planning block. One active at a time per user; mirrors how Kaito already plans the year. */
+model GoalCycle {
+  id        String   @id @default(cuid())
+  theme     String
+  startDate DateTime
+  endDate   DateTime
+  status    String   @default("active") // enum: 'active' | 'completed' | 'archived'
+
+  goals Goal[]
+
+  // User relationship
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+/** Erwin v2.2: a goal within a cycle. Goal-linked tasks get an importance signal parallel to Task.gradeImpactScore. */
+model Goal {
+  id               String  @id @default(cuid())
+  title            String
+  whyItMatters     String? // the "why it matters" — surfaced in briefing
+  definitionOfDone String? // what "done" looks like for this goal
+  status           String  @default("active") // enum: 'active' | 'done' | 'dropped'
+  /** Erwin: importance signal (0–100) parallel to Task.gradeImpactScore; feeds Stage 1 ranking */
+  importanceScore  Float?  @default(50)
+
+  cycleId String
+  cycle   GoalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  tasks Task[]
+
+  // User relationship
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([cycleId])
+  @@index([userId])
+  @@index([status])
 }
 
 /** Erwin: implicit feedback for learning-to-rank (Done / Skip / Surfaced) */

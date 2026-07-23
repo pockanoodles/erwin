@@ -1,0 +1,86 @@
+import { NextRequest, NextResponse } from "next/server";
+
+import { authenticateRequest } from "@/lib/auth/api-auth";
+import { deactivateActiveCycles } from "@/lib/erwin/goal-cycles";
+import { newDate } from "@/lib/date-utils";
+import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
+
+const LOG_SOURCE = "ErwinCyclesAPI";
+
+/**
+ * GET /api/erwin/cycles
+ * Lists the authenticated user's goal cycles, newest first.
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await authenticateRequest(request, LOG_SOURCE);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const cycles = await prisma.goalCycle.findMany({
+      where: { userId: auth.userId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json(cycles);
+  } catch (error) {
+    logger.error(
+      "Error listing goal cycles:",
+      { error: error instanceof Error ? error.message : String(error) },
+      LOG_SOURCE
+    );
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
+
+/**
+ * POST /api/erwin/cycles
+ * Creates a goal cycle. Only one cycle can be active per user, so creating an
+ * active cycle deactivates the current active one (marked "archived").
+ */
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await authenticateRequest(request, LOG_SOURCE);
+    if ("response" in auth) {
+      return auth.response;
+    }
+
+    const userId = auth.userId;
+    const json = await request.json();
+    const { theme, startDate, endDate, status } = json;
+
+    if (!theme || !startDate || !endDate) {
+      return new NextResponse("theme, startDate and endDate are required", {
+        status: 400,
+      });
+    }
+
+    const nextStatus = status ?? "active";
+
+    const cycle = await prisma.$transaction(async (tx) => {
+      if (nextStatus === "active") {
+        await deactivateActiveCycles(tx, userId);
+      }
+      return tx.goalCycle.create({
+        data: {
+          theme,
+          startDate: newDate(startDate),
+          endDate: newDate(endDate),
+          status: nextStatus,
+          userId,
+        },
+      });
+    });
+
+    return NextResponse.json(cycle);
+  } catch (error) {
+    logger.error(
+      "Error creating goal cycle:",
+      { error: error instanceof Error ? error.message : String(error) },
+      LOG_SOURCE
+    );
+    return new NextResponse("Internal Server Error", { status: 500 });
+  }
+}
