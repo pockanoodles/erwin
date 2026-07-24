@@ -4,6 +4,7 @@ import {
   HiOutlineCalendar,
   HiOutlineClipboardList,
   HiOutlineCog,
+  HiOutlineFlag,
   HiOutlineLightningBolt,
   HiOutlineTrendingUp,
 } from "react-icons/hi";
@@ -54,6 +55,17 @@ export function useNavigationCommands(): Command[] {
       shortcut: "gp",
       perform: (router?: AppRouterInstance) => {
         if (router) router.push("/progress");
+      },
+    },
+    {
+      id: "navigation.goals",
+      title: "Go to Goals",
+      keywords: ["navigation", "goals", "season"],
+      icon: HiOutlineFlag,
+      section: "navigation",
+      shortcut: "gg",
+      perform: (router?: AppRouterInstance) => {
+        if (router) router.push("/goals");
       },
     },
     {

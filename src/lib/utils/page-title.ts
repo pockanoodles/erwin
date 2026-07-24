@@ -8,6 +8,8 @@ export const getTitleFromPathname = (pathname: string) => {
       return "Focus | Erwin";
     case "/progress":
       return "Progress | Erwin";
+    case "/goals":
+      return "Goals | Erwin";
     case "/settings":
       return "Settings | Erwin";
     case "/setup":
