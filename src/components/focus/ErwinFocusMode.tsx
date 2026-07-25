@@ -267,7 +267,7 @@ export function ErwinFocusMode() {
   }
 
   return (
-    <div className="flex min-h-[calc(100dvh-4rem)] flex-col">
+    <div className="flex min-h-full flex-col">
       {showFullBriefing && briefingLoading ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
           <p className="text-muted-foreground">Loading briefing…</p>

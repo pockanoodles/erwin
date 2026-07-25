@@ -65,7 +65,7 @@ export default function RootLayout({
   }, [setShortcutsOpen]);
 
   return (
-    <div className="app-sharp flex min-h-screen flex-col">
+    <div className="app-sharp flex h-dvh">
       <SessionProvider>
         <PrivacyProvider>
           <DndProvider>
@@ -81,7 +81,7 @@ export default function RootLayout({
               onClose={() => setShortcutsOpen(false)}
             />
             <AppNav />
-            <main className="relative flex-1">
+            <main className="relative min-w-0 flex-1 overflow-y-auto">
               <NotificationProvider>{children}</NotificationProvider>
             </main>
             <Toaster />
