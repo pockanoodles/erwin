@@ -335,6 +335,11 @@ model Goal {
   cycleId String
   cycle   GoalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
+  // Goal tree: subgoals nest arbitrarily deep within the same cycle
+  parentGoalId String?
+  parentGoal   Goal?   @relation("GoalTree", fields: [parentGoalId], references: [id], onDelete: Cascade)
+  subgoals     Goal[]  @relation("GoalTree")
+
   tasks Task[]
 
   // User relationship
@@ -346,6 +351,7 @@ model Goal {
   updatedAt DateTime @updatedAt
 
   @@index([cycleId])
+  @@index([parentGoalId])
   @@index([userId])
   @@index([status])
 }

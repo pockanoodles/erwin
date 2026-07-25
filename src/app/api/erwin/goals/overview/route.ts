@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
+import { ensureCurrentHex, hexForDate, hexLabel } from "@/lib/erwin/hex";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -41,11 +42,11 @@ interface OverviewGroup {
 /**
  * GET /api/erwin/goals/overview
  *
- * Read-only payload for the Goals page: the active cycle (season), the
- * user's open tasks grouped by source with a trailing-30-day completion
- * count per group, and any explicit Goal rows. Groups sort by open count
- * descending with the untagged group pinned last; tasks within a group sort
- * by due date ascending, nulls last.
+ * Payload for the Goals page. The current hex (fixed two-month block) is
+ * lazily provisioned so an active cycle always exists. Returns the hex, the
+ * goal tree for it (goals with parentGoalId + their linked tasks), open
+ * tasks with no goal (graph tray), and open tasks grouped by source with a
+ * trailing-30-day completion count per group.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -59,47 +60,61 @@ export async function GET(request: NextRequest) {
     const windowStart = new Date(now);
     windowStart.setUTCDate(windowStart.getUTCDate() - COMPLETION_WINDOW_DAYS);
 
-    const [activeCycle, openTasks, completedBySource, goals] =
-      await Promise.all([
-        prisma.goalCycle.findFirst({
-          where: { userId, status: "active" },
-          orderBy: { createdAt: "desc" },
-          select: { id: true, theme: true, startDate: true, endDate: true },
-        }),
-        prisma.task.findMany({
-          where: { userId, status: { not: "completed" } },
-          select: {
-            id: true,
-            title: true,
-            dueDate: true,
-            urgencyTier: true,
-            source: true,
+    const cycle = await ensureCurrentHex(prisma, userId);
+    const hex = hexForDate(cycle.startDate);
+
+    const [openTasks, completedBySource, goals] = await Promise.all([
+      prisma.task.findMany({
+        where: { userId, status: { not: "completed" } },
+        select: {
+          id: true,
+          title: true,
+          dueDate: true,
+          urgencyTier: true,
+          source: true,
+          goalId: true,
+        },
+        orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
+      }),
+      prisma.task.groupBy({
+        by: ["source"],
+        where: {
+          userId,
+          status: "completed",
+          completedAt: { gte: windowStart },
+        },
+        _count: { _all: true },
+      }),
+      prisma.goal.findMany({
+        where: { userId, cycleId: cycle.id },
+        orderBy: [{ importanceScore: "desc" }, { createdAt: "desc" }],
+        select: {
+          id: true,
+          title: true,
+          whyItMatters: true,
+          definitionOfDone: true,
+          status: true,
+          importanceScore: true,
+          parentGoalId: true,
+          tasks: {
+            where: {
+              OR: [
+                { status: { not: "completed" } },
+                { completedAt: { gte: windowStart } },
+              ],
+            },
+            select: {
+              id: true,
+              title: true,
+              status: true,
+              dueDate: true,
+              urgencyTier: true,
+            },
+            orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
           },
-          orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
-        }),
-        prisma.task.groupBy({
-          by: ["source"],
-          where: {
-            userId,
-            status: "completed",
-            completedAt: { gte: windowStart },
-          },
-          _count: { _all: true },
-        }),
-        prisma.goal.findMany({
-          where: { userId },
-          orderBy: [{ importanceScore: "desc" }, { createdAt: "desc" }],
-          select: {
-            id: true,
-            title: true,
-            whyItMatters: true,
-            definitionOfDone: true,
-            status: true,
-            importanceScore: true,
-            cycle: { select: { theme: true } },
-          },
-        }),
-      ]);
+        },
+      }),
+    ]);
 
     const groupsByKey = new Map<string, OverviewGroup>();
     const ensureGroup = (key: string): OverviewGroup => {
@@ -135,17 +150,27 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      activeCycle,
+      activeCycle: {
+        id: cycle.id,
+        theme: cycle.theme,
+        startDate: cycle.startDate,
+        endDate: cycle.endDate,
+        hex: {
+          year: hex.year,
+          index: hex.index,
+          label: hexLabel(hex),
+        },
+      },
       groups,
-      goals: goals.map((goal) => ({
-        id: goal.id,
-        title: goal.title,
-        whyItMatters: goal.whyItMatters,
-        definitionOfDone: goal.definitionOfDone,
-        status: goal.status,
-        importanceScore: goal.importanceScore,
-        cycleTheme: goal.cycle.theme,
-      })),
+      goals,
+      unassignedTasks: openTasks
+        .filter((task) => !task.goalId)
+        .map(({ id, title, dueDate, urgencyTier }) => ({
+          id,
+          title,
+          dueDate,
+          urgencyTier,
+        })),
     });
   } catch (error) {
     logger.error(

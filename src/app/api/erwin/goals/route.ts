@@ -72,8 +72,14 @@ export async function POST(request: NextRequest) {
 
     const userId = auth.userId;
     const json = await request.json();
-    const { title, whyItMatters, definitionOfDone, status, importanceScore } =
-      json;
+    const {
+      title,
+      whyItMatters,
+      definitionOfDone,
+      status,
+      importanceScore,
+      parentGoalId,
+    } = json;
 
     if (!title) {
       return new NextResponse("title is required", { status: 400 });
@@ -102,6 +108,21 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // A parent must be the user's own goal in the same cycle.
+    if (parentGoalId) {
+      const parent = await prisma.goal.findUnique({
+        where: { id: parentGoalId, userId },
+      });
+      if (!parent) {
+        return new NextResponse("Parent goal not found", { status: 404 });
+      }
+      if (parent.cycleId !== cycleId) {
+        return new NextResponse("Parent goal is in a different cycle", {
+          status: 400,
+        });
+      }
+    }
+
     const goal = await prisma.goal.create({
       data: {
         title,
@@ -109,6 +130,7 @@ export async function POST(request: NextRequest) {
         definitionOfDone,
         ...(status !== undefined && { status }),
         ...(importanceScore !== undefined && { importanceScore }),
+        ...(parentGoalId !== undefined && { parentGoalId }),
         cycleId,
         userId,
       },

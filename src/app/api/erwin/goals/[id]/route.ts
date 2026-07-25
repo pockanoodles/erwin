@@ -81,6 +81,43 @@ export async function PUT(
       cycleId = json.cycleId;
     }
 
+    // Re-parenting: parent must be the user's own goal in the same cycle, and
+    // must not be the goal itself or any of its descendants (no loops).
+    if (json.parentGoalId !== undefined && json.parentGoalId !== null) {
+      if (json.parentGoalId === id) {
+        return new NextResponse("A goal cannot be its own parent", {
+          status: 400,
+        });
+      }
+      const parent = await prisma.goal.findUnique({
+        where: { id: json.parentGoalId, userId },
+      });
+      if (!parent) {
+        return new NextResponse("Parent goal not found", { status: 404 });
+      }
+      if (parent.cycleId !== (cycleId ?? existing.cycleId)) {
+        return new NextResponse("Parent goal is in a different cycle", {
+          status: 400,
+        });
+      }
+      // Walk up from the proposed parent; hitting `id` means a cycle.
+      let ancestorId: string | null = parent.parentGoalId;
+      while (ancestorId) {
+        if (ancestorId === id) {
+          return new NextResponse(
+            "Cannot nest a goal under its own descendant",
+            { status: 400 }
+          );
+        }
+        const ancestor: { parentGoalId: string | null } | null =
+          await prisma.goal.findUnique({
+            where: { id: ancestorId, userId },
+            select: { parentGoalId: true },
+          });
+        ancestorId = ancestor?.parentGoalId ?? null;
+      }
+    }
+
     const updated = await prisma.goal.update({
       where: { id, userId },
       data: {
@@ -90,6 +127,9 @@ export async function PUT(
         ...(status !== undefined && { status }),
         ...(importanceScore !== undefined && { importanceScore }),
         ...(cycleId !== undefined && { cycleId }),
+        ...(json.parentGoalId !== undefined && {
+          parentGoalId: json.parentGoalId,
+        }),
       },
     });
 
@@ -106,7 +146,8 @@ export async function PUT(
 
 /**
  * DELETE /api/erwin/goals/[id]
- * Deletes a goal; linked tasks keep their goalId set null (schema onDelete).
+ * Deletes a goal and its subgoal subtree (schema cascade); linked tasks keep
+ * their goalId set null (schema onDelete).
  */
 export async function DELETE(
   request: NextRequest,
