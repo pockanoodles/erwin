@@ -47,6 +47,8 @@ interface TaskModalProps {
   tags: Tag[];
   onCreateTag: (name: string, color?: string) => Promise<Tag>;
   initialProjectId?: string | null;
+  /** Pre-links a created task to a goal (e.g. the tasks page's active Lord). */
+  initialGoalId?: string | null;
 }
 
 //TODO: move to utils
@@ -87,6 +89,7 @@ export function TaskModal({
   tags,
   onCreateTag,
   initialProjectId,
+  initialGoalId,
 }: TaskModalProps) {
   const { projects } = useProjectStore();
   const [title, setTitle] = useState("");
@@ -137,8 +140,8 @@ export function TaskModal({
     setIsAutoScheduled(true);
     setScheduleLocked(false);
     setPriority(null);
-    setGoalId(null);
-  }, [initialProjectId]);
+    setGoalId(initialGoalId ?? null);
+  }, [initialProjectId, initialGoalId]);
 
   // Goals in the active cycle, for the optional goal link
   useEffect(() => {

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 
 import { DndContext, DragEndEvent } from "@dnd-kit/core";
 
-import { useProjectStore } from "@/store/project";
+import { filterTasksByLord, useLordStore } from "@/store/lord";
 import { useTaskListViewSettings } from "@/store/taskListViewSettings";
 
 import { Task, TaskStatus } from "@/types/task";
@@ -24,20 +24,16 @@ export function BoardView({
   onDelete,
   onStatusChange,
 }: BoardViewProps) {
-  const { activeProject } = useProjectStore();
+  const { lords, activeLordId } = useLordStore();
   const { energyLevel, timePreference, tagIds, search } =
     useTaskListViewSettings();
 
-  // First, filter by project
-  const projectFilteredTasks = activeProject
-    ? activeProject.id === "no-project"
-      ? tasks.filter((task) => !task.projectId)
-      : tasks.filter((task) => task.projectId === activeProject.id)
-    : tasks;
+  // First, scope to the selected Lord's section (its whole path in the DAG)
+  const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
 
   // Then apply other filters
   const filteredTasks = useMemo(() => {
-    return projectFilteredTasks.filter((task) => {
+    return lordFilteredTasks.filter((task) => {
       // Energy level filter
       if (
         energyLevel?.length &&
@@ -74,7 +70,7 @@ export function BoardView({
 
       return true;
     });
-  }, [projectFilteredTasks, energyLevel, timePreference, tagIds, search]);
+  }, [lordFilteredTasks, energyLevel, timePreference, tagIds, search]);
 
   // Group tasks by status
   const columns = useMemo(() => {

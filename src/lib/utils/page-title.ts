@@ -9,7 +9,7 @@ export const getTitleFromPathname = (pathname: string) => {
     case "/progress":
       return "Progress | Erwin";
     case "/goals":
-      return "Goals | Erwin";
+      return "Bosses | Erwin";
     case "/settings":
       return "Settings | Erwin";
     case "/setup":

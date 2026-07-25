@@ -15,7 +15,7 @@ import {
 
 import { newDate } from "@/lib/date-utils";
 
-import { useProjectStore } from "@/store/project";
+import { filterTasksByLord, useLordStore } from "@/store/lord";
 import { useTaskListViewSettings } from "@/store/taskListViewSettings";
 
 import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
@@ -57,7 +57,7 @@ export function TaskList({
     setFilters,
     resetFilters,
   } = useTaskListViewSettings();
-  const { activeProject } = useProjectStore();
+  const { lords, activeLordId } = useLordStore();
 
   const handleSort = (column: typeof sortBy) => {
     if (sortBy === column) {
@@ -68,17 +68,13 @@ export function TaskList({
     }
   };
 
-  // First, filter by project
-  const projectFilteredTasks = activeProject
-    ? activeProject.id === "no-project"
-      ? tasks.filter((task) => !task.projectId)
-      : tasks.filter((task) => task.projectId === activeProject.id)
-    : tasks;
+  // First, scope to the selected Lord's section (its whole path in the DAG)
+  const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
 
   // Then apply other filters (single source of truth in task-list-utils so the
   // "Hide upcoming tasks" filter stays consistent with the "Upcoming" badge).
   const filteredTasks = useMemo(() => {
-    return projectFilteredTasks.filter((task) =>
+    return lordFilteredTasks.filter((task) =>
       taskMatchesListFilters(task, {
         status,
         energyLevel,
@@ -89,7 +85,7 @@ export function TaskList({
       })
     );
   }, [
-    projectFilteredTasks,
+    lordFilteredTasks,
     status,
     energyLevel,
     timePreference,

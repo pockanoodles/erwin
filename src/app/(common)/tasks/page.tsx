@@ -5,8 +5,8 @@ import { useEffect, useState } from "react";
 import { BsKanban, BsListTask } from "react-icons/bs";
 import { toast } from "sonner";
 
-import { ProjectSidebar } from "@/components/projects/ProjectSidebar";
 import { BoardView } from "@/components/tasks/BoardView/BoardView";
+import { LordSidebar } from "@/components/tasks/LordSidebar";
 import { TaskList } from "@/components/tasks/TaskList";
 import { TaskModal } from "@/components/tasks/TaskModal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,6 +15,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 import { cn } from "@/lib/utils";
 
+import { UNASSIGNED_LORD_ID, useLordStore } from "@/store/lord";
 import { useProjectStore } from "@/store/project";
 import { useTaskStore } from "@/store/task";
 import { useTaskModalStore } from "@/store/taskModal";
@@ -36,21 +37,23 @@ export default function TasksPage() {
     createTag,
     scheduleAllTasks,
   } = useTaskStore();
-  const { fetchProjects, activeProject } = useProjectStore();
+  const { fetchProjects } = useProjectStore();
+  const { fetchLords, activeLordId } = useLordStore();
   const { viewMode, setViewMode } = useTaskPageSettings();
   const { isOpen, setOpen } = useTaskModalStore();
 
   const [selectedTask, setSelectedTask] = useState<Task | undefined>();
-  const [initialProjectId, setInitialProjectId] = useState<
-    string | null | undefined
-  >(undefined);
+  const [initialGoalId, setInitialGoalId] = useState<string | null | undefined>(
+    undefined
+  );
 
-  // Fetch tasks and tags on mount
+  // Fetch tasks, tags, and the Lord sections on mount
   useEffect(() => {
     fetchTasks();
     fetchTags();
     fetchProjects();
-  }, [fetchTasks, fetchTags, fetchProjects]);
+    fetchLords();
+  }, [fetchTasks, fetchTags, fetchProjects, fetchLords]);
 
   const handleCreateTask = async (task: NewTask) => {
     await createTask(task);
@@ -112,7 +115,7 @@ export default function TasksPage() {
 
   return (
     <div className="flex h-full">
-      <ProjectSidebar />
+      <LordSidebar />
       <div className="flex min-w-0 flex-1 flex-col" data-task-page>
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
@@ -158,16 +161,13 @@ export default function TasksPage() {
                 data-create-task-button
                 onClick={() => {
                   setSelectedTask(undefined);
-                  // Set initial project ID based on active project
-                  // If viewing "No Project", set to null
-                  // If viewing a specific project, set to that project's ID
-                  // Otherwise, don't set an initial project (undefined)
-                  const projectId = activeProject
-                    ? activeProject.id === "no-project"
-                      ? null
-                      : activeProject.id
-                    : undefined;
-                  setInitialProjectId(projectId);
+                  // Creating inside a Lord's section pre-links the task to
+                  // that Lord; "All" and "Unassigned" seed nothing.
+                  setInitialGoalId(
+                    activeLordId && activeLordId !== UNASSIGNED_LORD_ID
+                      ? activeLordId
+                      : undefined
+                  );
                   setOpen(true);
                 }}
               >
@@ -213,13 +213,13 @@ export default function TasksPage() {
           onClose={() => {
             setOpen(false);
             setSelectedTask(undefined);
-            setInitialProjectId(undefined);
+            setInitialGoalId(undefined);
           }}
           onSave={selectedTask ? handleUpdateTask : handleCreateTask}
           task={selectedTask}
           tags={tags}
           onCreateTag={handleCreateTag}
-          initialProjectId={initialProjectId}
+          initialGoalId={initialGoalId}
         />
 
         {loading && (

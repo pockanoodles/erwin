@@ -59,8 +59,8 @@ export function useNavigationCommands(): Command[] {
     },
     {
       id: "navigation.goals",
-      title: "Go to Goals",
-      keywords: ["navigation", "goals", "season"],
+      title: "Go to Bosses",
+      keywords: ["navigation", "goals", "bosses", "lords", "hex"],
       icon: HiOutlineFlag,
       section: "navigation",
       shortcut: "gg",

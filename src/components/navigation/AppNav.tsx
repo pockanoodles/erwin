@@ -37,7 +37,7 @@ export function AppNav({ className }: AppNavProps) {
     { href: "/focus", label: "Focus", icon: HiOutlineLightBulb },
     { href: "/calendar", label: "Calendar", icon: BsCalendar },
     { href: "/tasks", label: "Tasks", icon: BsListTask },
-    { href: "/goals", label: "Goals", icon: HiOutlineFlag },
+    { href: "/goals", label: "Bosses", icon: HiOutlineFlag },
   ];
 
   return (
