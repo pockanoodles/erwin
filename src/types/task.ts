@@ -80,6 +80,8 @@ export interface Task {
   submissionStatus?: string | null;
   externalUrl?: string | null;
   category?: string | null;
+  /** Erwin v2.2: optional link to a Goal in the active cycle */
+  goalId?: string | null;
 }
 
 export interface NewTask

@@ -174,6 +174,7 @@ export async function PUT(
               energyLevel: task.energyLevel,
               preferredTime: task.preferredTime,
               projectId: task.projectId,
+              goalId: task.goalId,
               isRecurring: false,
               completedAt: newDate(), // Set completedAt for the completed instance
               // Associate the task with the current user

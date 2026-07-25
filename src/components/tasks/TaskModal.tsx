@@ -115,6 +115,8 @@ export function TaskModal({
   const [priority, setPriority] = useState<Priority | null>(
     task?.priority || null
   );
+  const [goalId, setGoalId] = useState<string | null>(null);
+  const [goals, setGoals] = useState<{ id: string; title: string }[]>([]);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = useCallback(() => {
@@ -135,7 +137,23 @@ export function TaskModal({
     setIsAutoScheduled(true);
     setScheduleLocked(false);
     setPriority(null);
+    setGoalId(null);
   }, [initialProjectId]);
+
+  // Goals in the active cycle, for the optional goal link
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    fetch("/api/erwin/goals")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((json: { id: string; title: string }[]) => {
+        if (!cancelled) setGoals(json);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -173,6 +191,7 @@ export function TaskModal({
       setIsAutoScheduled(task.isAutoScheduled);
       setScheduleLocked(task.scheduleLocked);
       setPriority(task.priority || null);
+      setGoalId(task.goalId || null);
     } else if (!task && isOpen) {
       resetForm();
     }
@@ -207,6 +226,7 @@ export function TaskModal({
         isAutoScheduled,
         scheduleLocked,
         priority,
+        goalId,
       });
       onClose();
     } catch (error) {
@@ -456,6 +476,38 @@ export function TaskModal({
               </SelectContent>
             </Select>
           </div>
+
+          {(goals.length > 0 || goalId) && (
+            <div>
+              <Label htmlFor="goal">Goal</Label>
+              <Select
+                value={goalId || "none"}
+                onValueChange={(value) =>
+                  setGoalId(value === "none" ? null : value)
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="No Goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Goal</SelectItem>
+                  {goals.map((goal) => (
+                    <SelectItem key={goal.id} value={goal.id}>
+                      {goal.title}
+                    </SelectItem>
+                  ))}
+                  {goalId && !goals.some((g) => g.id === goalId) ? (
+                    <SelectItem value={goalId}>
+                      Linked goal (past season)
+                    </SelectItem>
+                  ) : null}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Goal-linked tasks rank higher this season
+              </p>
+            </div>
+          )}
 
           <div>
             <Label>Tags</Label>
