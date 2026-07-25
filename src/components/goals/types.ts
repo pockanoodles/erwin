@@ -56,20 +56,6 @@ export interface OverviewGoal {
   tasks: GoalTask[];
 }
 
-export interface OverviewGroupTask {
-  id: string;
-  title: string;
-  dueDate: string | null;
-  urgencyTier: string | null;
-}
-
-export interface OverviewGroup {
-  key: string;
-  openCount: number;
-  doneLast30: number;
-  tasks: OverviewGroupTask[];
-}
-
 export interface UnassignedTask {
   id: string;
   title: string;
@@ -79,7 +65,6 @@ export interface UnassignedTask {
 
 export interface GoalsOverview {
   activeCycle: OverviewCycle;
-  groups: OverviewGroup[];
   goals: OverviewGoal[];
   unassignedTasks: UnassignedTask[];
 }

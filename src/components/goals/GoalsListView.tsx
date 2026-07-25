@@ -33,25 +33,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function titleCaseSlug(slug: string): string {
-  return slug
-    .split("-")
-    .filter(Boolean)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function groupDisplay(key: string): { name: string; slug: string | null } {
-  if (key.startsWith("venture:")) {
-    const slug = key.slice("venture:".length);
-    return { name: titleCaseSlug(slug), slug };
-  }
-  if (key === "CANVAS") {
-    return { name: "School — Canvas", slug: null };
-  }
-  return { name: "Untagged", slug: null };
-}
-
 /** Mirrors the Focus tier treatment (FocusTaskCard): red for DANGER, amber for HIGH. */
 function tierBadge(tier: string | null): { label: string; className: string } | null {
   if (tier === "DANGER") {
@@ -345,80 +326,6 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
         )}
       </section>
 
-      <section className="space-y-6">
-        <SectionLabel>Where the work is</SectionLabel>
-        {overview.groups.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            No open tasks yet — everything lands here once Canvas, the
-            ventures, or manual entry create work.
-          </p>
-        ) : (
-          overview.groups.map((group) => {
-            const { name, slug } = groupDisplay(group.key);
-            return (
-              <div key={group.key} className="border-t border-border pt-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="flex items-baseline gap-2">
-                    <h3 className="text-lg font-semibold tracking-tight">
-                      {name}
-                    </h3>
-                    {slug ? (
-                      <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                        {slug}
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    {group.openCount} open
-                    {group.doneLast30 > 0 ? (
-                      <> · {group.doneLast30} done · 30d</>
-                    ) : null}
-                  </p>
-                </div>
-                {group.tasks.length > 0 ? (
-                  <ul className="mt-2 divide-y divide-border/60">
-                    {group.tasks.map((task) => {
-                      const badge = tierBadge(task.urgencyTier);
-                      return (
-                        <li
-                          key={task.id}
-                          className="flex items-baseline justify-between gap-4 py-2.5"
-                        >
-                          <span className="min-w-0 truncate text-sm">
-                            {task.title}
-                          </span>
-                          <span className="flex flex-none items-baseline gap-3">
-                            {badge ? (
-                              <span
-                                className={cn(
-                                  "text-xs font-semibold",
-                                  badge.className
-                                )}
-                              >
-                                {badge.label}
-                              </span>
-                            ) : null}
-                            {task.dueDate ? (
-                              <span className="text-xs text-muted-foreground">
-                                {format(new Date(task.dueDate), "MMM d")}
-                              </span>
-                            ) : null}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    Nothing open — {group.doneLast30} closed in the last 30
-                    days.
-                  </p>
-                )}
-              </div>
-            );
-          })
-        )}
-      </section>
     </div>
   );
 }
