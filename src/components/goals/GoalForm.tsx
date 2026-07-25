@@ -133,7 +133,7 @@ export function GoalForm({
                 title={key}
                 onClick={() => toggleStat(key)}
                 className={cn(
-                  "rounded border px-1.5 py-0.5 font-mono text-xs transition-colors",
+                  "border px-1.5 py-0.5 font-mono text-xs transition-colors",
                   active
                     ? "border-foreground bg-foreground text-background"
                     : "border-border text-muted-foreground hover:border-foreground/40"

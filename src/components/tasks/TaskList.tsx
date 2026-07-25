@@ -263,11 +263,8 @@ export function TaskList({
         </div>
       </div>
 
-      <div className="flex-1 rounded-lg border bg-background">
-        <div
-          className="overflow-auto"
-          style={{ maxHeight: "calc(100vh - 250px)" }}
-        >
+      <div className="flex min-h-0 flex-1 flex-col border bg-background">
+        <div className="min-h-0 flex-1 overflow-auto">
           <table className="min-w-full divide-y divide-border">
             <thead className="sticky top-0 bg-muted">
               <tr>

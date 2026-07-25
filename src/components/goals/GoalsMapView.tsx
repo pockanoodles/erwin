@@ -96,11 +96,11 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
   return (
     <div
       className={cn(
-        "rounded-md border p-3",
+        "border p-3",
         data.isLord
           ? "border-2 border-foreground bg-foreground text-background"
           : "border-border bg-background",
-        selected && "ring-2 ring-primary"
+        selected && "ring-2 ring-cobalt"
       )}
       style={{ width: size.width, minHeight: size.height }}
     >
@@ -115,7 +115,7 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
       <div className="flex items-baseline justify-between gap-2">
         <p
           className={cn(
-            "min-w-0 truncate font-semibold",
+            "min-w-0 truncate font-medium",
             data.isLord ? "text-base" : "text-sm"
           )}
         >
@@ -158,15 +158,15 @@ function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-md border border-border/70 bg-background px-3 py-2",
-        selected && "ring-2 ring-primary"
+        "flex items-center gap-2 border border-border/70 bg-background px-3 py-2",
+        selected && "ring-2 ring-cobalt"
       )}
       style={{ width: TASK_SIZE.width, minHeight: TASK_SIZE.height }}
     >
       {data.urgencyTier === "DANGER" && !done ? (
-        <span className="h-1.5 w-1.5 flex-none rounded-full bg-red-600" />
+        <span className="h-1.5 w-1.5 flex-none bg-red-600" />
       ) : data.urgencyTier === "HIGH" && !done ? (
-        <span className="h-1.5 w-1.5 flex-none rounded-full bg-amber-500" />
+        <span className="h-1.5 w-1.5 flex-none bg-amber-500" />
       ) : null}
       <p
         className={cn(
@@ -505,7 +505,46 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
     : false;
 
   return (
-    <div className="h-[75vh] w-full border border-border">
+    <div className="space-y-3">
+      <div className="flex items-center justify-end gap-1">
+        <Button
+          size="sm"
+          onClick={async () => {
+            try {
+              const created = await createGoal({ title: "New Lord" });
+              apply((o) => withGoalAdded(o, created));
+              toast.success("Lord added — click it to rename");
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Failed to add Lord");
+            }
+          }}
+        >
+          Add Lord
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="px-2 font-mono text-muted-foreground"
+          aria-label="Map help"
+          onClick={() => setShowHelp((v) => !v)}
+        >
+          ?
+        </Button>
+      </div>
+      {showHelp ? (
+        <div className="space-y-1 border border-border bg-background p-3 text-xs text-muted-foreground">
+          <p>
+            Lords are the hex&apos;s main goals; bosses and tasks are the path
+            to them.
+          </p>
+          <p>
+            Drag from a task or boss to the goal it fights for — anything can
+            feed several goals. Select an edge and press Delete to cut the
+            path. Click a node to edit it or add bosses/tasks beneath it.
+          </p>
+        </div>
+      ) : null}
+      <div className="h-[calc(100dvh-16rem)] min-h-[520px] w-full border border-border">
       <ReactFlow
         colorMode={resolvedTheme === "dark" ? "dark" : "light"}
         nodes={nodes}
@@ -535,54 +574,10 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
         <Background gap={24} />
         <Controls showInteractive={false} />
 
-        <Panel position="top-left" className="space-y-1">
-          <div className="flex gap-1">
-            <Button
-              size="sm"
-              onClick={async () => {
-                try {
-                  const created = await createGoal({ title: "New Lord" });
-                  apply((o) => withGoalAdded(o, created));
-                  toast.success("Lord added — click it to rename");
-                } catch (e) {
-                  toast.error(
-                    e instanceof Error ? e.message : "Failed to add Lord"
-                  );
-                }
-              }}
-            >
-              Add Lord
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="px-2 font-mono text-muted-foreground"
-              aria-label="Map help"
-              onClick={() => setShowHelp((v) => !v)}
-            >
-              ?
-            </Button>
-          </div>
-          {showHelp ? (
-            <div className="max-w-[240px] space-y-1 border border-border bg-background p-2 text-xs text-muted-foreground">
-              <p>
-                Lords are the hex&apos;s main goals; bosses and tasks are the
-                path to them.
-              </p>
-              <p>
-                Drag from a task or boss to the goal it fights for — anything
-                can feed several goals. Select an edge and press Delete to
-                cut the path. Click a node to edit it or add
-                bosses/tasks beneath it.
-              </p>
-            </div>
-          ) : null}
-        </Panel>
-
         {selectedGoal ? (
           <Panel
             position="top-right"
-            className="max-h-[calc(75vh-2rem)] w-96 overflow-y-auto border border-border bg-background p-4 shadow-sm"
+            className="max-h-[calc(100%-2rem)] w-96 overflow-y-auto border border-border bg-background p-4"
           >
             <p className="mb-3 font-mono text-xs uppercase tracking-wide text-muted-foreground">
               {selectedGoal.isBoss ? "⚔ " : ""}
@@ -683,7 +678,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
         {selectedTask ? (
           <Panel
             position="top-right"
-            className="w-96 border border-border bg-background p-4 shadow-sm"
+            className="w-96 border border-border bg-background p-4"
           >
             <p className="mb-3 font-mono text-xs uppercase tracking-wide text-muted-foreground">
               Task
@@ -746,6 +741,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
           </Panel>
         ) : null}
       </ReactFlow>
+      </div>
     </div>
   );
 }

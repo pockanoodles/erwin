@@ -35,6 +35,7 @@ export function CommandPaletteFab() {
 
   return (
     <button
+      data-round
       onClick={openCommandPalette}
       className={cn(
         "fixed bottom-4 right-4 z-40 rounded-full bg-primary p-3 text-primary-foreground shadow-lg",

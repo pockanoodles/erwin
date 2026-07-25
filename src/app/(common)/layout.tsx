@@ -65,7 +65,7 @@ export default function RootLayout({
   }, [setShortcutsOpen]);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="app-sharp flex min-h-screen flex-col">
       <SessionProvider>
         <PrivacyProvider>
           <DndProvider>

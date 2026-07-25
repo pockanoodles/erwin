@@ -68,11 +68,15 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
   };
 
   return (
-    <section className="space-y-2">
-      <h1 className="font-mono text-xl uppercase tracking-wide md:text-2xl">
-        {cycle.hex.label}
-        <span className="text-muted-foreground"> · {daysLeft}d left</span>
-      </h1>
+    <section className="space-y-3">
+      <div className="space-y-1">
+        <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+          Current hex · {daysLeft}d left
+        </p>
+        <h1 className="text-4xl font-light leading-none tracking-tight md:text-5xl">
+          {cycle.hex.label}
+        </h1>
+      </div>
       {isEditing ? (
         <form onSubmit={save} className="max-w-md space-y-3">
           <div className="flex flex-wrap gap-1">
@@ -85,7 +89,7 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
                   title={key}
                   onClick={() => toggleStat(key)}
                   className={cn(
-                    "rounded border px-1.5 py-0.5 font-mono text-xs transition-colors",
+                    "border px-1.5 py-0.5 font-mono text-xs transition-colors",
                     active
                       ? "border-foreground bg-foreground text-background"
                       : "border-border text-muted-foreground hover:border-foreground/40"
@@ -124,7 +128,7 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
         <div className="space-y-1">
           <div className="flex items-baseline gap-2">
             {cycle.focusStats.length > 0 ? (
-              <h2 className="text-xl font-semibold tracking-tight">
+              <h2 className="text-xl font-medium tracking-tight">
                 <span className="font-mono text-sm uppercase tracking-wide text-muted-foreground">
                   Build{" "}
                 </span>
@@ -160,7 +164,7 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
               <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
                 ⚔ Boss{" "}
               </span>
-              <span className="font-medium">{boss.title}</span>
+              <span className="font-medium text-cobalt">{boss.title}</span>
               {boss.targetDate ? (
                 <span className="text-muted-foreground">
                   {" "}

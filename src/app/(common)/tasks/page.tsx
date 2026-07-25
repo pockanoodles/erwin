@@ -120,30 +120,32 @@ export default function TasksPage() {
         <div className="border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-foreground">Tasks</h1>
-              <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
+              <h1 className="text-2xl font-light tracking-tight text-foreground">
+                Tasks
+              </h1>
+              <div className="flex border border-border">
                 <button
                   onClick={() => setViewMode("list")}
                   className={cn(
-                    "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
+                    "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
                     viewMode === "list"
-                      ? "bg-background text-foreground shadow-sm"
+                      ? "bg-foreground text-background"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <BsListTask className="h-4 w-4" />
+                  <BsListTask className="h-3.5 w-3.5" />
                   List
                 </button>
                 <button
                   onClick={() => setViewMode("board")}
                   className={cn(
-                    "flex items-center gap-2 rounded-md p-2 text-sm font-medium",
+                    "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
                     viewMode === "board"
-                      ? "bg-background text-foreground shadow-sm"
+                      ? "bg-foreground text-background"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <BsKanban className="h-4 w-4" />
+                  <BsKanban className="h-3.5 w-3.5" />
                   Board
                 </button>
               </div>
@@ -224,7 +226,7 @@ export default function TasksPage() {
 
         {loading && (
           <div className="fixed inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-            <div className="rounded-lg border bg-background p-4 shadow-lg">
+            <div className="border bg-background p-4">
               <LoadingSpinner size="lg" />
             </div>
           </div>

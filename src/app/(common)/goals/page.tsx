@@ -46,7 +46,7 @@ export default function GoalsPage() {
     <div
       className={cn(
         "mx-auto space-y-10 p-4 md:p-8",
-        view === "map" ? "max-w-6xl" : "max-w-3xl"
+        view === "map" ? "max-w-none" : "max-w-5xl"
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -55,29 +55,29 @@ export default function GoalsPage() {
         ) : (
           <div />
         )}
-        <div className="flex rounded-lg bg-muted p-1">
+        <div className="flex border border-border">
           <button
             onClick={() => setView("list")}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium",
+              "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
               view === "list"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <BsListTask className="h-4 w-4" />
+            <BsListTask className="h-3.5 w-3.5" />
             List
           </button>
           <button
             onClick={() => setView("map")}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium",
+              "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
               view === "map"
-                ? "bg-background text-foreground shadow-sm"
+                ? "bg-foreground text-background"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <BsDiagram3 className="h-4 w-4" />
+            <BsDiagram3 className="h-3.5 w-3.5" />
             Map
           </button>
         </div>

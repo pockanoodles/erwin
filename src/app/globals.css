@@ -38,6 +38,9 @@
 
     --radius: 0.5rem;
 
+    /* goals-page accent (Design 02 cobalt); dark variant keeps the hue, raises lightness for contrast on near-black */
+    --cobalt: 226 99% 35%;
+
     --chart-1: 178 75% 44%;
     --chart-2: 197 37% 24%;
     --chart-3: 167 70% 48%;
@@ -78,6 +81,8 @@
     --input: 0 0% 18%;
     --ring: 0 0% 60%;
 
+    --cobalt: 227 100% 68%;
+
     --chart-1: 178 70% 50%;
     --chart-2: 197 50% 55%;
     --chart-3: 167 70% 55%;
@@ -93,6 +98,12 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* App chrome (Design 02 "Cobalt Industrial"): sharp geometry — zero radius on controls.
+   Identity/floating circles opt out with data-round. */
+.app-sharp :is(button, input, textarea, select, kbd):not([data-round]) {
+  border-radius: 0;
 }
 
 /* FullCalendar Customization */

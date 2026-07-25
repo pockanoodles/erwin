@@ -99,7 +99,7 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
         {...listeners}
         style={style}
         className={cn(
-          "cursor-grab rounded-lg border bg-card p-3 shadow-sm transition-shadow hover:shadow-md",
+          "cursor-grab border bg-card p-3 pt-9 transition-colors duration-150 hover:border-foreground/30",
           isDragging && "opacity-50"
         )}
       >
@@ -132,7 +132,7 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
               {task.tags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="inline-flex items-center rounded px-1.5 py-0.5 text-xs"
+                  className="inline-flex items-center px-1.5 py-0.5 text-xs"
                   style={{
                     backgroundColor: `${tag.color}20` || "var(--muted)",
                     color: tag.color || "var(--muted-foreground)",
@@ -148,7 +148,7 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
             {task.energyLevel && (
               <span
                 className={cn(
-                  "rounded-full px-2 py-1",
+                  "px-2 py-0.5",
                   energyLevelColors[task.energyLevel]
                 )}
               >
@@ -159,7 +159,7 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
             {task.preferredTime && (
               <span
                 className={cn(
-                  "rounded-full px-2 py-1",
+                  "px-2 py-0.5",
                   timePreferenceColors[task.preferredTime]
                 )}
               >
@@ -213,7 +213,7 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
           </div>
         </div>
       </div>
-      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
         <button
           type="button"
           onClick={() => onEdit(task)}

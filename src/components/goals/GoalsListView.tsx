@@ -73,7 +73,7 @@ function SortableLord({
       {...attributes}
       {...listeners}
       aria-label="Reorder"
-      className="flex-none cursor-grab touch-none self-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground active:cursor-grabbing group-hover:opacity-100 group-focus-within:opacity-100"
+      className="flex-none cursor-grab touch-none self-center text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground active:cursor-grabbing group-hover:opacity-100 group-focus-within:opacity-100"
     >
       <RxDragHandleDots2 className="h-4 w-4" />
     </button>
@@ -214,7 +214,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
               <span className="flex min-w-0 items-baseline gap-2">
                 {dragHandle}
                 {goal.parentGoalIds.length === 0 ? (
-                  <span className="flex-none rounded border border-foreground px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide">
+                  <span className="flex-none border border-foreground px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide">
                     Lord
                   </span>
                 ) : null}
@@ -232,7 +232,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
                 ) : null}
                 <h3
                   className={cn(
-                    "font-semibold tracking-tight",
+                    "font-medium tracking-tight",
                     depth === 0 ? "text-lg" : "text-base"
                   )}
                 >
@@ -244,7 +244,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
                       <span
                         key={key}
                         title={key}
-                        className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
+                        className="bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
                       >
                         {STAT_ABBREV[key as StatKey] ?? key}
                       </span>
@@ -333,7 +333,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
                         {badge && !done ? (
                           <span
                             className={cn(
-                              "text-xs font-semibold",
+                              "text-xs font-medium",
                               badge.className
                             )}
                           >

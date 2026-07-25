@@ -37,10 +37,10 @@ export function LordSidebar() {
       key={key}
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm",
+        "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150",
         selected
-          ? "bg-primary/10 font-medium text-primary"
-          : "text-foreground hover:bg-muted"
+          ? "bg-accent font-medium text-foreground"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >
       <span className="min-w-0 truncate">{label}</span>

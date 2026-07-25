@@ -15,16 +15,10 @@ interface ColumnProps {
   onDelete: (taskId: string) => void;
 }
 
-const statusColors = {
-  [TaskStatus.TODO]: "bg-yellow-500/10 border-yellow-500/20",
-  [TaskStatus.IN_PROGRESS]: "bg-blue-500/10 border-blue-500/20",
-  [TaskStatus.COMPLETED]: "bg-green-500/10 border-green-500/20",
-};
-
-const statusHeaderColors = {
-  [TaskStatus.TODO]: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400",
-  [TaskStatus.IN_PROGRESS]: "bg-blue-500/20 text-blue-700 dark:text-blue-400",
-  [TaskStatus.COMPLETED]: "bg-green-500/20 text-green-700 dark:text-green-400",
+const statusDots = {
+  [TaskStatus.TODO]: "bg-amber-500",
+  [TaskStatus.IN_PROGRESS]: "bg-cobalt",
+  [TaskStatus.COMPLETED]: "bg-green-600",
 };
 
 // Helper function to format enum values for display
@@ -45,30 +39,25 @@ export function Column({ status, tasks, onEdit, onDelete }: ColumnProps) {
     <div
       ref={setNodeRef}
       className={cn(
-        "flex w-80 flex-shrink-0 flex-col rounded-lg border bg-background",
-        statusColors[status],
-        isOver && "ring-2 ring-ring"
+        "flex min-w-72 flex-1 flex-col border border-border bg-background",
+        isOver && "ring-1 ring-cobalt"
       )}
     >
-      <div className="border-b border-border p-2">
+      <div className="border-b border-border px-3 py-2.5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span
-              className={cn(
-                "rounded-full px-2.5 py-0.5 text-sm font-medium",
-                statusHeaderColors[status]
-              )}
-            >
+            <span className={cn("h-1.5 w-1.5 flex-none", statusDots[status])} />
+            <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
               {formatEnumValue(status)}
             </span>
-            <span className="text-sm text-muted-foreground">
-              {tasks.length}
-            </span>
           </div>
+          <span className="font-mono text-xs text-muted-foreground">
+            {tasks.length}
+          </span>
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        <div className="space-y-2">
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">
+        <div className="space-y-3">
           {tasks.map((task) => (
             <BoardTask
               key={task.id}
