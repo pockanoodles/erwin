@@ -18,7 +18,7 @@ const LOG_SOURCE = "TaskSchedulingService";
 const DEFAULT_AUTO_SCHEDULE_CREATE = {
   workDays: "[1,2,3,4,5]",
   workHourStart: 8,
-  workHourEnd: 23,
+  workHourEnd: 17,
   bufferMinutes: 15,
 } as const;
 

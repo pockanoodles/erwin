@@ -91,8 +91,8 @@ const defaultSettings: Settings & { accounts: ConnectedAccount[] } = {
   },
   autoSchedule: {
     workDays: JSON.stringify([1, 2, 3, 4, 5]), // Monday to Friday
-    workHourStart: 9, // 9 AM
-    workHourEnd: 20, // 8 PM
+    workHourStart: 8, // 8 AM
+    workHourEnd: 17, // 5 PM
     selectedCalendars: "[]",
     bufferMinutes: 15,
     highEnergyStart: 9, // 9 AM

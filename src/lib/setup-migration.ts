@@ -163,7 +163,7 @@ export async function migrateExistingData(adminUserId: string) {
         data: {
           userId: adminUserId,
           workDays: "[1,2,3,4,5]", // Monday to Friday
-          workHourStart: 9,
+          workHourStart: 8,
           workHourEnd: 17,
           bufferMinutes: 15,
         },
