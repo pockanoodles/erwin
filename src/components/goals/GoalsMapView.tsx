@@ -7,6 +7,7 @@ import {
   Background,
   Controls,
   Handle,
+  MarkerType,
   Panel,
   Position,
   ReactFlow,
@@ -62,17 +63,16 @@ import {
   OverviewGoal,
 } from "./types";
 
-/* ---------- node components ---------- */
+/* ---------- node components ----------
+ * The map is the battle map: Lords (root goals) are the destinations on the
+ * right; standard bosses (subgoals) and tasks are the pathing toward them.
+ * Hex, Build, and stats live in the header, not here. */
 
-const HEX_SIZE = { width: 220, height: 64 };
-const GOAL_SIZE = { width: 240, height: 84 };
+const LORD_SIZE = { width: 260, height: 96 };
+const BOSS_SIZE = { width: 240, height: 84 };
 const TASK_SIZE = { width: 220, height: 44 };
 const TRAY_GAP = 320;
 
-type HexNodeType = Node<
-  { label: string; theme: string; focusStats: string[] },
-  "hex"
->;
 type GoalNodeType = Node<
   {
     title: string;
@@ -80,6 +80,7 @@ type GoalNodeType = Node<
     whyItMatters: string | null;
     develops: string[];
     isBoss: boolean;
+    isLord: boolean;
   },
   "goal"
 >;
@@ -88,42 +89,36 @@ type TaskNodeType = Node<
   "task"
 >;
 type TrayNodeType = Node<{ label: string }, "tray">;
-type FlowNode = HexNodeType | GoalNodeType | TaskNodeType | TrayNodeType;
-
-function HexNode({ data }: NodeProps<HexNodeType>) {
-  const build = data.focusStats
-    .map((key) => STAT_ABBREV[key as StatKey] ?? key)
-    .join(" + ");
-  return (
-    <div
-      className="border border-border bg-background p-3"
-      style={{ width: HEX_SIZE.width, minHeight: HEX_SIZE.height }}
-    >
-      <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-        {data.label}
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold">
-        {build || data.theme || "No Build yet"}
-      </p>
-      <Handle type="source" position={Position.Right} isConnectable={false} />
-    </div>
-  );
-}
+type FlowNode = GoalNodeType | TaskNodeType | TrayNodeType;
 
 function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
+  const size = data.isLord ? LORD_SIZE : BOSS_SIZE;
   return (
     <div
       className={cn(
         "rounded-md border p-3",
-        data.isBoss
-          ? "border-foreground bg-foreground text-background"
+        data.isLord
+          ? "border-2 border-foreground bg-foreground text-background"
           : "border-border bg-background",
         selected && "ring-2 ring-primary"
       )}
-      style={{ width: GOAL_SIZE.width, minHeight: GOAL_SIZE.height }}
+      style={{ width: size.width, minHeight: size.height }}
     >
+      <p
+        className={cn(
+          "font-mono text-[10px] uppercase tracking-wide",
+          data.isLord ? "text-background/60" : "text-muted-foreground"
+        )}
+      >
+        {data.isLord ? "Lord" : "Boss"}
+      </p>
       <div className="flex items-baseline justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-semibold">
+        <p
+          className={cn(
+            "min-w-0 truncate font-semibold",
+            data.isLord ? "text-base" : "text-sm"
+          )}
+        >
           {data.isBoss ? "⚔ " : ""}
           {data.title}
         </p>
@@ -131,7 +126,7 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
           <span
             className={cn(
               "font-mono text-xs",
-              data.isBoss ? "text-background/70" : "text-muted-foreground"
+              data.isLord ? "text-background/70" : "text-muted-foreground"
             )}
           >
             {Math.round(data.importanceScore)}
@@ -142,23 +137,16 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
         <p
           className={cn(
             "mt-1 font-mono text-[10px]",
-            data.isBoss ? "text-background/70" : "text-muted-foreground"
+            data.isLord ? "text-background/70" : "text-muted-foreground"
           )}
         >
           {data.develops
             .map((key) => STAT_ABBREV[key as StatKey] ?? key)
             .join(" ")}
         </p>
-      ) : data.whyItMatters ? (
-        <p
-          className={cn(
-            "mt-1 line-clamp-2 text-xs",
-            data.isBoss ? "text-background/70" : "text-muted-foreground"
-          )}
-        >
-          {data.whyItMatters}
-        </p>
       ) : null}
+      {/* Path flows left → right into the Lord: feeders arrive on the left,
+          and this goal marches on toward its parent from the right. */}
       <Handle type="target" position={Position.Left} />
       <Handle type="source" position={Position.Right} />
     </div>
@@ -188,7 +176,7 @@ function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
       >
         {data.title}
       </p>
-      <Handle type="target" position={Position.Left} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }
@@ -202,7 +190,6 @@ function TrayNode({ data }: NodeProps<TrayNodeType>) {
 }
 
 const nodeTypes = {
-  hex: HexNode,
   goal: GoalNode,
   task: TaskNode,
   tray: TrayNode,
@@ -218,24 +205,11 @@ function buildGraph(overview: GoalsOverview): {
   const edges: Edge[] = [];
 
   const layout = new dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-  layout.setGraph({ rankdir: "LR", nodesep: 20, ranksep: 90 });
-
-  nodes.push({
-    id: "hex",
-    type: "hex",
-    position: { x: 0, y: 0 },
-    deletable: false,
-    data: {
-      label: overview.activeCycle.hex.label,
-      theme: overview.activeCycle.theme,
-      focusStats: overview.activeCycle.focusStats,
-    },
-  });
-  // dagre mutates the label object with x/y — every node needs its own copy.
-  layout.setNode("hex", { ...HEX_SIZE });
+  layout.setGraph({ rankdir: "LR", nodesep: 24, ranksep: 100 });
 
   const seenTasks = new Set<string>();
   for (const goal of overview.goals) {
+    const isLord = goal.parentGoalIds.length === 0;
     nodes.push({
       id: `g:${goal.id}`,
       type: "goal",
@@ -247,29 +221,21 @@ function buildGraph(overview: GoalsOverview): {
         whyItMatters: goal.whyItMatters,
         develops: goal.develops,
         isBoss: goal.isBoss,
+        isLord,
       },
     });
-    layout.setNode(`g:${goal.id}`, { ...GOAL_SIZE });
+    // dagre mutates the label object with x/y — every node needs its own copy.
+    layout.setNode(`g:${goal.id}`, isLord ? { ...LORD_SIZE } : { ...BOSS_SIZE });
 
-    if (goal.parentGoalIds.length > 0) {
-      for (const parentId of goal.parentGoalIds) {
-        edges.push({
-          id: `eg:${parentId}:${goal.id}`,
-          source: `g:${parentId}`,
-          target: `g:${goal.id}`,
-        });
-        layout.setEdge(`g:${parentId}`, `g:${goal.id}`);
-      }
-    } else {
-      // Hex → root goal edges are structural; deleting them means nothing.
+    // Edges keep parent-first ids (eg:parent:child) but render child → parent,
+    // so the arrows march along the path toward the Lord.
+    for (const parentId of goal.parentGoalIds) {
       edges.push({
-        id: `eh:${goal.id}`,
-        source: "hex",
-        target: `g:${goal.id}`,
-        deletable: false,
-        style: { strokeDasharray: "4 4" },
+        id: `eg:${parentId}:${goal.id}`,
+        source: `g:${goal.id}`,
+        target: `g:${parentId}`,
       });
-      layout.setEdge("hex", `g:${goal.id}`);
+      layout.setEdge(`g:${goal.id}`, `g:${parentId}`);
     }
 
     for (const task of goal.tasks) {
@@ -291,10 +257,10 @@ function buildGraph(overview: GoalsOverview): {
       }
       edges.push({
         id: `et:${goal.id}:${task.id}`,
-        source: `g:${goal.id}`,
-        target: `t:${task.id}`,
+        source: `t:${task.id}`,
+        target: `g:${goal.id}`,
       });
-      layout.setEdge(`g:${goal.id}`, `t:${task.id}`);
+      layout.setEdge(`t:${task.id}`, `g:${goal.id}`);
     }
   }
 
@@ -309,7 +275,7 @@ function buildGraph(overview: GoalsOverview): {
     minX = Math.min(minX, node.position.x);
   }
 
-  // Unassigned tasks stack in a tray column left of the graph.
+  // Unassigned tasks stack in a tray column left of the map.
   if (overview.unassignedTasks.length > 0) {
     const trayX = minX - TRAY_GAP;
     nodes.push({
@@ -386,6 +352,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(graph.edges);
   const [selected, setSelected] = useState<Selected | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const [subTitle, setSubTitle] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskRename, setTaskRename] = useState("");
@@ -442,13 +409,14 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
     [apply, refetch]
   );
 
+  // Dragging A → B means "A is on the path to B": B becomes A's parent.
   const onConnect = useCallback(
     (connection: Connection) => {
       const { source, target } = connection;
       if (!source || !target || source === target) return;
       if (source.startsWith("g:") && target.startsWith("g:")) {
-        const parentId = source.slice(2);
-        const childId = target.slice(2);
+        const childId = source.slice(2);
+        const parentId = target.slice(2);
         const child = overview.goals.find((g) => g.id === childId);
         if (child?.parentGoalIds.includes(parentId)) return;
         if (wouldLoop(overview.goals, parentId, childId)) {
@@ -458,11 +426,11 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
         run(
           (o) => withGoalLink(o, parentId, childId),
           () => linkGoals(parentId, childId),
-          "Goals linked"
+          "Path linked"
         );
-      } else if (source.startsWith("g:") && target.startsWith("t:")) {
-        const goalId = source.slice(2);
-        const taskId = target.slice(2);
+      } else if (source.startsWith("t:") && target.startsWith("g:")) {
+        const taskId = source.slice(2);
+        const goalId = target.slice(2);
         run(
           (o) => withTaskLinked(o, taskId, goalId),
           () => linkTask(taskId, goalId),
@@ -487,7 +455,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
           run(
             (o) => withoutGoalLink(o, a, b),
             () => unlinkGoals(a, b),
-            "Goals unlinked"
+            "Path unlinked"
           );
         }
       }
@@ -497,10 +465,8 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) =>
-      connection.source !== "hex" &&
-      connection.target !== "hex" &&
       connection.source !== connection.target &&
-      !connection.source?.startsWith("t:"),
+      !!connection.target?.startsWith("g:"),
     []
   );
 
@@ -508,7 +474,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
     if (!selectedGoal) return;
     if (
       !window.confirm(
-        `Delete "${selectedGoal.title}"? Linked goals and tasks are kept — only the links go.`
+        `Delete "${selectedGoal.title}"? Linked bosses and tasks are kept — only the links go.`
       )
     ) {
       return;
@@ -517,7 +483,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
     run(
       (o) => withGoalRemoved(o, selectedGoal.id),
       () => deleteGoal(selectedGoal.id),
-      "Goal deleted"
+      "Deleted"
     );
   };
 
@@ -534,8 +500,12 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
     );
   };
 
+  const selectedIsLord = selectedGoal
+    ? selectedGoal.parentGoalIds.length === 0
+    : false;
+
   return (
-    <div className="h-[70vh] w-full border border-border">
+    <div className="h-[75vh] w-full border border-border">
       <ReactFlow
         colorMode={resolvedTheme === "dark" ? "dark" : "light"}
         nodes={nodes}
@@ -557,42 +527,66 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
         deleteKeyCode={["Backspace", "Delete"]}
         fitView
         minZoom={0.2}
-        defaultEdgeOptions={{ type: "smoothstep" }}
+        defaultEdgeOptions={{
+          type: "smoothstep",
+          markerEnd: { type: MarkerType.ArrowClosed },
+        }}
       >
         <Background gap={24} />
         <Controls showInteractive={false} />
 
         <Panel position="top-left" className="space-y-1">
-          <Button
-            size="sm"
-            onClick={async () => {
-              try {
-                const created = await createGoal({ title: "New goal" });
-                apply((o) => withGoalAdded(o, created));
-                toast.success("Goal added — click it to rename");
-              } catch (e) {
-                toast.error(
-                  e instanceof Error ? e.message : "Failed to add goal"
-                );
-              }
-            }}
-          >
-            Add goal
-          </Button>
-          <p className="max-w-[220px] text-xs text-muted-foreground">
-            Drag between handles to connect — goals can feed several goals,
-            tasks several goals. Select an edge and press Delete to
-            disconnect.
-          </p>
+          <div className="flex gap-1">
+            <Button
+              size="sm"
+              onClick={async () => {
+                try {
+                  const created = await createGoal({ title: "New Lord" });
+                  apply((o) => withGoalAdded(o, created));
+                  toast.success("Lord added — click it to rename");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : "Failed to add Lord"
+                  );
+                }
+              }}
+            >
+              Add Lord
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="px-2 font-mono text-muted-foreground"
+              aria-label="Map help"
+              onClick={() => setShowHelp((v) => !v)}
+            >
+              ?
+            </Button>
+          </div>
+          {showHelp ? (
+            <div className="max-w-[240px] space-y-1 border border-border bg-background p-2 text-xs text-muted-foreground">
+              <p>
+                Lords are the hex&apos;s main goals; bosses and tasks are the
+                path to them.
+              </p>
+              <p>
+                Drag from a task or boss to the goal it fights for — anything
+                can feed several goals. Select an edge and press Delete to
+                cut the path. Click a node to edit it or add
+                bosses/tasks beneath it.
+              </p>
+            </div>
+          ) : null}
         </Panel>
 
         {selectedGoal ? (
           <Panel
             position="top-right"
-            className="max-h-[calc(70vh-2rem)] w-96 overflow-y-auto border border-border bg-background p-4 shadow-sm"
+            className="max-h-[calc(75vh-2rem)] w-96 overflow-y-auto border border-border bg-background p-4 shadow-sm"
           >
             <p className="mb-3 font-mono text-xs uppercase tracking-wide text-muted-foreground">
-              {selectedGoal.isBoss ? "⚔ Boss goal" : "Goal"}
+              {selectedGoal.isBoss ? "⚔ " : ""}
+              {selectedIsLord ? "Lord" : "Boss"}
             </p>
             <GoalForm
               key={selectedGoal.id}
@@ -602,10 +596,10 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
                 apply((o) => withGoalUpdated(o, selectedGoal.id, values));
                 try {
                   await updateGoal(selectedGoal.id, values);
-                  toast.success("Goal updated");
+                  toast.success("Saved");
                 } catch (e) {
                   toast.error(
-                    e instanceof Error ? e.message : "Failed to update goal"
+                    e instanceof Error ? e.message : "Failed to save"
                   );
                   void refetch();
                 }
@@ -626,12 +620,12 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
                       parentGoalIds: [selectedGoal.id],
                     });
                     apply((o) => withGoalAdded(o, created));
-                    toast.success("Subgoal added");
+                    toast.success("Boss added");
                   } catch (err) {
                     toast.error(
                       err instanceof Error
                         ? err.message
-                        : "Failed to add subgoal"
+                        : "Failed to add boss"
                     );
                   }
                 }}
@@ -639,7 +633,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
                 <Input
                   value={subTitle}
                   onChange={(e) => setSubTitle(e.target.value)}
-                  placeholder="New subgoal…"
+                  placeholder="New boss…"
                   className="h-8 text-sm"
                 />
                 <Button type="submit" size="sm" variant="secondary">
@@ -680,7 +674,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
                 className="text-xs text-muted-foreground hover:text-destructive"
                 onClick={removeGoal}
               >
-                Delete goal
+                Delete {selectedIsLord ? "Lord" : "boss"}
               </Button>
             </div>
           </Panel>

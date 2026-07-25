@@ -154,6 +154,11 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
           <div className="group border-t border-border pt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="flex min-w-0 items-baseline gap-2">
+                {goal.parentGoalIds.length === 0 ? (
+                  <span className="flex-none rounded border border-foreground px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide">
+                    Lord
+                  </span>
+                ) : null}
                 {goal.isBoss ? (
                   <span
                     className="flex-none text-sm"
@@ -212,7 +217,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
                       setAddingUnder(goal.id);
                     }}
                   >
-                    Add sub
+                    Add boss
                   </Button>
                   <Button
                     variant="ghost"
@@ -293,7 +298,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
           <div className="ml-4 border-l border-border pl-4 pt-4">
             <GoalForm
               initialValues={emptyGoal}
-              submitLabel="Add subgoal"
+              submitLabel="Add boss"
               onSubmit={submitAdd}
               onCancel={() => setAddingUnder(null)}
             />
@@ -308,7 +313,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
     <div className="space-y-12">
       <section className="space-y-6">
         <div className="flex items-baseline justify-between gap-2">
-          <SectionLabel>Goals</SectionLabel>
+          <SectionLabel>Bosses</SectionLabel>
           {addingUnder === null && editingId === null ? (
             <Button
               variant="ghost"
@@ -316,7 +321,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
               className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
               onClick={() => setAddingUnder("root")}
             >
-              Add goal
+              Add Lord
             </Button>
           ) : null}
         </div>
@@ -324,7 +329,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
           <div className="border-t border-border pt-4">
             <GoalForm
               initialValues={emptyGoal}
-              submitLabel="Add goal"
+              submitLabel="Add Lord"
               onSubmit={submitAdd}
               onCancel={() => setAddingUnder(null)}
             />
@@ -332,7 +337,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
         ) : null}
         {topLevel.length === 0 && addingUnder !== "root" ? (
           <p className="text-sm text-muted-foreground">
-            No goals in this hex yet — name the two or three outcomes that
+            No Lords in this hex yet — name the two or three big fights that
             define it.
           </p>
         ) : (

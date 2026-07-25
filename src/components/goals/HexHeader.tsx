@@ -69,10 +69,10 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
 
   return (
     <section className="space-y-2">
-      <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+      <h1 className="font-mono text-xl uppercase tracking-wide md:text-2xl">
         {cycle.hex.label}
-        <span className="text-foreground"> · {daysLeft}d left</span>
-      </p>
+        <span className="text-muted-foreground"> · {daysLeft}d left</span>
+      </h1>
       {isEditing ? (
         <form onSubmit={save} className="max-w-md space-y-3">
           <div className="flex flex-wrap gap-1">

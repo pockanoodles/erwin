@@ -50,12 +50,11 @@ export default function GoalsPage() {
       )}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Goals</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Where this hex&apos;s effort is going.
-          </p>
-        </div>
+        {data ? (
+          <HexHeader overview={data} apply={apply} refetch={loadOverview} />
+        ) : (
+          <div />
+        )}
         <div className="flex rounded-lg bg-muted p-1">
           <button
             onClick={() => setView("list")}
@@ -91,14 +90,11 @@ export default function GoalsPage() {
       ) : null}
 
       {data ? (
-        <>
-          <HexHeader overview={data} apply={apply} refetch={loadOverview} />
-          {view === "list" ? (
-            <GoalsListView overview={data} apply={apply} refetch={loadOverview} />
-          ) : (
-            <GoalsMapView overview={data} apply={apply} refetch={loadOverview} />
-          )}
-        </>
+        view === "list" ? (
+          <GoalsListView overview={data} apply={apply} refetch={loadOverview} />
+        ) : (
+          <GoalsMapView overview={data} apply={apply} refetch={loadOverview} />
+        )
       ) : !error ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : null}
