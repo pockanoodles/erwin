@@ -174,8 +174,18 @@ export async function scheduleAllTasksForUser(
       LOG_SOURCE
     );
 
+    // Work hours are interpreted in the user's time zone — resolve it from
+    // UserSettings, since this runs server-side (UTC in Docker).
+    const tzSettings = await prisma.userSettings.findUnique({
+      where: { userId },
+      select: { timeZone: true },
+    });
+
     // Initialize scheduling service with settings
-    const schedulingService = new SchedulingService(userSettings);
+    const schedulingService = new SchedulingService(
+      userSettings,
+      tzSettings?.timeZone
+    );
 
     // Clear existing schedules for non-locked tasks
     await prisma.task.updateMany({

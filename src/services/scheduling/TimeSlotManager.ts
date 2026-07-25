@@ -53,10 +53,14 @@ export class TimeSlotManagerImpl implements TimeSlotManager {
 
   constructor(
     private settings: AutoScheduleSettings,
-    private calendarService: CalendarService
+    private calendarService: CalendarService,
+    timeZone?: string
   ) {
     this.slotScorer = new SlotScorer(settings);
-    this.timeZone = useSettingsStore.getState().user.timeZone;
+    // Work hours are in the user's own time zone. Server-side the settings
+    // store only holds defaults (the host's zone, UTC in Docker), so callers
+    // that know the user's real zone must pass it in.
+    this.timeZone = timeZone ?? useSettingsStore.getState().user.timeZone;
   }
 
   async updateScheduledTasks(userId: string): Promise<void> {

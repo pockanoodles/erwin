@@ -25,11 +25,13 @@ interface PerformanceMetrics {
 export class SchedulingService {
   private calendarService: CalendarServiceImpl;
   private settings: AutoScheduleSettings | null;
+  private timeZone: string | undefined;
   private metrics: PerformanceMetrics[] = [];
 
-  constructor(settings?: AutoScheduleSettings) {
+  constructor(settings?: AutoScheduleSettings, timeZone?: string) {
     this.calendarService = new CalendarServiceImpl();
     this.settings = settings || null;
+    this.timeZone = timeZone;
   }
 
   private startMetric(
@@ -104,7 +106,11 @@ export class SchedulingService {
       };
     }
 
-    const manager = new TimeSlotManagerImpl(settings, this.calendarService);
+    const manager = new TimeSlotManagerImpl(
+      settings,
+      this.calendarService,
+      this.timeZone
+    );
 
     this.endMetric("getTimeSlotManager", startTime);
     return manager;
