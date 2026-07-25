@@ -43,6 +43,7 @@ export interface GoalTask {
 
 export interface OverviewGoal {
   id: string;
+  sortOrder: number;
   title: string;
   whyItMatters: string | null;
   definitionOfDone: string | null;

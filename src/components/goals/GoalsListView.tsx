@@ -2,6 +2,22 @@
 
 import { useState } from "react";
 
+import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { RxDragHandleDots2 } from "react-icons/rx";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -10,12 +26,13 @@ import { format } from "@/lib/date-utils";
 import { STAT_ABBREV, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
 
-import { createGoal, deleteGoal, updateGoal } from "./api";
+import { createGoal, deleteGoal, reorderGoals, updateGoal } from "./api";
 import { GoalForm, GoalFormValues } from "./GoalForm";
 import {
   withGoalAdded,
   withGoalRemoved,
   withGoalUpdated,
+  withRootsReordered,
 } from "./optimistic";
 import {
   ApplyOverview,
@@ -30,6 +47,46 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
       {children}
     </p>
+  );
+}
+
+/** A draggable Lord block: the grip handle carries the drag listeners so the
+ *  rest of the row stays clickable; dnd-kit animates siblings out of the way. */
+function SortableLord({
+  id,
+  children,
+}: {
+  id: string;
+  children: (handle: React.ReactNode) => React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      aria-label="Reorder"
+      className="flex-none cursor-grab touch-none self-center rounded text-muted-foreground/50 opacity-0 transition-opacity hover:text-foreground active:cursor-grabbing group-hover:opacity-100 group-focus-within:opacity-100"
+    >
+      <RxDragHandleDots2 className="h-4 w-4" />
+    </button>
+  );
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className={cn(isDragging && "relative z-10 opacity-70")}
+    >
+      {children(handle)}
+    </div>
   );
 }
 
@@ -109,10 +166,30 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
     });
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = topLevel.map((g) => g.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from < 0 || to < 0) return;
+    const next = arrayMove(ids, from, to);
+    apply((o) => withRootsReordered(o, next));
+    reorderGoals(next).catch((e) => {
+      toast.error(e instanceof Error ? e.message : "Failed to reorder");
+      void refetch();
+    });
+  };
+
   const renderGoal = (
     goal: OverviewGoal,
     depth: number,
-    path: Set<string>
+    path: Set<string>,
+    dragHandle?: React.ReactNode
   ): React.ReactNode => {
     if (path.has(goal.id)) return null; // defensive: the API forbids loops
     const children = byParent.get(goal.id) ?? [];
@@ -135,6 +212,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
           <div className="group border-t border-border pt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="flex min-w-0 items-baseline gap-2">
+                {dragHandle}
                 {goal.parentGoalIds.length === 0 ? (
                   <span className="flex-none rounded border border-foreground px-1 py-0.5 font-mono text-[10px] uppercase tracking-wide">
                     Lord
@@ -322,7 +400,22 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
             define it.
           </p>
         ) : (
-          topLevel.map((goal) => renderGoal(goal, 0, new Set()))
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={topLevel.map((g) => g.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {topLevel.map((goal) => (
+                <SortableLord key={goal.id} id={goal.id}>
+                  {(handle) => renderGoal(goal, 0, new Set(), handle)}
+                </SortableLord>
+              ))}
+            </SortableContext>
+          </DndContext>
         )}
       </section>
 

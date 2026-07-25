@@ -46,7 +46,12 @@ export async function GET(request: NextRequest) {
         userId,
         ...(scopeCycleId && { cycleId: scopeCycleId }),
       },
-      orderBy: [{ importanceScore: "desc" }, { createdAt: "desc" }],
+      orderBy: [
+        { sortOrder: "asc" },
+        { isBoss: "desc" },
+        { importanceScore: "desc" },
+        { createdAt: "asc" },
+      ],
     });
 
     return NextResponse.json(goals);
@@ -141,11 +146,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // New goals append to the bottom of the cycle's manual order — except a
+    // ⚔ boss, which enters at the top (it's the hex's headline fight).
+    const orderBounds = await prisma.goal.aggregate({
+      where: { userId, cycleId },
+      _max: { sortOrder: true },
+      _min: { sortOrder: true },
+    });
+    const sortOrder = isBoss
+      ? (orderBounds._min.sortOrder ?? 1) - 1
+      : (orderBounds._max.sortOrder ?? -1) + 1;
+
     const goal = await prisma.goal.create({
       data: {
         title,
         whyItMatters,
         definitionOfDone,
+        sortOrder,
         ...(status !== undefined && { status }),
         ...(importanceScore !== undefined && { importanceScore }),
         ...(develops !== undefined && { develops }),

@@ -99,6 +99,17 @@ export async function PUT(
 
     const changingCycle = cycleId !== undefined && cycleId !== existing.cycleId;
 
+    // Newly crowning a goal as ⚔ boss lifts it to the top of the list;
+    // manual drags after that win (the flag never re-pins it).
+    let sortOrder: number | undefined;
+    if (json.isBoss === true && !existing.isBoss) {
+      const bounds = await prisma.goal.aggregate({
+        where: { userId, cycleId: cycleId ?? existing.cycleId },
+        _min: { sortOrder: true },
+      });
+      sortOrder = (bounds._min.sortOrder ?? 1) - 1;
+    }
+
     const updated = await prisma.$transaction(async (tx) => {
       // Goal links can't span cycles, so a cycle move severs the goal's edges.
       if (changingCycle) {
@@ -116,6 +127,7 @@ export async function PUT(
           ...(importanceScore !== undefined && { importanceScore }),
           ...(develops !== undefined && { develops }),
           ...(json.isBoss !== undefined && { isBoss: Boolean(json.isBoss) }),
+          ...(sortOrder !== undefined && { sortOrder }),
           ...(json.targetDate !== undefined && {
             targetDate:
               json.targetDate === null ? null : new Date(json.targetDate),

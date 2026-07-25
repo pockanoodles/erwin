@@ -332,6 +332,8 @@ model Goal {
   /** Erwin: importance signal (0–100) parallel to Task.gradeImpactScore; feeds Stage 1 ranking */
   importanceScore  Float?  @default(50)
 
+  /** Manual list position within the cycle (0 = top). Ties fall back to isBoss, then importance. */
+  sortOrder  Int       @default(0)
   /** Stat keys this goal develops (mirrors the vault goal's `develops:` frontmatter; vocabulary in src/lib/erwin/stats.ts). */
   develops   String[]  @default([])
   /** Boss = dated, pass/fail deliverable for the hex (ops pays 5 runes on the kill). */

@@ -15,6 +15,7 @@ async function expectOk(res: Response): Promise<Response> {
 
 interface GoalResponse {
   id: string;
+  sortOrder?: number;
   title: string;
   whyItMatters: string | null;
   definitionOfDone: string | null;
@@ -29,6 +30,7 @@ interface GoalResponse {
 function toOverviewGoal(json: GoalResponse): OverviewGoal {
   return {
     id: json.id,
+    sortOrder: json.sortOrder ?? 0,
     title: json.title,
     whyItMatters: json.whyItMatters ?? null,
     definitionOfDone: json.definitionOfDone ?? null,
@@ -70,6 +72,17 @@ export async function updateGoal(
 
 export async function deleteGoal(id: string): Promise<void> {
   await expectOk(await fetch(`/api/erwin/goals/${id}`, { method: "DELETE" }));
+}
+
+/** Persist manual list positions (0 = top). */
+export async function reorderGoals(orderedGoalIds: string[]): Promise<void> {
+  await expectOk(
+    await fetch("/api/erwin/goals/reorder", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedGoalIds }),
+    })
+  );
 }
 
 /** Add a parent→child edge to the goal DAG. */

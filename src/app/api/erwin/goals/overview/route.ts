@@ -47,9 +47,16 @@ export async function GET(request: NextRequest) {
       }),
       prisma.goal.findMany({
         where: { userId, cycleId: cycle.id },
-        orderBy: [{ importanceScore: "desc" }, { createdAt: "desc" }],
+        // Manual order first (0 = top); pre-reorder ties put the ⚔ boss on top.
+        orderBy: [
+          { sortOrder: "asc" },
+          { isBoss: "desc" },
+          { importanceScore: "desc" },
+          { createdAt: "asc" },
+        ],
         select: {
           id: true,
+          sortOrder: true,
           title: true,
           whyItMatters: true,
           definitionOfDone: true,

@@ -178,6 +178,21 @@ export function withTaskRenamed(
   };
 }
 
+/** Reorders the root goals (Lords) to match `orderedRootIds`; non-roots keep
+ *  their relative order. Mirrors PUT /api/erwin/goals/reorder. */
+export function withRootsReordered(
+  o: GoalsOverview,
+  orderedRootIds: string[]
+): GoalsOverview {
+  const position = new Map(orderedRootIds.map((id, index) => [id, index]));
+  const roots = orderedRootIds
+    .map((id) => o.goals.find((g) => g.id === id))
+    .filter((g): g is OverviewGoal => g !== undefined)
+    .map((g) => ({ ...g, sortOrder: position.get(g.id)! }));
+  const rest = o.goals.filter((g) => !position.has(g.id));
+  return { ...o, goals: [...roots, ...rest] };
+}
+
 export function withTaskRemoved(
   o: GoalsOverview,
   taskId: string
