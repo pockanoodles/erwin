@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
       include: {
         tags: true,
         project: true,
+        goalLinks: { select: { goalId: true } },
       },
       orderBy: {
         createdAt: "desc",
@@ -103,7 +104,9 @@ export async function POST(request: NextRequest) {
     const userId = auth.userId;
 
     const json = await request.json();
-    const { tagIds, recurrenceRule, ...taskData } = json;
+    // `goalId` is a convenience alias: it becomes a TaskGoalLink row (tasks
+    // link to goals many-to-many; /api/erwin/task-links manages further links).
+    const { tagIds, recurrenceRule, goalId, ...taskData } = json;
 
     // Normalize and validate recurrence rule if provided
     const standardizedRecurrenceRule = recurrenceRule
@@ -146,6 +149,7 @@ export async function POST(request: NextRequest) {
         userId,
         isRecurring: !!recurrenceRule,
         recurrenceRule: standardizedRecurrenceRule,
+        ...(goalId && { goalLinks: { create: [{ goalId }] } }),
         ...(tagIds && {
           tags: {
             connect: tagIds.map((id: string) => ({ id })),

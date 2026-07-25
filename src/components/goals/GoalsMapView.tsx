@@ -26,23 +26,40 @@ import "@xyflow/react/dist/style.css";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import { STAT_ABBREV, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
 
 import {
+  clearTaskGoals,
   createGoal,
   createTask,
   deleteGoal,
   deleteTask,
-  setTaskGoal,
+  linkGoals,
+  linkTask,
+  unlinkGoals,
+  unlinkTask,
   updateGoal,
   updateTaskTitle,
 } from "./api";
 import { GoalForm } from "./GoalForm";
 import {
+  withGoalAdded,
+  withGoalLink,
+  withGoalRemoved,
+  withGoalUpdated,
+  withTaskAdded,
+  withTaskLinked,
+  withTaskRemoved,
+  withTaskRenamed,
+  withTaskUnlinked,
+  withoutGoalLink,
+} from "./optimistic";
+import {
+  ApplyOverview,
   GoalTask,
   GoalsOverview,
   OverviewGoal,
-  goalChildren,
 } from "./types";
 
 /* ---------- node components ---------- */
@@ -52,9 +69,18 @@ const GOAL_SIZE = { width: 240, height: 84 };
 const TASK_SIZE = { width: 220, height: 44 };
 const TRAY_GAP = 320;
 
-type HexNodeType = Node<{ label: string; theme: string }, "hex">;
+type HexNodeType = Node<
+  { label: string; theme: string; focusStats: string[] },
+  "hex"
+>;
 type GoalNodeType = Node<
-  { title: string; importanceScore: number | null; whyItMatters: string | null },
+  {
+    title: string;
+    importanceScore: number | null;
+    whyItMatters: string | null;
+    develops: string[];
+    isBoss: boolean;
+  },
   "goal"
 >;
 type TaskNodeType = Node<
@@ -65,6 +91,9 @@ type TrayNodeType = Node<{ label: string }, "tray">;
 type FlowNode = HexNodeType | GoalNodeType | TaskNodeType | TrayNodeType;
 
 function HexNode({ data }: NodeProps<HexNodeType>) {
+  const build = data.focusStats
+    .map((key) => STAT_ABBREV[key as StatKey] ?? key)
+    .join(" + ");
   return (
     <div
       className="border border-border bg-background p-3"
@@ -74,9 +103,9 @@ function HexNode({ data }: NodeProps<HexNodeType>) {
         {data.label}
       </p>
       <p className="mt-1 truncate text-sm font-semibold">
-        {data.theme || "No theme yet"}
+        {build || data.theme || "No Build yet"}
       </p>
-      <Handle type="source" position={Position.Right} />
+      <Handle type="source" position={Position.Right} isConnectable={false} />
     </div>
   );
 }
@@ -85,21 +114,48 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
   return (
     <div
       className={cn(
-        "rounded-md border border-border bg-background p-3",
+        "rounded-md border p-3",
+        data.isBoss
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-background",
         selected && "ring-2 ring-primary"
       )}
       style={{ width: GOAL_SIZE.width, minHeight: GOAL_SIZE.height }}
     >
       <div className="flex items-baseline justify-between gap-2">
-        <p className="min-w-0 truncate text-sm font-semibold">{data.title}</p>
+        <p className="min-w-0 truncate text-sm font-semibold">
+          {data.isBoss ? "⚔ " : ""}
+          {data.title}
+        </p>
         {data.importanceScore != null ? (
-          <span className="font-mono text-xs text-muted-foreground">
+          <span
+            className={cn(
+              "font-mono text-xs",
+              data.isBoss ? "text-background/70" : "text-muted-foreground"
+            )}
+          >
             {Math.round(data.importanceScore)}
           </span>
         ) : null}
       </div>
-      {data.whyItMatters ? (
-        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+      {data.develops.length > 0 ? (
+        <p
+          className={cn(
+            "mt-1 font-mono text-[10px]",
+            data.isBoss ? "text-background/70" : "text-muted-foreground"
+          )}
+        >
+          {data.develops
+            .map((key) => STAT_ABBREV[key as StatKey] ?? key)
+            .join(" ")}
+        </p>
+      ) : data.whyItMatters ? (
+        <p
+          className={cn(
+            "mt-1 line-clamp-2 text-xs",
+            data.isBoss ? "text-background/70" : "text-muted-foreground"
+          )}
+        >
           {data.whyItMatters}
         </p>
       ) : null}
@@ -172,10 +228,13 @@ function buildGraph(overview: GoalsOverview): {
     data: {
       label: overview.activeCycle.hex.label,
       theme: overview.activeCycle.theme,
+      focusStats: overview.activeCycle.focusStats,
     },
   });
-  layout.setNode("hex", HEX_SIZE);
+  // dagre mutates the label object with x/y — every node needs its own copy.
+  layout.setNode("hex", { ...HEX_SIZE });
 
+  const seenTasks = new Set<string>();
   for (const goal of overview.goals) {
     nodes.push({
       id: `g:${goal.id}`,
@@ -186,19 +245,23 @@ function buildGraph(overview: GoalsOverview): {
         title: goal.title,
         importanceScore: goal.importanceScore,
         whyItMatters: goal.whyItMatters,
+        develops: goal.develops,
+        isBoss: goal.isBoss,
       },
     });
-    layout.setNode(`g:${goal.id}`, GOAL_SIZE);
+    layout.setNode(`g:${goal.id}`, { ...GOAL_SIZE });
 
-    if (goal.parentGoalId) {
-      edges.push({
-        id: `eg:${goal.parentGoalId}:${goal.id}`,
-        source: `g:${goal.parentGoalId}`,
-        target: `g:${goal.id}`,
-      });
-      layout.setEdge(`g:${goal.parentGoalId}`, `g:${goal.id}`);
+    if (goal.parentGoalIds.length > 0) {
+      for (const parentId of goal.parentGoalIds) {
+        edges.push({
+          id: `eg:${parentId}:${goal.id}`,
+          source: `g:${parentId}`,
+          target: `g:${goal.id}`,
+        });
+        layout.setEdge(`g:${parentId}`, `g:${goal.id}`);
+      }
     } else {
-      // Hex → top-level goal edges are structural; deleting them means nothing.
+      // Hex → root goal edges are structural; deleting them means nothing.
       edges.push({
         id: `eh:${goal.id}`,
         source: "hex",
@@ -210,18 +273,22 @@ function buildGraph(overview: GoalsOverview): {
     }
 
     for (const task of goal.tasks) {
-      nodes.push({
-        id: `t:${task.id}`,
-        type: "task",
-        position: { x: 0, y: 0 },
-        deletable: false,
-        data: {
-          title: task.title,
-          status: task.status,
-          urgencyTier: task.urgencyTier,
-        },
-      });
-      layout.setNode(`t:${task.id}`, TASK_SIZE);
+      // A task can serve several goals — one node, an edge per goal.
+      if (!seenTasks.has(task.id)) {
+        seenTasks.add(task.id);
+        nodes.push({
+          id: `t:${task.id}`,
+          type: "task",
+          position: { x: 0, y: 0 },
+          deletable: false,
+          data: {
+            title: task.title,
+            status: task.status,
+            urgencyTier: task.urgencyTier,
+          },
+        });
+        layout.setNode(`t:${task.id}`, { ...TASK_SIZE });
+      }
       edges.push({
         id: `et:${goal.id}:${task.id}`,
         source: `g:${goal.id}`,
@@ -242,7 +309,7 @@ function buildGraph(overview: GoalsOverview): {
     minX = Math.min(minX, node.position.x);
   }
 
-  // Unassigned tasks stack in a tray column left of the tree.
+  // Unassigned tasks stack in a tray column left of the graph.
   if (overview.unassignedTasks.length > 0) {
     const trayX = minX - TRAY_GAP;
     nodes.push({
@@ -267,6 +334,37 @@ function buildGraph(overview: GoalsOverview): {
   return { nodes, edges };
 }
 
+/** Client-side mirror of the server's DAG loop check, so a bad drag is
+ *  rejected instantly instead of after a round trip. */
+function wouldLoop(
+  goals: OverviewGoal[],
+  parentId: string,
+  childId: string
+): boolean {
+  if (parentId === childId) return true;
+  const childrenOf = new Map<string, string[]>();
+  for (const goal of goals) {
+    for (const p of goal.parentGoalIds) {
+      const list = childrenOf.get(p) ?? [];
+      list.push(goal.id);
+      childrenOf.set(p, list);
+    }
+  }
+  const queue = [childId];
+  const seen = new Set(queue);
+  while (queue.length > 0) {
+    const current = queue.pop()!;
+    for (const next of childrenOf.get(current) ?? []) {
+      if (next === parentId) return true;
+      if (!seen.has(next)) {
+        seen.add(next);
+        queue.push(next);
+      }
+    }
+  }
+  return false;
+}
+
 /* ---------- selection panel ---------- */
 
 interface Selected {
@@ -278,10 +376,11 @@ interface Selected {
 
 interface GoalsMapViewProps {
   overview: GoalsOverview;
+  apply: ApplyOverview;
   refetch: () => Promise<void>;
 }
 
-export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
+export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
   const { resolvedTheme } = useTheme();
   const graph = useMemo(() => buildGraph(overview), [overview]);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(graph.nodes);
@@ -296,7 +395,6 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
     setEdges(graph.edges);
   }, [graph, setNodes, setEdges]);
 
-  const byParent = useMemo(() => goalChildren(overview.goals), [overview]);
   const selectedGoal: OverviewGoal | null =
     selected?.kind === "goal"
       ? (overview.goals.find((g) => g.id === selected.id) ?? null)
@@ -311,12 +409,11 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
           .find((t) => t.id === selected.id) ??
         null)
       : null;
-  const selectedTaskGoalId =
+  const selectedTaskGoalCount =
     selected?.kind === "task"
-      ? (overview.goals.find((g) =>
-          g.tasks.some((t) => t.id === selected.id)
-        )?.id ?? null)
-      : null;
+      ? overview.goals.filter((g) => g.tasks.some((t) => t.id === selected.id))
+          .length
+      : 0;
 
   useEffect(() => {
     setTaskRename(selectedTask?.title ?? "");
@@ -324,18 +421,25 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
     setTaskTitle("");
   }, [selectedTask?.title, selected?.id]);
 
-  const mutate = useCallback(
-    async (fn: () => Promise<void>, success?: string) => {
-      try {
-        await fn();
-        if (success) toast.success(success);
-        await refetch();
-      } catch (e) {
-        toast.error(e instanceof Error ? e.message : "Update failed");
-        await refetch();
-      }
+  /** Optimistic runner: apply the local change now, fire the request, and
+   *  only refetch (to resync) if the server disagrees. */
+  const run = useCallback(
+    (
+      local: ((o: GoalsOverview) => GoalsOverview) | null,
+      fn: () => Promise<unknown>,
+      success?: string
+    ) => {
+      if (local) apply(local);
+      fn()
+        .then(() => {
+          if (success) toast.success(success);
+        })
+        .catch((e) => {
+          toast.error(e instanceof Error ? e.message : "Update failed");
+          void refetch();
+        });
     },
-    [refetch]
+    [apply, refetch]
   );
 
   const onConnect = useCallback(
@@ -343,47 +447,57 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
       const { source, target } = connection;
       if (!source || !target || source === target) return;
       if (source.startsWith("g:") && target.startsWith("g:")) {
-        void mutate(
-          () =>
-            updateGoal(target.slice(2), { parentGoalId: source.slice(2) }),
-          "Subgoal attached"
+        const parentId = source.slice(2);
+        const childId = target.slice(2);
+        const child = overview.goals.find((g) => g.id === childId);
+        if (child?.parentGoalIds.includes(parentId)) return;
+        if (wouldLoop(overview.goals, parentId, childId)) {
+          toast.error("That link would create a loop");
+          return;
+        }
+        run(
+          (o) => withGoalLink(o, parentId, childId),
+          () => linkGoals(parentId, childId),
+          "Goals linked"
         );
       } else if (source.startsWith("g:") && target.startsWith("t:")) {
-        void mutate(
-          () => setTaskGoal(target.slice(2), source.slice(2)),
+        const goalId = source.slice(2);
+        const taskId = target.slice(2);
+        run(
+          (o) => withTaskLinked(o, taskId, goalId),
+          () => linkTask(taskId, goalId),
           "Task linked"
-        );
-      } else if (source === "hex" && target.startsWith("g:")) {
-        void mutate(
-          () => updateGoal(target.slice(2), { parentGoalId: null }),
-          "Moved to top level"
         );
       }
     },
-    [mutate]
+    [overview.goals, run]
   );
 
   const onEdgesDelete = useCallback(
     (deleted: Edge[]) => {
       for (const edge of deleted) {
-        if (edge.id.startsWith("et:")) {
-          void mutate(
-            () => setTaskGoal(edge.target.slice(2), null),
+        const [prefix, a, b] = edge.id.split(":");
+        if (prefix === "et" && a && b) {
+          run(
+            (o) => withTaskUnlinked(o, b, a),
+            () => unlinkTask(b, a),
             "Task unlinked"
           );
-        } else if (edge.id.startsWith("eg:")) {
-          void mutate(
-            () => updateGoal(edge.target.slice(2), { parentGoalId: null }),
-            "Moved to top level"
+        } else if (prefix === "eg" && a && b) {
+          run(
+            (o) => withoutGoalLink(o, a, b),
+            () => unlinkGoals(a, b),
+            "Goals unlinked"
           );
         }
       }
     },
-    [mutate]
+    [run]
   );
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) =>
+      connection.source !== "hex" &&
       connection.target !== "hex" &&
       connection.source !== connection.target &&
       !connection.source?.startsWith("t:"),
@@ -392,17 +506,19 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
 
   const removeGoal = () => {
     if (!selectedGoal) return;
-    const subCount = (byParent.get(selectedGoal.id) ?? []).length;
-    const detail = subCount > 0 ? " Its subgoals go with it;" : "";
     if (
       !window.confirm(
-        `Delete "${selectedGoal.title}"?${detail} linked tasks are kept.`
+        `Delete "${selectedGoal.title}"? Linked goals and tasks are kept — only the links go.`
       )
     ) {
       return;
     }
     setSelected(null);
-    void mutate(() => deleteGoal(selectedGoal.id), "Goal deleted");
+    run(
+      (o) => withGoalRemoved(o, selectedGoal.id),
+      () => deleteGoal(selectedGoal.id),
+      "Goal deleted"
+    );
   };
 
   const removeTask = () => {
@@ -411,7 +527,11 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
       return;
     }
     setSelected(null);
-    void mutate(() => deleteTask(selectedTask.id), "Task deleted");
+    run(
+      (o) => withTaskRemoved(o, selectedTask.id),
+      () => deleteTask(selectedTask.id),
+      "Task deleted"
+    );
   };
 
   return (
@@ -445,18 +565,24 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
         <Panel position="top-left" className="space-y-1">
           <Button
             size="sm"
-            onClick={() =>
-              void mutate(
-                () => createGoal({ title: "New goal" }),
-                "Goal added — click it to rename"
-              )
-            }
+            onClick={async () => {
+              try {
+                const created = await createGoal({ title: "New goal" });
+                apply((o) => withGoalAdded(o, created));
+                toast.success("Goal added — click it to rename");
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : "Failed to add goal"
+                );
+              }
+            }}
           >
             Add goal
           </Button>
           <p className="max-w-[220px] text-xs text-muted-foreground">
-            Drag between handles to connect. Select an edge and press Delete
-            to disconnect.
+            Drag between handles to connect — goals can feed several goals,
+            tasks several goals. Select an edge and press Delete to
+            disconnect.
           </p>
         </Panel>
 
@@ -466,32 +592,48 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
             className="max-h-[calc(70vh-2rem)] w-96 overflow-y-auto border border-border bg-background p-4 shadow-sm"
           >
             <p className="mb-3 font-mono text-xs uppercase tracking-wide text-muted-foreground">
-              Goal
+              {selectedGoal.isBoss ? "⚔ Boss goal" : "Goal"}
             </p>
             <GoalForm
               key={selectedGoal.id}
               initialValues={selectedGoal}
               submitLabel="Save"
-              onSubmit={(values) =>
-                mutate(() => updateGoal(selectedGoal.id, values), "Goal updated")
-              }
+              onSubmit={async (values) => {
+                apply((o) => withGoalUpdated(o, selectedGoal.id, values));
+                try {
+                  await updateGoal(selectedGoal.id, values);
+                  toast.success("Goal updated");
+                } catch (e) {
+                  toast.error(
+                    e instanceof Error ? e.message : "Failed to update goal"
+                  );
+                  void refetch();
+                }
+              }}
               onCancel={() => setSelected(null)}
             />
             <div className="mt-4 space-y-3 border-t border-border pt-4">
               <form
                 className="flex gap-2"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (!subTitle.trim()) return;
-                  void mutate(
-                    () =>
-                      createGoal({
-                        title: subTitle.trim(),
-                        parentGoalId: selectedGoal.id,
-                      }),
-                    "Subgoal added"
-                  );
+                  const title = subTitle.trim();
                   setSubTitle("");
+                  try {
+                    const created = await createGoal({
+                      title,
+                      parentGoalIds: [selectedGoal.id],
+                    });
+                    apply((o) => withGoalAdded(o, created));
+                    toast.success("Subgoal added");
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error
+                        ? err.message
+                        : "Failed to add subgoal"
+                    );
+                  }
                 }}
               >
                 <Input
@@ -506,14 +648,20 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
               </form>
               <form
                 className="flex gap-2"
-                onSubmit={(e) => {
+                onSubmit={async (e) => {
                   e.preventDefault();
                   if (!taskTitle.trim()) return;
-                  void mutate(
-                    () => createTask(taskTitle.trim(), selectedGoal.id),
-                    "Task added"
-                  );
+                  const title = taskTitle.trim();
                   setTaskTitle("");
+                  try {
+                    const created = await createTask(title, selectedGoal.id);
+                    apply((o) => withTaskAdded(o, selectedGoal.id, created));
+                    toast.success("Task added");
+                  } catch (err) {
+                    toast.error(
+                      err instanceof Error ? err.message : "Failed to add task"
+                    );
+                  }
                 }}
               >
                 <Input
@@ -545,14 +693,19 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
           >
             <p className="mb-3 font-mono text-xs uppercase tracking-wide text-muted-foreground">
               Task
+              {selectedTaskGoalCount > 1
+                ? ` · serves ${selectedTaskGoalCount} goals`
+                : ""}
             </p>
             <form
               className="flex gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!taskRename.trim()) return;
-                void mutate(
-                  () => updateTaskTitle(selectedTask.id, taskRename.trim()),
+                const title = taskRename.trim();
+                run(
+                  (o) => withTaskRenamed(o, selectedTask.id, title),
+                  () => updateTaskTitle(selectedTask.id, title),
                   "Task renamed"
                 );
               }}
@@ -567,19 +720,24 @@ export function GoalsMapView({ overview, refetch }: GoalsMapViewProps) {
               </Button>
             </form>
             <div className="mt-3 flex gap-2">
-              {selectedTaskGoalId ? (
+              {selectedTaskGoalCount > 0 ? (
                 <Button
                   size="sm"
                   variant="ghost"
                   className="text-xs text-muted-foreground"
                   onClick={() =>
-                    void mutate(
-                      () => setTaskGoal(selectedTask.id, null),
-                      "Task unlinked"
+                    run(
+                      (o) => withTaskUnlinked(o, selectedTask.id, null),
+                      () => clearTaskGoals(selectedTask.id),
+                      selectedTaskGoalCount > 1
+                        ? "Unlinked from all goals"
+                        : "Task unlinked"
                     )
                   }
                 >
-                  Unlink from goal
+                  {selectedTaskGoalCount > 1
+                    ? "Unlink from all goals"
+                    : "Unlink from goal"}
                 </Button>
               ) : null}
               <Button

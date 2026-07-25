@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { deactivateActiveCycles } from "@/lib/erwin/goal-cycles";
+import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -59,6 +60,17 @@ export async function POST(request: NextRequest) {
 
     const nextStatus = status ?? "active";
 
+    let focusStats: string[] | undefined;
+    if (json.focusStats !== undefined) {
+      const cleaned = sanitizeStatKeys(json.focusStats);
+      if (cleaned === null) {
+        return new NextResponse("focusStats must be a list of stat keys", {
+          status: 400,
+        });
+      }
+      focusStats = cleaned;
+    }
+
     const cycle = await prisma.$transaction(async (tx) => {
       if (nextStatus === "active") {
         await deactivateActiveCycles(tx, userId);
@@ -66,6 +78,7 @@ export async function POST(request: NextRequest) {
       return tx.goalCycle.create({
         data: {
           theme,
+          ...(focusStats !== undefined && { focusStats }),
           startDate: newDate(startDate),
           endDate: newDate(endDate),
           status: nextStatus,

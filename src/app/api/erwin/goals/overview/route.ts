@@ -43,10 +43,10 @@ interface OverviewGroup {
  * GET /api/erwin/goals/overview
  *
  * Payload for the Goals page. The current hex (fixed two-month block) is
- * lazily provisioned so an active cycle always exists. Returns the hex, the
- * goal tree for it (goals with parentGoalId + their linked tasks), open
- * tasks with no goal (graph tray), and open tasks grouped by source with a
- * trailing-30-day completion count per group.
+ * lazily provisioned so an active cycle always exists. Returns the hex (with
+ * its Build stats and boss), the goal DAG for it (goals with parentGoalIds +
+ * their linked tasks), open tasks with no goal (graph tray), and open tasks
+ * grouped by source with a trailing-30-day completion count per group.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
           dueDate: true,
           urgencyTier: true,
           source: true,
-          goalId: true,
+          goalLinks: { select: { goalId: true } },
         },
         orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
       }),
@@ -95,22 +95,30 @@ export async function GET(request: NextRequest) {
           definitionOfDone: true,
           status: true,
           importanceScore: true,
-          parentGoalId: true,
-          tasks: {
+          develops: true,
+          isBoss: true,
+          targetDate: true,
+          parentLinks: { select: { parentId: true } },
+          taskLinks: {
             where: {
-              OR: [
-                { status: { not: "completed" } },
-                { completedAt: { gte: windowStart } },
-              ],
+              task: {
+                OR: [
+                  { status: { not: "completed" } },
+                  { completedAt: { gte: windowStart } },
+                ],
+              },
             },
             select: {
-              id: true,
-              title: true,
-              status: true,
-              dueDate: true,
-              urgencyTier: true,
+              task: {
+                select: {
+                  id: true,
+                  title: true,
+                  status: true,
+                  dueDate: true,
+                  urgencyTier: true,
+                },
+              },
             },
-            orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
           },
         },
       }),
@@ -149,10 +157,34 @@ export async function GET(request: NextRequest) {
       return a.key.localeCompare(b.key);
     });
 
+    const flatGoals = goals.map(({ parentLinks, taskLinks, ...goal }) => ({
+      ...goal,
+      parentGoalIds: parentLinks.map((link) => link.parentId),
+      tasks: taskLinks
+        .map((link) => link.task)
+        .sort((a, b) => {
+          if (!a.dueDate) return b.dueDate ? 1 : 0;
+          if (!b.dueDate) return -1;
+          return a.dueDate.getTime() - b.dueDate.getTime();
+        }),
+    }));
+
+    // The hex's boss: the active boss goal with the nearest target date
+    // (undated bosses sort last) — same "next boss" rule as the ops HUD.
+    const boss =
+      flatGoals
+        .filter((goal) => goal.isBoss && goal.status === "active")
+        .sort((a, b) => {
+          if (!a.targetDate) return b.targetDate ? 1 : 0;
+          if (!b.targetDate) return -1;
+          return a.targetDate.getTime() - b.targetDate.getTime();
+        })[0] ?? null;
+
     return NextResponse.json({
       activeCycle: {
         id: cycle.id,
         theme: cycle.theme,
+        focusStats: cycle.focusStats,
         startDate: cycle.startDate,
         endDate: cycle.endDate,
         hex: {
@@ -160,11 +192,14 @@ export async function GET(request: NextRequest) {
           index: hex.index,
           label: hexLabel(hex),
         },
+        boss: boss
+          ? { id: boss.id, title: boss.title, targetDate: boss.targetDate }
+          : null,
       },
       groups,
-      goals,
+      goals: flatGoals,
       unassignedTasks: openTasks
-        .filter((task) => !task.goalId)
+        .filter((task) => task.goalLinks.length === 0)
         .map(({ id, title, dueDate, urgencyTier }) => ({
           id,
           title,

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -78,11 +79,24 @@ export async function POST(request: NextRequest) {
       definitionOfDone,
       status,
       importanceScore,
-      parentGoalId,
+      isBoss,
+      targetDate,
+      parentGoalIds,
     } = json;
 
     if (!title) {
       return new NextResponse("title is required", { status: 400 });
+    }
+
+    let develops: string[] | undefined;
+    if (json.develops !== undefined) {
+      const cleaned = sanitizeStatKeys(json.develops);
+      if (cleaned === null) {
+        return new NextResponse("develops must be a list of stat keys", {
+          status: 400,
+        });
+      }
+      develops = cleaned;
     }
 
     let { cycleId } = json;
@@ -108,15 +122,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // A parent must be the user's own goal in the same cycle.
-    if (parentGoalId) {
-      const parent = await prisma.goal.findUnique({
-        where: { id: parentGoalId, userId },
+    // Every parent must be the user's own goal in the same cycle. A new goal
+    // has no descendants, so linking under any set of parents can't loop.
+    const parentIds: string[] = Array.isArray(parentGoalIds)
+      ? [...new Set(parentGoalIds as string[])]
+      : [];
+    if (parentIds.length > 0) {
+      const parents = await prisma.goal.findMany({
+        where: { id: { in: parentIds }, userId },
       });
-      if (!parent) {
+      if (parents.length !== parentIds.length) {
         return new NextResponse("Parent goal not found", { status: 404 });
       }
-      if (parent.cycleId !== cycleId) {
+      if (parents.some((p) => p.cycleId !== cycleId)) {
         return new NextResponse("Parent goal is in a different cycle", {
           status: 400,
         });
@@ -130,10 +148,20 @@ export async function POST(request: NextRequest) {
         definitionOfDone,
         ...(status !== undefined && { status }),
         ...(importanceScore !== undefined && { importanceScore }),
-        ...(parentGoalId !== undefined && { parentGoalId }),
+        ...(develops !== undefined && { develops }),
+        ...(isBoss !== undefined && { isBoss: Boolean(isBoss) }),
+        ...(targetDate !== undefined && {
+          targetDate: targetDate === null ? null : new Date(targetDate),
+        }),
         cycleId,
         userId,
+        ...(parentIds.length > 0 && {
+          parentLinks: {
+            create: parentIds.map((parentId) => ({ parentId })),
+          },
+        }),
       },
+      include: { parentLinks: { select: { parentId: true } } },
     });
 
     return NextResponse.json(goal);

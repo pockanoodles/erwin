@@ -6,11 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import { STAT_ABBREV, STAT_KEYS, type StatKey } from "@/lib/erwin/stats";
+import { cn } from "@/lib/utils";
+
 export interface GoalFormValues {
   title: string;
   whyItMatters: string | null;
   definitionOfDone: string | null;
   importanceScore: number | null;
+  develops: string[];
+  isBoss: boolean;
+  targetDate: string | null;
 }
 
 interface GoalFormProps {
@@ -24,7 +30,7 @@ function FieldLabel({
   htmlFor,
   children,
 }: {
-  htmlFor: string;
+  htmlFor?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -37,7 +43,7 @@ function FieldLabel({
   );
 }
 
-/** Inline form for adding or editing a goal within the active season. */
+/** Inline form for adding or editing a goal within the active hex. */
 export function GoalForm({
   initialValues,
   submitLabel,
@@ -56,7 +62,18 @@ export function GoalForm({
       ? String(Math.round(initialValues.importanceScore))
       : ""
   );
+  const [develops, setDevelops] = useState<string[]>(initialValues.develops);
+  const [isBoss, setIsBoss] = useState(initialValues.isBoss);
+  const [targetDate, setTargetDate] = useState(
+    initialValues.targetDate ? initialValues.targetDate.slice(0, 10) : ""
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const toggleStat = (key: StatKey) => {
+    setDevelops((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,6 +85,9 @@ export function GoalForm({
         whyItMatters: whyItMatters.trim() || null,
         definitionOfDone: definitionOfDone.trim() || null,
         importanceScore: importance ? Number(importance) : null,
+        develops,
+        isBoss,
+        targetDate: targetDate || null,
       });
     } finally {
       setIsSubmitting(false);
@@ -100,6 +120,55 @@ export function GoalForm({
             placeholder="0–100"
           />
         </div>
+      </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Develops</FieldLabel>
+        <div className="flex flex-wrap gap-1">
+          {STAT_KEYS.map((key) => {
+            const active = develops.includes(key);
+            return (
+              <button
+                key={key}
+                type="button"
+                title={key}
+                onClick={() => toggleStat(key)}
+                className={cn(
+                  "rounded border px-1.5 py-0.5 font-mono text-xs transition-colors",
+                  active
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border text-muted-foreground hover:border-foreground/40"
+                )}
+              >
+                {STAT_ABBREV[key]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="flex items-end gap-4">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={isBoss}
+            onChange={(e) => setIsBoss(e.target.checked)}
+            className="h-3.5 w-3.5 accent-foreground"
+          />
+          <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+            ⚔ Boss
+          </span>
+        </label>
+        {isBoss ? (
+          <div className="space-y-1.5">
+            <FieldLabel htmlFor="goal-target">Boss date</FieldLabel>
+            <Input
+              id="goal-target"
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+              className="h-8 w-40 text-sm"
+            />
+          </div>
+        ) : null}
       </div>
       <div className="space-y-1.5">
         <FieldLabel htmlFor="goal-why">Why it matters</FieldLabel>

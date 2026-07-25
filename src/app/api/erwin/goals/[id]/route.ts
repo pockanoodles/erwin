@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -23,7 +24,11 @@ export async function GET(
     const { id } = await params;
     const goal = await prisma.goal.findUnique({
       where: { id, userId: auth.userId },
-      include: { tasks: true },
+      include: {
+        taskLinks: { include: { task: true } },
+        parentLinks: { select: { parentId: true } },
+        childLinks: { select: { childId: true } },
+      },
     });
 
     if (!goal) {
@@ -69,6 +74,17 @@ export async function PUT(
     const { title, whyItMatters, definitionOfDone, status, importanceScore } =
       json;
 
+    let develops: string[] | undefined;
+    if (json.develops !== undefined) {
+      const cleaned = sanitizeStatKeys(json.develops);
+      if (cleaned === null) {
+        return new NextResponse("develops must be a list of stat keys", {
+          status: 400,
+        });
+      }
+      develops = cleaned;
+    }
+
     // Moving a goal to another cycle must stay within the user's own cycles.
     let cycleId: string | undefined;
     if (json.cycleId !== undefined) {
@@ -81,56 +97,32 @@ export async function PUT(
       cycleId = json.cycleId;
     }
 
-    // Re-parenting: parent must be the user's own goal in the same cycle, and
-    // must not be the goal itself or any of its descendants (no loops).
-    if (json.parentGoalId !== undefined && json.parentGoalId !== null) {
-      if (json.parentGoalId === id) {
-        return new NextResponse("A goal cannot be its own parent", {
-          status: 400,
-        });
-      }
-      const parent = await prisma.goal.findUnique({
-        where: { id: json.parentGoalId, userId },
-      });
-      if (!parent) {
-        return new NextResponse("Parent goal not found", { status: 404 });
-      }
-      if (parent.cycleId !== (cycleId ?? existing.cycleId)) {
-        return new NextResponse("Parent goal is in a different cycle", {
-          status: 400,
-        });
-      }
-      // Walk up from the proposed parent; hitting `id` means a cycle.
-      let ancestorId: string | null = parent.parentGoalId;
-      while (ancestorId) {
-        if (ancestorId === id) {
-          return new NextResponse(
-            "Cannot nest a goal under its own descendant",
-            { status: 400 }
-          );
-        }
-        const ancestor: { parentGoalId: string | null } | null =
-          await prisma.goal.findUnique({
-            where: { id: ancestorId, userId },
-            select: { parentGoalId: true },
-          });
-        ancestorId = ancestor?.parentGoalId ?? null;
-      }
-    }
+    const changingCycle = cycleId !== undefined && cycleId !== existing.cycleId;
 
-    const updated = await prisma.goal.update({
-      where: { id, userId },
-      data: {
-        ...(title !== undefined && { title }),
-        ...(whyItMatters !== undefined && { whyItMatters }),
-        ...(definitionOfDone !== undefined && { definitionOfDone }),
-        ...(status !== undefined && { status }),
-        ...(importanceScore !== undefined && { importanceScore }),
-        ...(cycleId !== undefined && { cycleId }),
-        ...(json.parentGoalId !== undefined && {
-          parentGoalId: json.parentGoalId,
-        }),
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      // Goal links can't span cycles, so a cycle move severs the goal's edges.
+      if (changingCycle) {
+        await tx.goalLink.deleteMany({
+          where: { OR: [{ parentId: id }, { childId: id }] },
+        });
+      }
+      return tx.goal.update({
+        where: { id, userId },
+        data: {
+          ...(title !== undefined && { title }),
+          ...(whyItMatters !== undefined && { whyItMatters }),
+          ...(definitionOfDone !== undefined && { definitionOfDone }),
+          ...(status !== undefined && { status }),
+          ...(importanceScore !== undefined && { importanceScore }),
+          ...(develops !== undefined && { develops }),
+          ...(json.isBoss !== undefined && { isBoss: Boolean(json.isBoss) }),
+          ...(json.targetDate !== undefined && {
+            targetDate:
+              json.targetDate === null ? null : new Date(json.targetDate),
+          }),
+          ...(cycleId !== undefined && { cycleId }),
+        },
+      });
     });
 
     return NextResponse.json(updated);
@@ -146,8 +138,9 @@ export async function PUT(
 
 /**
  * DELETE /api/erwin/goals/[id]
- * Deletes a goal and its subgoal subtree (schema cascade); linked tasks keep
- * their goalId set null (schema onDelete).
+ * Deletes a goal. Its DAG edges and task links cascade away (schema onDelete),
+ * but linked goals and tasks themselves survive — in a DAG a child may have
+ * other parents, so deletion never takes the subtree with it.
  */
 export async function DELETE(
   request: NextRequest,

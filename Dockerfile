@@ -24,12 +24,16 @@ FROM base AS builder
 WORKDIR /app
 COPY . .
 COPY package*.json ./
-RUN npm ci --legacy-peer-deps --ignore-scripts
+# --include=dev: base sets NODE_ENV=production, which makes npm skip
+# devDependencies — but the build's type-check needs @types/* and eslint.
+RUN npm ci --legacy-peer-deps --ignore-scripts --include=dev
 # Fail fast if the build context omitted app source (mis-set context → tiny image, missing @/ imports)
 RUN test -f src/components/focus/FocusMode.tsx \
   && test -f "src/app/(common)/layout.tsx"
-RUN npm run build
+# Generate the Prisma client first — `npm ci --ignore-scripts` skips the
+# postinstall generate, and `next build` type-checks against the client.
 RUN npm run prisma:generate
+RUN npm run build
 
 # Production stage
 FROM base AS production
@@ -41,6 +45,11 @@ COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+# Prisma CLI + engines so the entrypoint's `npx prisma generate/migrate deploy`
+# resolves locally instead of downloading on every container start.
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder /app/node_modules/.bin ./node_modules/.bin
 COPY --from=builder /app/prisma ./prisma
 COPY entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh

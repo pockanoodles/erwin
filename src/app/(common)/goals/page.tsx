@@ -7,7 +7,7 @@ import { BsDiagram3, BsListTask } from "react-icons/bs";
 import { GoalsListView } from "@/components/goals/GoalsListView";
 import { GoalsMapView } from "@/components/goals/GoalsMapView";
 import { HexHeader } from "@/components/goals/HexHeader";
-import { GoalsOverview } from "@/components/goals/types";
+import { ApplyOverview, GoalsOverview } from "@/components/goals/types";
 
 import { cn } from "@/lib/utils";
 
@@ -35,6 +35,12 @@ export default function GoalsPage() {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
+
+  // Optimistic local updates: views apply the change immediately and only
+  // refetch to resync after a failed request.
+  const apply = useCallback<ApplyOverview>((fn) => {
+    setData((prev) => (prev ? fn(prev) : prev));
+  }, []);
 
   return (
     <div
@@ -86,13 +92,15 @@ export default function GoalsPage() {
 
       {data ? (
         <>
-          <HexHeader cycle={data.activeCycle} onChanged={loadOverview} />
+          <HexHeader overview={data} apply={apply} refetch={loadOverview} />
           {view === "list" ? (
-            <GoalsListView overview={data} refetch={loadOverview} />
+            <GoalsListView overview={data} apply={apply} refetch={loadOverview} />
           ) : (
-            <GoalsMapView overview={data} refetch={loadOverview} />
+            <GoalsMapView overview={data} apply={apply} refetch={loadOverview} />
           )}
         </>
+      ) : !error ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : null}
     </div>
   );

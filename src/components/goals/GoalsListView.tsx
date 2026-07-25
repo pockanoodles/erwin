@@ -7,13 +7,21 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
 import { format } from "@/lib/date-utils";
+import { STAT_ABBREV, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
 
 import { createGoal, deleteGoal, updateGoal } from "./api";
 import { GoalForm, GoalFormValues } from "./GoalForm";
 import {
+  withGoalAdded,
+  withGoalRemoved,
+  withGoalUpdated,
+} from "./optimistic";
+import {
+  ApplyOverview,
   GoalsOverview,
   OverviewGoal,
+  formatDay,
   goalChildren,
 } from "./types";
 
@@ -57,10 +65,11 @@ function tierBadge(tier: string | null): { label: string; className: string } | 
 
 interface GoalsListViewProps {
   overview: GoalsOverview;
+  apply: ApplyOverview;
   refetch: () => Promise<void>;
 }
 
-export function GoalsListView({ overview, refetch }: GoalsListViewProps) {
+export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) {
   // "root" = adding a top-level goal; a goal id = adding a subgoal under it
   const [addingUnder, setAddingUnder] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,56 +82,63 @@ export function GoalsListView({ overview, refetch }: GoalsListViewProps) {
     whyItMatters: null,
     definitionOfDone: null,
     importanceScore: null,
+    develops: [],
+    isBoss: false,
+    targetDate: null,
   };
 
   const submitAdd = async (values: GoalFormValues) => {
     try {
-      await createGoal({
+      const created = await createGoal({
         ...values,
         ...(addingUnder !== "root" &&
-          addingUnder && { parentGoalId: addingUnder }),
+          addingUnder && { parentGoalIds: [addingUnder] }),
       });
       setAddingUnder(null);
+      apply((o) => withGoalAdded(o, created));
       toast.success("Goal added");
-      await refetch();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add goal");
     }
   };
 
   const submitEdit = async (id: string, values: GoalFormValues) => {
+    setEditingId(null);
+    apply((o) => withGoalUpdated(o, id, values));
     try {
       await updateGoal(id, values);
-      setEditingId(null);
-      toast.success("Goal updated");
-      await refetch();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to update goal");
+      void refetch();
     }
   };
 
-  const remove = async (goal: OverviewGoal) => {
-    const subCount = (byParent.get(goal.id) ?? []).length;
-    const detail = subCount > 0 ? " Its subgoals go with it;" : "";
+  const remove = (goal: OverviewGoal) => {
     if (
-      !window.confirm(`Delete "${goal.title}"?${detail} linked tasks are kept.`)
+      !window.confirm(
+        `Delete "${goal.title}"? Linked goals and tasks are kept — only the links go.`
+      )
     ) {
       return;
     }
-    try {
-      await deleteGoal(goal.id);
-      toast.success("Goal deleted");
-      await refetch();
-    } catch (e) {
+    apply((o) => withGoalRemoved(o, goal.id));
+    deleteGoal(goal.id).catch((e) => {
       toast.error(e instanceof Error ? e.message : "Failed to delete goal");
-    }
+      void refetch();
+    });
   };
 
-  const renderGoal = (goal: OverviewGoal, depth: number) => {
+  const renderGoal = (
+    goal: OverviewGoal,
+    depth: number,
+    path: Set<string>
+  ): React.ReactNode => {
+    if (path.has(goal.id)) return null; // defensive: the API forbids loops
     const children = byParent.get(goal.id) ?? [];
+    const nextPath = new Set(path).add(goal.id);
     return (
       <div
-        key={goal.id}
+        key={`${[...path].join(".")}:${goal.id}`}
         className={cn(depth > 0 && "ml-4 border-l border-border pl-4")}
       >
         {editingId === goal.id ? (
@@ -137,14 +153,49 @@ export function GoalsListView({ overview, refetch }: GoalsListViewProps) {
         ) : (
           <div className="group border-t border-border pt-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h3
-                className={cn(
-                  "font-semibold tracking-tight",
-                  depth === 0 ? "text-lg" : "text-base"
-                )}
-              >
-                {goal.title}
-              </h3>
+              <span className="flex min-w-0 items-baseline gap-2">
+                {goal.isBoss ? (
+                  <span
+                    className="flex-none text-sm"
+                    title={
+                      goal.targetDate
+                        ? `Boss — ${formatDay(goal.targetDate)}`
+                        : "Boss"
+                    }
+                  >
+                    ⚔
+                  </span>
+                ) : null}
+                <h3
+                  className={cn(
+                    "font-semibold tracking-tight",
+                    depth === 0 ? "text-lg" : "text-base"
+                  )}
+                >
+                  {goal.title}
+                </h3>
+                {goal.develops.length > 0 ? (
+                  <span className="flex flex-none gap-1">
+                    {goal.develops.map((key) => (
+                      <span
+                        key={key}
+                        title={key}
+                        className="rounded bg-muted px-1 py-0.5 font-mono text-[10px] text-muted-foreground"
+                      >
+                        {STAT_ABBREV[key as StatKey] ?? key}
+                      </span>
+                    ))}
+                  </span>
+                ) : null}
+                {goal.parentGoalIds.length > 1 ? (
+                  <span
+                    className="flex-none font-mono text-[10px] text-muted-foreground"
+                    title="This goal feeds multiple goals"
+                  >
+                    ⋔ {goal.parentGoalIds.length}
+                  </span>
+                ) : null}
+              </span>
               <span className="flex items-baseline gap-3">
                 {goal.importanceScore != null ? (
                   <span className="font-mono text-xs text-muted-foreground">
@@ -248,7 +299,7 @@ export function GoalsListView({ overview, refetch }: GoalsListViewProps) {
             />
           </div>
         ) : null}
-        {children.map((child) => renderGoal(child, depth + 1))}
+        {children.map((child) => renderGoal(child, depth + 1, nextPath))}
       </div>
     );
   };
@@ -285,7 +336,7 @@ export function GoalsListView({ overview, refetch }: GoalsListViewProps) {
             define it.
           </p>
         ) : (
-          topLevel.map((goal) => renderGoal(goal, 0))
+          topLevel.map((goal) => renderGoal(goal, 0, new Set()))
         )}
       </section>
 

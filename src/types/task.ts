@@ -80,13 +80,18 @@ export interface Task {
   submissionStatus?: string | null;
   externalUrl?: string | null;
   category?: string | null;
-  /** Erwin v2.2: optional link to a Goal in the active cycle */
-  goalId?: string | null;
+  /** Erwin v3: goal links (many-to-many); a task can serve several goals */
+  goalLinks?: { goalId: string }[];
 }
 
 export interface NewTask
-  extends Omit<Task, "id" | "createdAt" | "updatedAt" | "tags" | "project"> {
+  extends Omit<
+    Task,
+    "id" | "createdAt" | "updatedAt" | "tags" | "project" | "goalLinks"
+  > {
   tagIds?: string[];
+  /** Single-goal setter; the API turns it into a TaskGoalLink (null clears links) */
+  goalId?: string | null;
   isAutoScheduled: boolean;
   scheduleLocked: boolean;
 }

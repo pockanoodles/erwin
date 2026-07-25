@@ -81,6 +81,7 @@ export async function PUT(
       },
       include: {
         tags: true,
+        goalLinks: true,
       },
     });
 
@@ -93,7 +94,7 @@ export async function PUT(
     logger.info(`Update payload for task ${id}`, { payload: json }, LOG_SOURCE);
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { tagIds, project, projectId, userId: _, ...updates } = json;
+    const { tagIds, project, projectId, userId: _, goalId, ...updates } = json;
 
     // Set completedAt when task is marked as completed
     if (
@@ -174,7 +175,9 @@ export async function PUT(
               energyLevel: task.energyLevel,
               preferredTime: task.preferredTime,
               projectId: task.projectId,
-              goalId: task.goalId,
+              goalLinks: {
+                create: task.goalLinks.map((link) => ({ goalId: link.goalId })),
+              },
               isRecurring: false,
               completedAt: newDate(), // Set completedAt for the completed instance
               // Associate the task with the current user
@@ -254,6 +257,18 @@ export async function PUT(
         project: true,
       },
     });
+
+    // Legacy single-goal setter: `goalId` in the payload replaces the task's
+    // goal links wholesale (null clears them). Multi-link callers use
+    // /api/erwin/task-links instead.
+    if (goalId !== undefined) {
+      await prisma.$transaction(async (tx) => {
+        await tx.taskGoalLink.deleteMany({ where: { taskId: id } });
+        if (goalId !== null) {
+          await tx.taskGoalLink.create({ data: { taskId: id, goalId } });
+        }
+      });
+    }
 
     // Track the update for sync purposes if the task is in a mapped project
     if (mappingId) {

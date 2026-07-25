@@ -3,9 +3,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      # Use development stage: no `next build` in the image (avoids webpack
-      # production compile issues); entrypoint still runs prisma + `npm run dev`.
-      target: development
+      # Production stage: standalone `next build` + `node server.js`. The dev
+      # server compiled every route on demand, which made the UI feel laggy.
+      target: production
     ports:
       - "3000:3000"
     env_file:
@@ -15,6 +15,9 @@ services:
       # these override the host-oriented localhost values from .env.
       - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
       - REDIS_URL=redis://redis:6379
+      # Next standalone binds this host; without it the server can bind
+      # localhost-only inside the container and break the port mapping.
+      - HOSTNAME=0.0.0.0
     depends_on:
       db:
         condition: service_healthy

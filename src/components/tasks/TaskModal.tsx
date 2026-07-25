@@ -191,7 +191,7 @@ export function TaskModal({
       setIsAutoScheduled(task.isAutoScheduled);
       setScheduleLocked(task.scheduleLocked);
       setPriority(task.priority || null);
-      setGoalId(task.goalId || null);
+      setGoalId(task.goalLinks?.[0]?.goalId ?? null);
     } else if (!task && isOpen) {
       resetForm();
     }
