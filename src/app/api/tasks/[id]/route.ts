@@ -93,8 +93,10 @@ export async function PUT(
     const json = await request.json();
     logger.info(`Update payload for task ${id}`, { payload: json }, LOG_SOURCE);
 
+    // goalLinks is a relation clients receive on reads; strip it so a echoed
+    // task body can't reach prisma.update (links change via `goalId` below).
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { tagIds, project, projectId, userId: _, goalId, ...updates } = json;
+    const { tagIds, project, projectId, userId: _, goalId, goalLinks, ...updates } = json;
 
     // Set completedAt when task is marked as completed
     if (

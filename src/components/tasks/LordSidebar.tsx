@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { cn } from "@/lib/utils";
 
 import { UNASSIGNED_LORD_ID, useLordStore, type Lord } from "@/store/lord";
@@ -55,9 +53,6 @@ export function LordSidebar() {
   return (
     <div className="flex w-64 flex-none flex-col border-r border-border bg-background">
       <div className="flex-1 space-y-1 overflow-y-auto p-3">
-        <p className="px-3 pb-1 pt-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          Lords
-        </p>
         {item(
           "all",
           "All tasks",
@@ -89,14 +84,6 @@ export function LordSidebar() {
             No Lords yet — mint them on the map.
           </p>
         ) : null}
-      </div>
-      <div className="border-t border-border p-3">
-        <Link
-          href="/goals"
-          className="block px-3 py-1 text-xs text-muted-foreground hover:text-foreground"
-        >
-          Manage on the map →
-        </Link>
       </div>
     </div>
   );

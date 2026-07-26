@@ -1,26 +1,32 @@
 import { useMemo } from "react";
 
-import { HiX } from "react-icons/hi";
+import { HiOutlineViewBoards, HiPlus, HiSearch, HiX } from "react-icons/hi";
 
-import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuPortal,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 
 import { newDate } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
-import { useTaskListViewSettings } from "@/store/taskListViewSettings";
+import {
+  TaskColumnId,
+  useTaskListViewSettings,
+} from "@/store/taskListViewSettings";
 
 import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 
-import { SortableHeader, StatusFilter, TaskRow } from "./components";
+import { SortableHeader, TaskRow } from "./components";
 import {
   compareTaskEnergyLevel,
   compareTaskPriority,
@@ -35,6 +41,37 @@ interface TaskListProps {
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onInlineEdit: (task: Task) => void;
 }
+
+type SortKey = ReturnType<typeof useTaskListViewSettings.getState>["sortBy"];
+
+/** Column registry: order here is render order. Title is always visible. */
+const COLUMNS: {
+  id: TaskColumnId;
+  label: string;
+  sortKey: SortKey;
+  width?: string;
+}[] = [
+  { id: "status", label: "Status", sortKey: "status", width: "w-28" },
+  { id: "title", label: "Title", sortKey: "title" },
+  { id: "priority", label: "Priority", sortKey: "priority", width: "w-24" },
+  { id: "energyLevel", label: "Energy", sortKey: "energyLevel", width: "w-24" },
+  {
+    id: "preferredTime",
+    label: "Time",
+    sortKey: "preferredTime",
+    width: "w-24",
+  },
+  { id: "dueDate", label: "Due date", sortKey: "dueDate", width: "w-28" },
+  { id: "duration", label: "Duration", sortKey: "duration", width: "w-20" },
+  { id: "lord", label: "Lord", sortKey: "lord", width: "w-40" },
+  { id: "schedule", label: "Schedule", sortKey: "schedule", width: "w-44" },
+  {
+    id: "startDate",
+    label: "Start date",
+    sortKey: "startDate",
+    width: "w-28",
+  },
+];
 
 export function TaskList({
   tasks,
@@ -52,14 +89,20 @@ export function TaskList({
     tagIds,
     search,
     hideUpcomingTasks,
+    visibleColumns,
     setSortBy,
     setSortDirection,
     setFilters,
-    resetFilters,
+    toggleColumn,
   } = useTaskListViewSettings();
   const { lords, activeLordId } = useLordStore();
 
-  const handleSort = (column: typeof sortBy) => {
+  const visible = useMemo(
+    () => new Set<TaskColumnId>([...visibleColumns, "title"]),
+    [visibleColumns]
+  );
+
+  const handleSort = (column: SortKey) => {
     if (sortBy === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
     } else {
@@ -67,6 +110,13 @@ export function TaskList({
       setSortDirection("desc");
     }
   };
+
+  // Tasks fight for goals; a task's Lord is the root whose subtree holds any
+  // of its linked goals. Used by the Lord column sort.
+  const lordTitleOf = (task: Task) =>
+    lords.find((lord) =>
+      task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
+    )?.title;
 
   // First, scope to the selected Lord's section (its whole path in the DAG)
   const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
@@ -117,10 +167,15 @@ export function TaskList({
           );
         case "status":
           return direction * a.status.localeCompare(b.status);
-        case "project":
-          if (!a.project?.name) return 1;
-          if (!b.project?.name) return -1;
-          return direction * a.project.name.localeCompare(b.project.name);
+        case "lord":
+        case "project": {
+          // "project" is the legacy persisted name for this sort key
+          const aLord = lordTitleOf(a);
+          const bLord = lordTitleOf(b);
+          if (!aLord) return 1;
+          if (!bLord) return -1;
+          return direction * aLord.localeCompare(bLord);
+        }
         case "priority":
           // Sort by semantic rank (low < medium < high, no-priority last), not
           // the alphabetical order of the labels. See task-list-utils.
@@ -163,196 +218,199 @@ export function TaskList({
           );
       }
     });
-  }, [filteredTasks, sortBy, sortDirection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredTasks, sortBy, sortDirection, lords]);
 
-  const hasActiveFilters =
-    status?.length ||
-    energyLevel?.length ||
-    timePreference?.length ||
-    tagIds?.length ||
-    search;
+  const toggleValue = <T,>(current: T[] | undefined, value: T): T[] | undefined => {
+    const next = current?.includes(value)
+      ? current.filter((v) => v !== value)
+      : [...(current ?? []), value];
+    return next.length > 0 ? next : undefined;
+  };
+
+  const filterChip = (label: string, value: string, onClear: () => void) => (
+    <span className="flex h-8 flex-none items-center gap-2 border border-border px-2 font-mono text-xs">
+      <span className="uppercase tracking-wide text-muted-foreground">
+        {label}
+      </span>
+      <span className="max-w-48 truncate text-foreground">{value}</span>
+      <button
+        onClick={onClear}
+        aria-label={`Clear ${label} filter`}
+        className="text-muted-foreground transition-colors duration-150 hover:text-foreground"
+      >
+        <HiX className="h-3 w-3" />
+      </button>
+    </span>
+  );
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mb-4 flex items-center gap-4">
-        <StatusFilter
-          value={status || []}
-          onChange={(value) => setFilters({ status: value })}
-        />
-
-        <Select
-          value={energyLevel?.[0] || "none"}
-          onValueChange={(value) =>
-            setFilters({
-              energyLevel:
-                value !== "none" ? [value as EnergyLevel] : undefined,
-            })
-          }
-        >
-          <SelectTrigger className="h-9 w-[140px]">
-            <SelectValue placeholder="All Energy" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">All Energy</SelectItem>
-            {Object.values(EnergyLevel).map((level) => (
-              <SelectItem key={level} value={level}>
-                {formatEnumValue(level)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select
-          value={timePreference?.[0] || "none"}
-          onValueChange={(value) =>
-            setFilters({
-              timePreference:
-                value !== "none" ? [value as TimePreference] : undefined,
-            })
-          }
-        >
-          <SelectTrigger className="h-9 w-[140px]">
-            <SelectValue placeholder="All Times" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">All Times</SelectItem>
-            {Object.values(TimePreference).map((time) => (
-              <SelectItem key={time} value={time}>
-                {formatEnumValue(time)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <div className="flex flex-1 gap-2">
-          <Input
-            value={search || ""}
-            onChange={(e) =>
-              setFilters({ search: e.target.value || undefined })
-            }
-            placeholder="Search tasks..."
-            className="h-9"
-          />
-          {hasActiveFilters && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={resetFilters}
-              className="h-9"
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex h-8 flex-none items-center gap-1.5 border border-dashed border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground">
+              <HiPlus className="h-3.5 w-3.5" />
+              Add filter
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-48">
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Status</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {Object.values(TaskStatus).map((s) => (
+                    <DropdownMenuCheckboxItem
+                      key={s}
+                      checked={status?.includes(s) ?? false}
+                      onCheckedChange={() =>
+                        setFilters({ status: toggleValue(status, s) })
+                      }
+                    >
+                      {formatEnumValue(s)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Energy</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {Object.values(EnergyLevel).map((level) => (
+                    <DropdownMenuCheckboxItem
+                      key={level}
+                      checked={energyLevel?.includes(level) ?? false}
+                      onCheckedChange={() =>
+                        setFilters({
+                          energyLevel: toggleValue(energyLevel, level),
+                        })
+                      }
+                    >
+                      {formatEnumValue(level)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Time</DropdownMenuSubTrigger>
+              <DropdownMenuPortal>
+                <DropdownMenuSubContent>
+                  {Object.values(TimePreference).map((time) => (
+                    <DropdownMenuCheckboxItem
+                      key={time}
+                      checked={timePreference?.includes(time) ?? false}
+                      onCheckedChange={() =>
+                        setFilters({
+                          timePreference: toggleValue(timePreference, time),
+                        })
+                      }
+                    >
+                      {formatEnumValue(time)}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuPortal>
+            </DropdownMenuSub>
+            <DropdownMenuSeparator />
+            <DropdownMenuCheckboxItem
+              checked={hideUpcomingTasks ?? false}
+              onCheckedChange={(checked) =>
+                setFilters({ hideUpcomingTasks: checked as boolean })
+              }
             >
-              <HiX className="mr-1 h-4 w-4" />
-              Clear Filters
-            </Button>
-          )}
-        </div>
+              Hide upcoming tasks
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="hideUpcomingTasks"
-            checked={hideUpcomingTasks}
-            onCheckedChange={(checked) =>
-              setFilters({ hideUpcomingTasks: checked as boolean })
-            }
-          />
-          <label
-            htmlFor="hideUpcomingTasks"
-            className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Hide upcoming tasks
-          </label>
+        {status?.length
+          ? filterChip(
+              "Status",
+              status.map(formatEnumValue).join(", "),
+              () => setFilters({ status: undefined })
+            )
+          : null}
+        {energyLevel?.length
+          ? filterChip(
+              "Energy",
+              energyLevel.map(formatEnumValue).join(", "),
+              () => setFilters({ energyLevel: undefined })
+            )
+          : null}
+        {timePreference?.length
+          ? filterChip(
+              "Time",
+              timePreference.map(formatEnumValue).join(", "),
+              () => setFilters({ timePreference: undefined })
+            )
+          : null}
+        {hideUpcomingTasks
+          ? filterChip("Hiding", "Upcoming", () =>
+              setFilters({ hideUpcomingTasks: false })
+            )
+          : null}
+
+        <span className="px-1 font-mono text-xs text-muted-foreground">
+          {sortedTasks.length} task{sortedTasks.length === 1 ? "" : "s"}
+        </span>
+
+        <div className="ml-auto flex items-center gap-2">
+          <div className="relative">
+            <HiSearch className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search || ""}
+              onChange={(e) =>
+                setFilters({ search: e.target.value || undefined })
+              }
+              placeholder="Search tasks..."
+              className="h-8 w-56 pl-8"
+            />
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="flex h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground">
+                <HiOutlineViewBoards className="h-3.5 w-3.5" />
+                Columns
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {COLUMNS.map((col) => (
+                <DropdownMenuCheckboxItem
+                  key={col.id}
+                  checked={visible.has(col.id)}
+                  disabled={col.id === "title"}
+                  onCheckedChange={() => toggleColumn(col.id)}
+                >
+                  {col.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col border bg-background">
         <div className="min-h-0 flex-1 overflow-auto">
-          <table className="min-w-full divide-y divide-border">
-            <thead className="sticky top-0 bg-muted">
+          <table className="w-full table-fixed divide-y divide-border">
+            <thead className="sticky top-0 z-10 border-b border-border bg-background">
               <tr>
-                <th
-                  scope="col"
-                  className="w-8 px-3 py-2 text-left text-xs font-medium text-muted-foreground"
-                >
+                <th scope="col" className="w-8 px-2 py-2">
                   {/* Drag handle column */}
                 </th>
-                <SortableHeader
-                  column="status"
-                  label="Status"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-32"
-                />
-                <SortableHeader
-                  column="title"
-                  label="Title"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  column="priority"
-                  label="Priority"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-32"
-                />
-                <SortableHeader
-                  column="energyLevel"
-                  label="Energy"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-32"
-                />
-                <SortableHeader
-                  column="preferredTime"
-                  label="Time"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-32"
-                />
-                <SortableHeader
-                  column="dueDate"
-                  label="Due Date"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-40"
-                />
-                <SortableHeader
-                  column="duration"
-                  label="Duration"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-20"
-                />
-                <SortableHeader
-                  column="project"
-                  label="Project"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-40"
-                />
-                <SortableHeader
-                  column="schedule"
-                  label="Schedule"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                />
-                <SortableHeader
-                  column="startDate"
-                  label="Start Date"
-                  currentSort={sortBy}
-                  direction={sortDirection}
-                  onSort={handleSort}
-                  className="w-40"
-                />
-                <th scope="col" className="relative w-10 px-3 py-2">
+                {COLUMNS.filter((col) => visible.has(col.id)).map((col) => (
+                  <SortableHeader
+                    key={col.id}
+                    column={col.sortKey === "project" ? "lord" : col.sortKey}
+                    label={col.label}
+                    currentSort={sortBy === "project" ? "lord" : sortBy}
+                    direction={sortDirection}
+                    onSort={handleSort}
+                    className={cn(col.width)}
+                  />
+                ))}
+                <th scope="col" className="relative w-28 px-2 py-2">
                   <span className="sr-only">Actions</span>
                 </th>
               </tr>
@@ -362,6 +420,7 @@ export function TaskList({
                 <TaskRow
                   key={task.id}
                   task={task}
+                  visibleColumns={visible}
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onStatusChange={onStatusChange}

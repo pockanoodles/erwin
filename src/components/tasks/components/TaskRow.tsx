@@ -20,6 +20,8 @@ import {
 import { format, newDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
+import { TaskColumnId } from "@/store/taskListViewSettings";
+
 import { Task, TaskStatus } from "@/types/task";
 
 import { useDraggableTask } from "../../dnd/useDragAndDrop";
@@ -32,14 +34,18 @@ import { EditableCell } from "./EditableCell";
 
 interface TaskRowProps {
   task: Task;
+  visibleColumns: Set<TaskColumnId>;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onInlineEdit: (task: Task) => void;
 }
 
+/** One uniform-height row: values truncate instead of wrapping, empty cells
+ *  stay quiet, and the drag handle + actions only surface on hover. */
 export function TaskRow({
   task,
+  visibleColumns,
   onEdit,
   onDelete,
   onStatusChange,
@@ -47,27 +53,28 @@ export function TaskRow({
 }: TaskRowProps) {
   const { draggableProps, isDragging } = useDraggableTask(task);
   const isFutureTask = isUpcomingTask(task);
+  const isCompleted = task.status === TaskStatus.COMPLETED;
 
   return (
     <tr
       key={task.id}
       className={cn(
-        "transition-colors hover:bg-muted/50",
+        "group h-11 transition-colors hover:bg-muted/50",
         isDragging ? "opacity-50" : "",
         isFutureTask ? "bg-muted/25 text-muted-foreground" : ""
       )}
     >
-      <td className="px-3 py-2">
+      <td className="px-2">
         <div
-          className="cursor-grab text-muted-foreground hover:text-foreground"
+          className="cursor-grab text-muted-foreground opacity-0 transition-opacity duration-150 hover:text-foreground group-hover:opacity-100"
           {...draggableProps}
           onClick={(e) => e.stopPropagation()}
         >
           <HiMenuAlt4 className="h-4 w-4" />
         </div>
       </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <div className="flex items-center gap-2">
+      {visibleColumns.has("status") && (
+        <td className="whitespace-nowrap px-3">
           <Select
             value={task.status}
             onValueChange={(value) => {
@@ -91,7 +98,7 @@ export function TaskRow({
             >
               <span
                 className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  "px-2 py-0.5 text-xs font-medium",
                   statusColors[task.status]
                 )}
               >
@@ -103,7 +110,7 @@ export function TaskRow({
                 <SelectItem key={status} value={status}>
                   <span
                     className={cn(
-                      "rounded-full px-2 py-0.5 text-xs font-medium",
+                      "px-2 py-0.5 text-xs font-medium",
                       statusColors[status]
                     )}
                   >
@@ -113,12 +120,174 @@ export function TaskRow({
               ))}
             </SelectContent>
           </Select>
+        </td>
+      )}
+      <td className="max-w-0 px-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <EditableCell
+              task={task}
+              field="title"
+              value={task.title}
+              onSave={onInlineEdit}
+            />
+          </div>
+
+          {task.tags.slice(0, 2).map((tag) => (
+            <span
+              key={tag.id}
+              className="inline-flex flex-none items-center px-1.5 py-0.5 text-xs"
+              style={{
+                backgroundColor: `${tag.color}20` || "var(--muted)",
+                color: tag.color || "var(--muted-foreground)",
+              }}
+            >
+              {tag.name}
+            </span>
+          ))}
+          {task.tags.length > 2 && (
+            <span className="flex-none text-xs text-muted-foreground">
+              +{task.tags.length - 2}
+            </span>
+          )}
+
+          {isFutureTask && (
+            <span className="flex-none bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
+              Upcoming
+            </span>
+          )}
+
+          {task.isRecurring && (
+            <HiRefresh
+              className="h-4 w-4 flex-none text-blue-500"
+              title="Recurring task"
+            />
+          )}
+          {task.scheduleLocked && (
+            <HiLockClosed
+              className="h-4 w-4 flex-none text-amber-500"
+              title="Schedule locked"
+            />
+          )}
+          {task.externalTaskId && (
+            <HiCloud
+              className="h-4 w-4 flex-none text-sky-500"
+              title={`Synced from ${task.source}`}
+            />
+          )}
+        </div>
+      </td>
+      {visibleColumns.has("priority") && (
+        <td className="whitespace-nowrap px-3">
+          <EditableCell
+            task={task}
+            field="priority"
+            value={task.priority}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("energyLevel") && (
+        <td className="whitespace-nowrap px-3">
+          <EditableCell
+            task={task}
+            field="energyLevel"
+            value={task.energyLevel}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("preferredTime") && (
+        <td className="whitespace-nowrap px-3">
+          <EditableCell
+            task={task}
+            field="preferredTime"
+            value={task.preferredTime}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("dueDate") && (
+        <td className="whitespace-nowrap px-3 text-sm text-muted-foreground">
+          <EditableCell
+            task={task}
+            field="dueDate"
+            value={task.dueDate}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("duration") && (
+        <td className="whitespace-nowrap px-3 text-sm text-muted-foreground">
+          <EditableCell
+            task={task}
+            field="duration"
+            value={task.duration}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("lord") && (
+        <td className="max-w-0 px-3">
+          <EditableCell
+            task={task}
+            field="lord"
+            value={task.goalLinks}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      {visibleColumns.has("schedule") && (
+        <td className="whitespace-nowrap px-3">
+          {task.isAutoScheduled ? (
+            <span
+              className="flex items-center gap-1.5 text-sm text-muted-foreground"
+              title={
+                task.scheduleScore
+                  ? `Auto-scheduled · score ${Math.round(task.scheduleScore * 100)}%`
+                  : "Auto-scheduled"
+              }
+            >
+              <HiClock className="h-3.5 w-3.5 flex-none text-cobalt" />
+              {task.scheduledStart && task.scheduledEnd ? (
+                <span className="truncate">
+                  {format(newDate(task.scheduledStart), "MMM d, p")}–
+                  {format(newDate(task.scheduledEnd), "p")}
+                </span>
+              ) : (
+                "Auto"
+              )}
+            </span>
+          ) : (
+            <span className="text-sm text-muted-foreground/50">Manual</span>
+          )}
+        </td>
+      )}
+      {visibleColumns.has("startDate") && (
+        <td className="whitespace-nowrap px-3 text-sm text-muted-foreground">
+          <EditableCell
+            task={task}
+            field="startDate"
+            value={task.startDate}
+            onSave={onInlineEdit}
+          />
+        </td>
+      )}
+      <td className="whitespace-nowrap px-2 text-right text-sm font-medium">
+        <div
+          className={cn(
+            "flex items-center justify-end transition-opacity duration-150",
+            isCompleted
+              ? ""
+              : "opacity-0 focus-within:opacity-100 group-hover:opacity-100"
+          )}
+        >
           <Button
             size="sm"
             variant="ghost"
             className={cn(
               "h-8 w-8 p-1",
-              task.status === TaskStatus.COMPLETED
+              isCompleted
                 ? "bg-green-500/20 text-green-700 hover:bg-green-500/30 dark:text-green-400"
                 : "text-muted-foreground hover:bg-muted hover:text-green-600"
             )}
@@ -126,155 +295,21 @@ export function TaskRow({
               e.stopPropagation();
               onStatusChange(
                 task.id,
-                task.status === TaskStatus.COMPLETED
-                  ? TaskStatus.TODO
-                  : TaskStatus.COMPLETED
+                isCompleted ? TaskStatus.TODO : TaskStatus.COMPLETED
               );
             }}
-            title={
-              task.status === TaskStatus.COMPLETED
-                ? "Mark as todo"
-                : "Mark as completed"
-            }
+            title={isCompleted ? "Mark as todo" : "Mark as completed"}
           >
             <HiCheck className="h-5 w-5" />
           </Button>
-        </div>
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex items-center gap-2">
-          <EditableCell
-            task={task}
-            field="title"
-            value={task.title}
-            onSave={onInlineEdit}
-          />
-
-          {isFutureTask && (
-            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
-              Upcoming
-            </span>
-          )}
-
-          {task.isRecurring && (
-            <HiRefresh
-              className="h-4 w-4 shrink-0 text-blue-500"
-              title="Recurring task"
-            />
-          )}
-          {task.isAutoScheduled && (
-            <HiClock
-              className="h-4 w-4 shrink-0 text-purple-500"
-              title="Auto-scheduled"
-            />
-          )}
-          {task.scheduleLocked && (
-            <HiLockClosed
-              className="h-4 w-4 shrink-0 text-amber-500"
-              title="Schedule locked"
-            />
-          )}
-          {task.externalTaskId && (
-            <HiCloud
-              className="h-4 w-4 shrink-0 text-sky-500"
-              title={`Synced from ${task.source}`}
-            />
-          )}
-        </div>
-      </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <EditableCell
-          task={task}
-          field="priority"
-          value={task.priority}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <EditableCell
-          task={task}
-          field="energyLevel"
-          value={task.energyLevel}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <EditableCell
-          task={task}
-          field="preferredTime"
-          value={task.preferredTime}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-sm text-muted-foreground">
-        <EditableCell
-          task={task}
-          field="dueDate"
-          value={task.dueDate}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-sm text-muted-foreground">
-        <EditableCell
-          task={task}
-          field="duration"
-          value={task.duration}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <EditableCell
-          task={task}
-          field="projectId"
-          value={task.projectId}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2">
-        <div className="flex items-center gap-2">
-          {task.isAutoScheduled ? (
-            <div className="flex items-center gap-1">
-              <HiClock
-                className="h-4 w-4 text-primary"
-                title="Auto-scheduled"
-              />
-              {task.scheduleLocked && (
-                <HiLockClosed
-                  className="h-3 w-3 text-primary"
-                  title="Schedule locked"
-                />
-              )}
-              {task.scheduledStart && task.scheduledEnd && (
-                <span className="text-sm text-primary">
-                  {format(newDate(task.scheduledStart), "MMM d, p")} -{" "}
-                  {format(newDate(task.scheduledEnd), "p")}
-                  {task.scheduleScore && (
-                    <span className="ml-1 text-primary/70">
-                      ({Math.round(task.scheduleScore * 100)}%)
-                    </span>
-                  )}
-                </span>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm text-muted-foreground">Manual</span>
-          )}
-        </div>
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-sm text-muted-foreground">
-        <EditableCell
-          task={task}
-          field="startDate"
-          value={task.startDate}
-          onSave={onInlineEdit}
-        />
-      </td>
-      <td className="whitespace-nowrap px-3 py-2 text-right text-sm font-medium">
-        <div className="flex items-center gap-1">
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-1 text-muted-foreground hover:bg-muted hover:text-primary"
+            className={cn(
+              "h-8 w-8 p-1 text-muted-foreground hover:bg-muted hover:text-primary",
+              isCompleted &&
+                "opacity-0 focus-within:opacity-100 group-hover:opacity-100"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onEdit(task);
@@ -286,7 +321,11 @@ export function TaskRow({
           <Button
             size="sm"
             variant="ghost"
-            className="h-8 w-8 p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+            className={cn(
+              "h-8 w-8 p-1 text-muted-foreground hover:bg-muted hover:text-destructive",
+              isCompleted &&
+                "opacity-0 focus-within:opacity-100 group-hover:opacity-100"
+            )}
             onClick={(e) => {
               e.stopPropagation();
               onDelete(task.id);

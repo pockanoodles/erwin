@@ -24,7 +24,7 @@ import {
   newDateFromYMD,
 } from "@/lib/date-utils";
 
-import { useProjectStore } from "@/store/project";
+import { useLordStore } from "@/store/lord";
 
 import { EnergyLevel, Priority, Task, TimePreference } from "@/types/task";
 
@@ -35,13 +35,18 @@ import {
   timePreferenceColors,
 } from "../utils/task-list-utils";
 
+/** Renders as a quiet value (or —) until clicked, then becomes an editor —
+ *  the Close/Notion table cell pattern. "lord" isn't a Task field: it reads
+ *  from goalLinks and saves through the API's single-goal `goalId` setter. */
 interface EditableCellProps {
   task: Task;
-  field: keyof Task;
+  field: keyof Task | "lord";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   value: any;
-  onSave: (task: Task) => void;
+  onSave: (task: Task & { goalId?: string | null }) => void;
 }
+
+const EMPTY = <span className="text-muted-foreground/50">—</span>;
 
 export function EditableCell({
   task,
@@ -52,7 +57,11 @@ export function EditableCell({
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(value);
   const editRef = useRef<HTMLDivElement>(null);
-  const { projects } = useProjectStore();
+  const { lords } = useLordStore();
+
+  const taskLord = lords.find((lord) =>
+    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
+  );
 
   useEffect(() => {
     setEditValue(value);
@@ -68,7 +77,7 @@ export function EditableCell({
           field !== "energyLevel" &&
           field !== "preferredTime" &&
           field !== "priority" &&
-          field !== "projectId"
+          field !== "lord"
         ) {
           setEditValue(value);
           setIsEditing(false);
@@ -118,118 +127,83 @@ export function EditableCell({
     return (
       <div
         onClick={handleClick}
-        className="-mx-1 cursor-pointer rounded px-1 hover:bg-muted/50"
+        className="-mx-1 min-w-0 cursor-pointer px-1 hover:bg-muted/50"
       >
         {field === "title" ? (
-          <div>
-            <div className="task-title text-sm font-medium text-foreground">
-              {value}
-            </div>
-
-            {task.tags.length > 0 && (
-              <div className="mt-1 flex flex-wrap gap-1">
-                {task.tags.map((tag) => (
-                  <span
-                    key={tag.id}
-                    className="inline-flex items-center rounded px-1.5 py-0.5 text-xs"
-                    style={{
-                      backgroundColor: `${tag.color}20` || "var(--muted)",
-                      color: tag.color || "var(--muted-foreground)",
-                    }}
-                  >
-                    {tag.name}
-                  </span>
-                ))}
-              </div>
-            )}
+          <div className="task-title truncate text-sm font-medium text-foreground">
+            {value}
           </div>
         ) : field === "energyLevel" ? (
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              value
-                ? energyLevelColors[value as EnergyLevel]
-                : "border border-border text-muted-foreground"
-            }`}
-          >
-            {value ? formatEnumValue(value) : "Set energy"}
-          </span>
+          value ? (
+            <span
+              className={`px-2 py-0.5 text-xs ${energyLevelColors[value as EnergyLevel]}`}
+            >
+              {formatEnumValue(value)}
+            </span>
+          ) : (
+            EMPTY
+          )
         ) : field === "preferredTime" ? (
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              value
-                ? timePreferenceColors[value as TimePreference]
-                : "border border-border text-muted-foreground"
-            }`}
-          >
-            {value ? formatEnumValue(value) : "Set time"}
-          </span>
+          value ? (
+            <span
+              className={`px-2 py-0.5 text-xs ${timePreferenceColors[value as TimePreference]}`}
+            >
+              {formatEnumValue(value)}
+            </span>
+          ) : (
+            EMPTY
+          )
         ) : field === "priority" ? (
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              value
-                ? priorityColors[value as Priority]
-                : "border border-border text-muted-foreground"
-            }`}
-          >
-            {value ? formatEnumValue(value) : "Set priority"}
-          </span>
+          value ? (
+            <span
+              className={`px-2 py-0.5 text-xs ${priorityColors[value as Priority]}`}
+            >
+              {formatEnumValue(value)}
+            </span>
+          ) : (
+            EMPTY
+          )
         ) : field === "duration" ? (
-          <span
-            className={`text-sm ${
-              value ? "text-muted-foreground" : "text-muted-foreground/70"
-            }`}
-          >
-            {value ? `${value}m` : "Set duration"}
-          </span>
+          value ? (
+            <span className="text-sm text-muted-foreground">{value}m</span>
+          ) : (
+            EMPTY
+          )
         ) : field === "dueDate" ? (
-          <span
-            className={`group flex items-center gap-1 text-sm ${
-              value
-                ? formatContextualDate(newDate(value)).isOverdue
+          value ? (
+            <span
+              className={`flex items-center gap-1 text-sm ${
+                formatContextualDate(newDate(value)).isOverdue
                   ? "text-destructive"
                   : "text-muted-foreground"
-                : "text-muted-foreground/70"
-            }`}
-          >
-            {value ? (
-              <>
+              }`}
+            >
+              <span className="truncate">
                 {formatContextualDate(newDate(value)).text}
-                {formatContextualDate(newDate(value)).isOverdue && (
-                  <HiExclamation className="h-4 w-4 text-destructive" />
-                )}
-              </>
-            ) : (
-              "Set due date"
-            )}
-          </span>
+              </span>
+              {formatContextualDate(newDate(value)).isOverdue && (
+                <HiExclamation className="h-4 w-4 flex-none text-destructive" />
+              )}
+            </span>
+          ) : (
+            EMPTY
+          )
         ) : field === "startDate" ? (
-          <span
-            className={`text-sm ${
-              value ? "text-muted-foreground" : "text-muted-foreground/70"
-            }`}
-          >
-            {value
-              ? formatContextualDate(newDate(value)).text
-              : "Set start date"}
-          </span>
-        ) : field === "projectId" ? (
-          <div className="flex items-center gap-2">
-            {task.project ? (
-              <>
-                <div
-                  className="h-3 w-3 rounded-full"
-                  style={{
-                    backgroundColor: task.project.color || "var(--muted)",
-                  }}
-                />
-                <span className="text-sm text-foreground">
-                  {task.project.name}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm text-muted-foreground">No project</span>
-            )}
-          </div>
+          value ? (
+            <span className="text-sm text-muted-foreground">
+              {formatContextualDate(newDate(value)).text}
+            </span>
+          ) : (
+            EMPTY
+          )
+        ) : field === "lord" ? (
+          taskLord ? (
+            <span className="block truncate text-sm text-foreground">
+              {taskLord.title}
+            </span>
+          ) : (
+            EMPTY
+          )
         ) : (
           value
         )}
@@ -428,42 +402,24 @@ export function EditableCell({
             <HiX className="h-4 w-4" />
           </Button>
         </div>
-      ) : field === "projectId" ? (
+      ) : field === "lord" ? (
         <Select
-          value={editValue || "none"}
+          value={taskLord?.id || "none"}
           onValueChange={(value) => {
-            onSave({ ...task, projectId: value === "none" ? null : value });
+            // The API's single-goal setter: replaces the task's goal links
+            // with a link to the chosen Lord (null clears them).
+            onSave({ ...task, goalId: value === "none" ? null : value });
             setIsEditing(false);
           }}
         >
           <SelectTrigger className="h-8 min-w-[140px]">
-            <SelectValue>
-              {task.project ? (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{
-                      backgroundColor: task.project.color || "var(--muted)",
-                    }}
-                  />
-                  <span>{task.project.name}</span>
-                </div>
-              ) : (
-                "No project"
-              )}
-            </SelectValue>
+            <SelectValue>{taskLord?.title ?? "Unassigned"}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="none">No project</SelectItem>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                <div className="flex items-center gap-2">
-                  <div
-                    className="h-3 w-3 rounded-full"
-                    style={{ backgroundColor: project.color || "var(--muted)" }}
-                  />
-                  <span>{project.name}</span>
-                </div>
+            <SelectItem value="none">Unassigned</SelectItem>
+            {lords.map((lord) => (
+              <SelectItem key={lord.id} value={lord.id}>
+                {lord.title}
               </SelectItem>
             ))}
           </SelectContent>

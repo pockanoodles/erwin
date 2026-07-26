@@ -94,17 +94,15 @@ export default function TasksPage() {
     }
   };
 
-  const handleInlineEdit = async (task: Task) => {
+  const handleInlineEdit = async (task: Task & { goalId?: string | null }) => {
+    // goalLinks is a relation (display-only); the Lord cell edits it through
+    // the API's single-goal `goalId` setter instead.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { id, tags, createdAt, updatedAt, project, ...updates } = task;
-    console.log("Updating task:", { id, updates });
+    const { id, tags, createdAt, updatedAt, project, goalLinks, ...updates } =
+      task;
     try {
       await updateTask(id, updates);
       await fetchTasks();
-      // If projectId was changed, refresh projects to update task counts
-      if ("projectId" in updates) {
-        await fetchProjects();
-      }
     } catch (error) {
       console.error("Error updating task:", error);
       toast.error("Failed to update task", {
