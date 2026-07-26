@@ -16,8 +16,7 @@ import { cn } from "@/lib/utils";
 
 import { useNavUIStore } from "@/store/navUi";
 
-import { ThemeToggle } from "./ThemeToggle";
-import { UserMenu } from "./UserMenu";
+import { SettingsMenu } from "./SettingsMenu";
 
 interface AppNavProps {
   className?: string;
@@ -56,27 +55,47 @@ export function AppNav({ className }: AppNavProps) {
   return (
     <div
       className={cn(
-        "sticky top-0 z-40 h-dvh flex-none overflow-hidden border-r border-border bg-background",
+        // overflow-clip (not hidden): focusing the full-width Settings/search
+        // rows must never scroll the clipped rail and shove the icons offscreen.
+        "sticky top-0 z-40 h-dvh flex-none overflow-clip border-r border-border bg-background",
         "transition-[width] duration-300 ease-out motion-reduce:transition-none",
-        isNavOpen ? "w-56" : "w-14",
+        isNavOpen ? "w-48" : "w-14",
         !isHydrated && "duration-0",
         className
       )}
     >
-      <nav className="flex h-full w-56 flex-col py-3">
-        <button
-          onClick={() => setNavOpen(!isNavOpen)}
-          aria-label={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
-          aria-expanded={isNavOpen}
-          title={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
-          className="mb-4 flex h-10 items-center gap-3 px-[18px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-        >
-          {isNavOpen ? (
-            <HiOutlineChevronDoubleLeft className="h-4 w-4 flex-none" />
-          ) : (
-            <HiOutlineChevronDoubleRight className="h-4 w-4 flex-none" />
-          )}
-        </button>
+      <nav className="flex h-full w-48 flex-col py-3">
+        <div className="mb-4 flex h-10 items-center">
+          <button
+            onClick={() => setNavOpen(!isNavOpen)}
+            aria-label={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
+            aria-expanded={isNavOpen}
+            title={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
+            className="flex h-10 w-14 flex-none items-center px-[18px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
+          >
+            {isNavOpen ? (
+              <HiOutlineChevronDoubleLeft className="h-4 w-4 flex-none" />
+            ) : (
+              <HiOutlineChevronDoubleRight className="h-4 w-4 flex-none" />
+            )}
+          </button>
+          <button
+            onClick={openCommandPalette}
+            title="Search or run a command (⌘K)"
+            tabIndex={isNavOpen ? 0 : -1}
+            className={cn(
+              "mr-3 flex h-8 min-w-0 flex-1 items-center gap-2 border border-border px-2 text-sm text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground",
+              label,
+              !isNavOpen && "pointer-events-none"
+            )}
+          >
+            <HiOutlineSearch className="h-4 w-4 flex-none" />
+            <span>Search</span>
+            <kbd className="ml-auto border border-border px-1 py-0.5 font-mono text-[10px]">
+              ⌘K
+            </kbd>
+          </button>
+        </div>
 
         {links.map((link) => {
           const Icon = link.icon;
@@ -101,28 +120,7 @@ export function AppNav({ className }: AppNavProps) {
         })}
 
         <div className="mt-auto">
-          <button
-            onClick={openCommandPalette}
-            className="flex h-10 w-full items-center gap-3 whitespace-nowrap px-[18px] text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
-            title="Search or run a command (⌘K)"
-          >
-            <HiOutlineSearch className="h-4 w-4 flex-none" />
-            <span className={label}>Search</span>
-            <kbd
-              className={cn(
-                "ml-auto mr-4 border border-border px-1 py-0.5 font-mono text-[10px]",
-                label
-              )}
-            >
-              ⌘K
-            </kbd>
-          </button>
-          <div className="flex h-10 items-center px-[10px]">
-            <ThemeToggle />
-          </div>
-          <div className="flex h-10 items-center px-[10px]">
-            <UserMenu />
-          </div>
+          <SettingsMenu labelClassName={label} />
         </div>
       </nav>
     </div>
