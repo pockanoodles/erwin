@@ -13,6 +13,7 @@ interface ColumnProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onInlineEdit: (task: Task & { goalId?: string | null }) => void;
 }
 
 const statusDots = {
@@ -30,7 +31,13 @@ const formatEnumValue = (value: string) => {
     .join(" ");
 };
 
-export function Column({ status, tasks, onEdit, onDelete }: ColumnProps) {
+export function Column({
+  status,
+  tasks,
+  onEdit,
+  onDelete,
+  onInlineEdit,
+}: ColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: status,
   });
@@ -64,6 +71,7 @@ export function Column({ status, tasks, onEdit, onDelete }: ColumnProps) {
               task={task}
               onEdit={onEdit}
               onDelete={onDelete}
+              onInlineEdit={onInlineEdit}
             />
           ))}
         </div>

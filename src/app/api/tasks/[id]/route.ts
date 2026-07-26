@@ -93,10 +93,24 @@ export async function PUT(
     const json = await request.json();
     logger.info(`Update payload for task ${id}`, { payload: json }, LOG_SOURCE);
 
-    // goalLinks is a relation clients receive on reads; strip it so a echoed
-    // task body can't reach prisma.update (links change via `goalId` below).
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { tagIds, project, projectId, userId: _, goalId, goalLinks, ...updates } = json;
+    // Clients echo whole task objects back; strip everything prisma.update
+    // can't take. goalLinks/tags/project are relations (links change via
+    // `goalId` below), and taskProviderId is an FK scalar that the checked
+    // update input rejects once the nested `project` write is present.
+    const {
+      tagIds,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      project,
+      projectId,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      userId: _,
+      goalId,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      goalLinks,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      taskProviderId,
+      ...updates
+    } = json;
 
     // Set completedAt when task is marked as completed
     if (

@@ -201,6 +201,15 @@ export function EditableCell({
             <span className="block truncate text-sm text-foreground">
               {taskLord.title}
             </span>
+          ) : task.goalLinks?.length ? (
+            // Linked to a goal outside the active hex's lords — not
+            // unassigned. Picking a lord here replaces that link.
+            <span
+              className="block truncate text-sm italic text-muted-foreground"
+              title="Linked to a goal outside the current hex"
+            >
+              Other hex
+            </span>
           ) : (
             EMPTY
           )

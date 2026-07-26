@@ -1,7 +1,14 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { HiClock, HiLockClosed, HiPencil, HiTrash } from "react-icons/hi";
+import { HiClock, HiFlag, HiLockClosed, HiPencil, HiTrash } from "react-icons/hi";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+} from "@/components/ui/select";
 
 import {
   format,
@@ -15,12 +22,15 @@ import {
 } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
+import { useLordStore } from "@/store/lord";
+
 import { Task, TimePreference } from "@/types/task";
 
 interface BoardTaskProps {
   task: Task;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onInlineEdit: (task: Task & { goalId?: string | null }) => void;
 }
 
 const energyLevelColors = {
@@ -75,7 +85,12 @@ const formatContextualDate = (date: Date) => {
   return { text, isOverdue, isFuture };
 };
 
-export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
+export function BoardTask({
+  task,
+  onEdit,
+  onDelete,
+  onInlineEdit,
+}: BoardTaskProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
@@ -84,6 +99,10 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
         task,
       },
     });
+  const { lords } = useLordStore();
+  const taskLord = lords.find((lord) =>
+    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
+  );
 
   const style = transform
     ? {
@@ -183,19 +202,49 @@ export function BoardTask({ task, onEdit, onDelete }: BoardTaskProps) {
               </span>
             )}
 
-            {task.project && (
-              <div className="flex items-center gap-1">
-                <div
-                  className="h-2 w-2 rounded-full"
-                  style={{
-                    backgroundColor: task.project.color || "var(--muted)",
-                  }}
-                />
-                <span className="text-muted-foreground">
-                  {task.project.name}
-                </span>
-              </div>
-            )}
+            {/* Lord chip: editable in place. The wrapper swallows pointer
+                events so opening the select never starts a card drag. */}
+            <div
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Select
+                value={taskLord?.id || "none"}
+                onValueChange={(value) => {
+                  onInlineEdit({
+                    ...task,
+                    goalId: value === "none" ? null : value,
+                  });
+                }}
+              >
+                <SelectTrigger
+                  className={cn(
+                    "h-auto gap-1 border-none bg-transparent p-0 text-xs shadow-none transition-colors duration-150 focus:ring-0",
+                    taskLord
+                      ? "text-muted-foreground hover:text-foreground"
+                      : "text-muted-foreground/50 hover:text-foreground"
+                  )}
+                  title="Assign Lord"
+                >
+                  <span className="flex items-center gap-1">
+                    <HiFlag className="h-3 w-3 flex-none" />
+                    {taskLord
+                      ? taskLord.title
+                      : task.goalLinks?.length
+                        ? "Other hex"
+                        : "No lord"}
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Unassigned</SelectItem>
+                  {lords.map((lord) => (
+                    <SelectItem key={lord.id} value={lord.id}>
+                      {lord.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {task.isAutoScheduled &&
               task.scheduledStart &&

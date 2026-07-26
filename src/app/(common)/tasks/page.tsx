@@ -115,7 +115,7 @@ export default function TasksPage() {
     <div className="flex h-full">
       <LordSidebar />
       <div className="flex min-w-0 flex-1 flex-col" data-task-page>
-        <div className="border-b border-border px-6 py-4">
+        <div className="border-b border-border px-6 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="text-2xl font-light tracking-tight text-foreground">
@@ -151,6 +151,7 @@ export default function TasksPage() {
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={() => {
                   scheduleAllTasks();
                 }}
@@ -159,6 +160,7 @@ export default function TasksPage() {
               </Button>
               <Button
                 data-create-task-button
+                size="sm"
                 onClick={() => {
                   setSelectedTask(undefined);
                   // Creating inside a Lord's section pre-links the task to
@@ -204,6 +206,7 @@ export default function TasksPage() {
               }}
               onDelete={handleDeleteTask}
               onStatusChange={handleStatusChange}
+              onInlineEdit={handleInlineEdit}
             />
           )}
         </div>

@@ -378,3 +378,26 @@
   font-weight: 500 !important;
   opacity: 1 !important;
 }
+
+/* Quiet scrollbars: a thin, borderless thumb on a transparent track so the
+   scroll affordance never competes with the content. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+::-webkit-scrollbar-corner {
+  background: transparent;
+}

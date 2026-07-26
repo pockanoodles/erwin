@@ -16,6 +16,7 @@ interface BoardViewProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onInlineEdit: (task: Task & { goalId?: string | null }) => void;
 }
 
 export function BoardView({
@@ -23,6 +24,7 @@ export function BoardView({
   onEdit,
   onDelete,
   onStatusChange,
+  onInlineEdit,
 }: BoardViewProps) {
   const { lords, activeLordId } = useLordStore();
   const { energyLevel, timePreference, tagIds, search } =
@@ -108,6 +110,7 @@ export function BoardView({
               tasks={columns[status]}
               onEdit={onEdit}
               onDelete={onDelete}
+              onInlineEdit={onInlineEdit}
             />
           ))}
         </DndContext>
