@@ -3,8 +3,10 @@ const nextConfig = {
   // Disable all development indicators
   devIndicators: false,
 
-  // Enable standalone output for Docker deployment
-  output: "standalone",
+  // Standalone output is only needed for the minimal Docker image. Native
+  // `next start` (the daily-driver run path) needs a full build, and using
+  // standalone with `next start` is unsupported — so gate it behind a flag.
+  output: process.env.ERWIN_STANDALONE === "1" ? "standalone" : undefined,
 
   // Determine which file extensions to use based on SAAS enablement
   pageExtensions: (() => {
