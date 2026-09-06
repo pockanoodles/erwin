@@ -344,9 +344,16 @@ interface GoalsMapViewProps {
   overview: GoalsOverview;
   apply: ApplyOverview;
   refetch: () => Promise<void>;
+  /** Vault-canonical goals: no connect/delete/edit (see goals/page.tsx). */
+  readOnly?: boolean;
 }
 
-export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
+export function GoalsMapView({
+  overview,
+  apply,
+  refetch,
+  readOnly = false,
+}: GoalsMapViewProps) {
   const { resolvedTheme } = useTheme();
   const graph = useMemo(() => buildGraph(overview), [overview]);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(graph.nodes);
@@ -507,20 +514,24 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-end gap-1">
-        <Button
-          size="sm"
-          onClick={async () => {
-            try {
-              const created = await createGoal({ title: "New Lord" });
-              apply((o) => withGoalAdded(o, created));
-              toast.success("Lord added — click it to rename");
-            } catch (e) {
-              toast.error(e instanceof Error ? e.message : "Failed to add Lord");
-            }
-          }}
-        >
-          Add Lord
-        </Button>
+        {!readOnly && (
+          <Button
+            size="sm"
+            onClick={async () => {
+              try {
+                const created = await createGoal({ title: "New Lord" });
+                apply((o) => withGoalAdded(o, created));
+                toast.success("Lord added — click it to rename");
+              } catch (e) {
+                toast.error(
+                  e instanceof Error ? e.message : "Failed to add Lord"
+                );
+              }
+            }}
+          >
+            Add Lord
+          </Button>
+        )}
         <Button
           size="sm"
           variant="ghost"
@@ -552,10 +563,12 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onEdgesDelete={onEdgesDelete}
+        onConnect={readOnly ? undefined : onConnect}
+        onEdgesDelete={readOnly ? undefined : onEdgesDelete}
         isValidConnection={isValidConnection}
+        nodesConnectable={!readOnly}
         onNodeClick={(_, node) => {
+          if (readOnly) return;
           if (node.id.startsWith("g:")) {
             setSelected({ kind: "goal", id: node.id.slice(2) });
           } else if (node.id.startsWith("t:")) {
@@ -563,7 +576,7 @@ export function GoalsMapView({ overview, apply, refetch }: GoalsMapViewProps) {
           }
         }}
         onPaneClick={() => setSelected(null)}
-        deleteKeyCode={["Backspace", "Delete"]}
+        deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         fitView
         minZoom={0.2}
         defaultEdgeOptions={{

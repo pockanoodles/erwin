@@ -105,9 +105,16 @@ interface GoalsListViewProps {
   overview: GoalsOverview;
   apply: ApplyOverview;
   refetch: () => Promise<void>;
+  /** Vault-canonical goals: hide all mutation controls (see goals/page.tsx). */
+  readOnly?: boolean;
 }
 
-export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) {
+export function GoalsListView({
+  overview,
+  apply,
+  refetch,
+  readOnly = false,
+}: GoalsListViewProps) {
   // "root" = adding a top-level goal; a goal id = adding a subgoal under it
   const [addingUnder, setAddingUnder] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -266,38 +273,40 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
                     {Math.round(goal.importanceScore)}/100
                   </span>
                 ) : null}
-                <span className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
-                    onClick={() => {
-                      setEditingId(null);
-                      setAddingUnder(goal.id);
-                    }}
-                  >
-                    Add boss
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
-                    onClick={() => {
-                      setAddingUnder(null);
-                      setEditingId(goal.id);
-                    }}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground hover:text-destructive"
-                    onClick={() => remove(goal)}
-                  >
-                    Delete
-                  </Button>
-                </span>
+                {!readOnly && (
+                  <span className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
+                      onClick={() => {
+                        setEditingId(null);
+                        setAddingUnder(goal.id);
+                      }}
+                    >
+                      Add boss
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
+                      onClick={() => {
+                        setAddingUnder(null);
+                        setEditingId(goal.id);
+                      }}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground hover:text-destructive"
+                      onClick={() => remove(goal)}
+                    >
+                      Delete
+                    </Button>
+                  </span>
+                )}
               </span>
             </div>
             {goal.whyItMatters ? (
@@ -373,7 +382,7 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
       <section className="space-y-6">
         <div className="flex items-baseline justify-between gap-2">
           <SectionLabel>Bosses</SectionLabel>
-          {addingUnder === null && editingId === null ? (
+          {!readOnly && addingUnder === null && editingId === null ? (
             <Button
               variant="ghost"
               size="sm"
@@ -399,6 +408,8 @@ export function GoalsListView({ overview, apply, refetch }: GoalsListViewProps) 
             No Lords in this hex yet — name the two or three big fights that
             define it.
           </p>
+        ) : readOnly ? (
+          <div>{topLevel.map((goal) => renderGoal(goal, 0, new Set()))}</div>
         ) : (
           <DndContext
             sensors={sensors}

@@ -19,12 +19,19 @@ interface HexHeaderProps {
   overview: GoalsOverview;
   apply: ApplyOverview;
   refetch: () => Promise<void>;
+  /** Vault-canonical goals: hide the hex edit controls (see goals/page.tsx). */
+  readOnly?: boolean;
 }
 
 /** The current hex: fixed two-month block, always present. The Build (focus
  *  stats) and theme are editable — the calendar owns the dates, and the boss
  *  is derived from the hex's goals (nearest-dated active boss goal). */
-export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
+export function HexHeader({
+  overview,
+  apply,
+  refetch,
+  readOnly = false,
+}: HexHeaderProps) {
   const cycle = overview.activeCycle;
   const [isEditing, setIsEditing] = useState(false);
   const [theme, setTheme] = useState(cycle.theme);
@@ -144,20 +151,22 @@ export function HexHeader({ overview, apply, refetch }: HexHeaderProps) {
                 · {cycle.theme}
               </span>
             ) : null}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
-              onClick={() => {
-                setTheme(cycle.theme);
-                setFocusStats(cycle.focusStats);
-                setIsEditing(true);
-              }}
-            >
-              {cycle.focusStats.length > 0 || cycle.theme
-                ? "Edit"
-                : "Set the Build"}
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto px-1.5 py-0.5 text-xs text-muted-foreground"
+                onClick={() => {
+                  setTheme(cycle.theme);
+                  setFocusStats(cycle.focusStats);
+                  setIsEditing(true);
+                }}
+              >
+                {cycle.focusStats.length > 0 || cycle.theme
+                  ? "Edit"
+                  : "Set the Build"}
+              </Button>
+            )}
           </div>
           {boss ? (
             <p className="text-sm">

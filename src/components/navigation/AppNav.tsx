@@ -3,12 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { BsListTask, BsCalendar } from "react-icons/bs";
 import {
   HiOutlineChevronDoubleLeft,
   HiOutlineChevronDoubleRight,
-  HiOutlineFlag,
-  HiOutlineLightBulb,
   HiOutlineSearch,
 } from "react-icons/hi";
 
@@ -41,10 +38,11 @@ export function AppNav({ className }: AppNavProps) {
   };
 
   const links = [
-    { href: "/focus", label: "Focus", icon: HiOutlineLightBulb },
-    { href: "/calendar", label: "Calendar", icon: BsCalendar },
-    { href: "/tasks", label: "Tasks", icon: BsListTask },
-    { href: "/goals", label: "Bosses", icon: HiOutlineFlag },
+    { href: "/today", label: "Today" },
+    { href: "/focus", label: "Focus" },
+    { href: "/calendar", label: "Calendar" },
+    { href: "/tasks", label: "Tasks" },
+    { href: "/goals", label: "Bosses" },
   ];
 
   const label = cn(
@@ -91,14 +89,10 @@ export function AppNav({ className }: AppNavProps) {
           >
             <HiOutlineSearch className="h-4 w-4 flex-none" />
             <span>Search</span>
-            <kbd className="ml-auto border border-border px-1 py-0.5 font-mono text-[10px]">
-              ⌘K
-            </kbd>
           </button>
         </div>
 
         {links.map((link) => {
-          const Icon = link.icon;
           const isActive = pathname === link.href;
 
           return (
@@ -107,13 +101,12 @@ export function AppNav({ className }: AppNavProps) {
               href={link.href}
               title={link.label}
               className={cn(
-                "flex h-10 items-center gap-3 whitespace-nowrap px-[18px] text-sm font-medium transition-colors duration-150",
+                "flex h-10 items-center whitespace-nowrap px-[18px] text-sm font-medium transition-colors duration-150",
                 isActive
                   ? "text-cobalt"
                   : "text-foreground hover:bg-muted"
               )}
             >
-              <Icon className="h-4 w-4 flex-none" />
               <span className={label}>{link.label}</span>
             </Link>
           );

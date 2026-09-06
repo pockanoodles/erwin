@@ -17,6 +17,10 @@ export default function GoalsPage() {
   const [data, setData] = useState<GoalsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
+  // Goals are vault-canonical — the ops project-goals pump mirrors them in from
+  // ~/Brain, so edits made here are overwritten on the next sync. The page is a
+  // read-only projection viewer; author goals in the vault (Obsidian).
+  const readOnly = true;
 
   const loadOverview = useCallback(async () => {
     try {
@@ -51,7 +55,12 @@ export default function GoalsPage() {
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         {data ? (
-          <HexHeader overview={data} apply={apply} refetch={loadOverview} />
+          <HexHeader
+            overview={data}
+            apply={apply}
+            refetch={loadOverview}
+            readOnly={readOnly}
+          />
         ) : (
           <div />
         )}
@@ -83,6 +92,12 @@ export default function GoalsPage() {
         </div>
       </div>
 
+      {readOnly ? (
+        <p className="border border-border bg-muted px-3 py-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
+          These goals mirror your vault (~/Brain) — edit them there
+        </p>
+      ) : null}
+
       {error ? (
         <p className="text-sm text-destructive" role="alert">
           {error}
@@ -91,9 +106,19 @@ export default function GoalsPage() {
 
       {data ? (
         view === "list" ? (
-          <GoalsListView overview={data} apply={apply} refetch={loadOverview} />
+          <GoalsListView
+            overview={data}
+            apply={apply}
+            refetch={loadOverview}
+            readOnly={readOnly}
+          />
         ) : (
-          <GoalsMapView overview={data} apply={apply} refetch={loadOverview} />
+          <GoalsMapView
+            overview={data}
+            apply={apply}
+            refetch={loadOverview}
+            readOnly={readOnly}
+          />
         )
       ) : !error ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
