@@ -8,6 +8,19 @@ import { TaskStatus } from "@/types/task";
 
 type ApiTask = Record<string, unknown>;
 
+/** A goal a task ladders up to (from TaskGoalLink → Goal), surfaced for the
+ *  command dashboard. Dates stay ISO strings — render via `formatDay`. */
+export interface LadderGoal {
+  id: string;
+  title: string;
+  isBoss: boolean;
+  targetDate: string | null;
+  externalId: string | null;
+  importanceScore: number | null;
+  develops: string[];
+  whyItMatters: string | null;
+}
+
 /** Task row from `/api/erwin/focus/queue` (client-only `erwin` flags). */
 export type FocusQueueTask = Task & {
   erwin?: {
@@ -25,6 +38,9 @@ export type FocusQueueTask = Task & {
     lastSkippedAgo?: string | null;
     effortEstimate?: string;
   };
+  /** Goals this task climbs toward. The queue join (`goalLinks[].goal`) is
+   *  mapped here; the base `Task.goalLinks` only carries ids. */
+  ladderGoals?: LadderGoal[];
 };
 
 function parseDate(v: unknown): Date | null {
@@ -44,6 +60,23 @@ function parseDate(v: unknown): Date | null {
 export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
   const tags = (raw.tags as Tag[] | undefined) ?? [];
   const project = (raw.project as Project | null | undefined) ?? null;
+
+  const ladderGoals: LadderGoal[] = Array.isArray(raw.goalLinks)
+    ? (raw.goalLinks as Array<{ goal?: Record<string, unknown> }>)
+        .map((link) => link.goal)
+        .filter((g): g is Record<string, unknown> => Boolean(g))
+        .map((g) => ({
+          id: String(g.id),
+          title: String(g.title ?? ""),
+          isBoss: Boolean(g.isBoss),
+          targetDate: (g.targetDate as string | null) ?? null,
+          externalId: (g.externalId as string | null) ?? null,
+          importanceScore:
+            g.importanceScore == null ? null : Number(g.importanceScore),
+          develops: Array.isArray(g.develops) ? (g.develops as string[]) : [],
+          whyItMatters: (g.whyItMatters as string | null) ?? null,
+        }))
+    : [];
 
   return {
     id: String(raw.id),
@@ -92,5 +125,21 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
     externalUrl: (raw.externalUrl as string | null | undefined) ?? null,
     category: (raw.category as string | null | undefined) ?? null,
     erwin: raw.erwin as FocusQueueTask["erwin"],
+    ladderGoals,
   };
+}
+
+/** The goal a task most represents climbing toward: a boss outranks a Lord,
+ *  then higher importance. Null when the task links to no goal yet. */
+export function primaryLadderGoal(task: FocusQueueTask): LadderGoal | null {
+  const goals = task.ladderGoals ?? [];
+  if (goals.length === 0) {
+    return null;
+  }
+  return [...goals].sort((a, b) => {
+    if (a.isBoss !== b.isBoss) {
+      return a.isBoss ? -1 : 1;
+    }
+    return (b.importanceScore ?? 0) - (a.importanceScore ?? 0);
+  })[0];
 }

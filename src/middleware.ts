@@ -76,7 +76,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Root path: authenticated → /focus, unauthenticated → /auth/signin
+  // Root path: authenticated → /today (the command dashboard, the daily driver),
+  // unauthenticated → /auth/signin. /focus stays reachable as opt-in focus mode.
   if (pathname === "/") {
     if (request.headers.get("accept")?.includes("application/json")) {
       return NextResponse.next();
@@ -86,7 +87,7 @@ export async function middleware(request: NextRequest) {
       secret: process.env.NEXTAUTH_SECRET,
     });
     return token
-      ? NextResponse.redirect(new URL("/focus", request.url))
+      ? NextResponse.redirect(new URL("/today", request.url))
       : NextResponse.redirect(new URL("/auth/signin", request.url));
   }
 
