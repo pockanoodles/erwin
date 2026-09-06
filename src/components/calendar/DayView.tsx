@@ -219,19 +219,24 @@ export function DayView({ currentDate, onDateClick }: DayViewProps) {
   const handleQuickViewDelete = async () => {
     if (!quickViewItem) return;
 
-    if (isTask) {
-      if (confirm("Are you sure you want to delete this task?")) {
-        await useTaskStore.getState().deleteTask(quickViewItem.id);
-        handleQuickViewClose();
+    try {
+      if (isTask) {
+        if (confirm("Are you sure you want to delete this task?")) {
+          await useTaskStore.getState().deleteTask(quickViewItem.id);
+          handleQuickViewClose();
+        }
+      } else {
+        if (confirm("Are you sure you want to delete this event?")) {
+          await removeEvent(
+            quickViewItem.id,
+            quickViewItem.isRecurring ? "series" : "single"
+          );
+          handleQuickViewClose();
+        }
       }
-    } else {
-      if (confirm("Are you sure you want to delete this event?")) {
-        await removeEvent(
-          quickViewItem.id,
-          quickViewItem.isRecurring ? "series" : "single"
-        );
-        handleQuickViewClose();
-      }
+    } catch (error) {
+      console.error("Failed to delete from quick view:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete");
     }
   };
 

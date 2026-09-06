@@ -224,21 +224,26 @@ export function WeekView({ currentDate, onDateClick }: WeekViewProps) {
   const handleQuickViewDelete = async () => {
     if (!quickViewItem) return;
 
-    if (isTask) {
-      // It's a task
-      if (confirm("Are you sure you want to delete this task?")) {
-        await useTaskStore.getState().deleteTask(quickViewItem.id);
-        handleQuickViewClose();
+    try {
+      if (isTask) {
+        // It's a task
+        if (confirm("Are you sure you want to delete this task?")) {
+          await useTaskStore.getState().deleteTask(quickViewItem.id);
+          handleQuickViewClose();
+        }
+      } else {
+        // It's an event
+        if (confirm("Are you sure you want to delete this event?")) {
+          await removeEvent(
+            quickViewItem.id,
+            quickViewItem.isRecurring ? "series" : "single"
+          );
+          handleQuickViewClose();
+        }
       }
-    } else {
-      // It's an event
-      if (confirm("Are you sure you want to delete this event?")) {
-        await removeEvent(
-          quickViewItem.id,
-          quickViewItem.isRecurring ? "series" : "single"
-        );
-        handleQuickViewClose();
-      }
+    } catch (error) {
+      console.error("Failed to delete from quick view:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete");
     }
   };
 

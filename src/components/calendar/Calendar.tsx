@@ -87,12 +87,12 @@ export function Calendar({
       {/* Sidebar */}
       <aside
         className={cn(
-          "h-full w-80 flex-none border-r border-gray-200 bg-white",
+          "h-full w-56 flex-none border-r border-gray-200 bg-white",
           "transform transition-transform duration-300 ease-in-out",
           !isHydrated && "opacity-0 duration-0",
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}
-        style={{ marginLeft: isSidebarOpen ? 0 : "-20rem" }}
+        style={{ marginLeft: isSidebarOpen ? 0 : "-14rem" }}
       >
         <div className="flex h-full flex-col">
           {/* Feed Manager */}

@@ -1,3 +1,4 @@
+import { GaxiosError } from "gaxios";
 import type { calendar_v3 } from "googleapis";
 
 import { useSettingsStore } from "@/store/settings";
@@ -267,10 +268,20 @@ export async function deleteGoogleEvent(
   try {
     // Get the event so we can distinguish a recurring master from an expanded
     // occurrence (a master has `recurrence` but no `recurringEventId`).
-    const event = await calendar.events.get({
-      calendarId,
-      eventId,
-    });
+    let event;
+    try {
+      event = await calendar.events.get({
+        calendarId,
+        eventId,
+      });
+    } catch (error) {
+      if (error instanceof GaxiosError && Number(error.code) === 404) {
+        // Already gone on Google's side (deleted elsewhere, sync lag) — the
+        // desired end state already holds, so this is success, not failure.
+        return;
+      }
+      throw error;
+    }
 
     // For series deletion, target the master recurring event id.
     if (mode === "series") {
@@ -304,10 +315,19 @@ export async function deleteGoogleEvent(
     // the clicked occurrence (an expanded instance id for recurring events, or
     // the event's own id otherwise), so delete it directly. Do NOT re-query for
     // the "next upcoming" instance, which would delete the wrong occurrence.
-    await calendar.events.delete({
-      calendarId,
-      eventId,
-    });
+    try {
+      await calendar.events.delete({
+        calendarId,
+        eventId,
+      });
+    } catch (error) {
+      if (error instanceof GaxiosError && Number(error.code) === 404) {
+        // Deleted between the .get above and this call (e.g. a race with
+        // another sync) — already gone, so treat it as success.
+        return;
+      }
+      throw error;
+    }
   } catch (error) {
     console.error("Failed to delete Google Calendar event:", error);
     throw error;
