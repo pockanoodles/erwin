@@ -340,6 +340,10 @@ model Goal {
   isBoss     Boolean   @default(false)
   targetDate DateTime?
 
+  /** Goals-sync projection identity: "venture:<slug>" for a vault Lord, "venture:<slug>#boss:<name-slug>"
+   * for a vault boss. NULL = hand-made in erwin; the pump only ever touches non-NULL (venture:) rows. */
+  externalId String?
+
   cycleId String
   cycle   GoalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
 
@@ -357,6 +361,7 @@ model Goal {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([userId, externalId])
   @@index([cycleId])
   @@index([userId])
   @@index([status])
