@@ -144,6 +144,15 @@ address and username are written to the local log table. That is local, and no
 password is logged, but it means those values appear in logs as well as in the
 accounts table — and unlike the accounts table, the log is not encrypted.
 
+Because that log is not encrypted, and because the server also prints each
+entry to a file on disk, credentials are stripped out on the way in rather
+than trusted not to be there. Anything that looks like a credential is
+replaced with `[redacted]` before it is written — whether it arrives as a
+named field, buried in a record that some caller already turned into text, or
+as an authorization header inside the message. Sync markers like the change
+tag are deliberately left readable, since blanking them would make sync
+problems much harder to diagnose.
+
 ---
 
 ## Known gaps
@@ -156,9 +165,11 @@ Kept here so they are not rediscovered from scratch later.
   Microsoft do not — each still has at least one place that reaches out
   directly instead. This makes "what exactly do we send?" harder to answer than
   it should be for those two, which is the reason the rule exists.
-- **Logs are not redacted.** Nothing currently writes a credential to the log,
-  and one place that could was fixed, but the logger will faithfully record
-  whatever a caller hands it. A redaction pass on the way in would make that a
-  property of the system rather than of every call site.
+- **Logging is disabled but the batch path writes anyway.** There is no
+  settings row, so the configured level is "none". The single-entry path
+  respects that; the batch path — which is where logs sent from the browser
+  land — does not, and writes every entry regardless. That is why the log
+  table has entries at all. Harmless in itself, but it means "logging is off"
+  is not true.
 - **Dormant webhook fields.** The database has columns for registering a Google
   Calendar push channel, but no code registers one, so Google never calls in.

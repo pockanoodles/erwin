@@ -1,6 +1,7 @@
 import { addDays, newDate } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 
+import { redactMetadata, redactString } from "./redact";
 import {
   LogBatchResponse,
   LogDestination,
@@ -42,6 +43,22 @@ const getRetentionDays = (level: LogLevel, retention: LogRetention): number => {
 };
 
 export class ServerLogger {
+  /**
+   * Every entry passes through here before it is stored or printed.
+   *
+   * Applied at this boundary rather than at the call sites so it cannot be
+   * routed around: the `Log` table is not encrypted and `console.log` below
+   * lands in the launchd log file, so this is the last point where a
+   * credential can still be pulled back.
+   */
+  private sanitize(entry: LogEntry): LogEntry {
+    return {
+      ...entry,
+      message: redactString(entry.message),
+      metadata: redactMetadata(entry.metadata),
+    };
+  }
+
   private async getLogSettings(): Promise<LogSettings> {
     try {
       const settings = await prisma.systemSettings.findFirst();
@@ -68,18 +85,19 @@ export class ServerLogger {
   /**
    * Write a single log entry to the database
    */
-  async writeLog(entry: LogEntry): Promise<boolean> {
+  async writeLog(rawEntry: LogEntry): Promise<boolean> {
     try {
       const settings = await this.getLogSettings();
 
       // Skip if logging is disabled or level is too low
       if (
         settings.logLevel === "none" ||
-        !this.shouldLog(entry.level, settings.logLevel)
+        !this.shouldLog(rawEntry.level, settings.logLevel)
       ) {
         return false;
       }
 
+      const entry = this.sanitize(rawEntry);
       const now = newDate();
       await prisma.log.create({
         data: {
@@ -122,7 +140,7 @@ export class ServerLogger {
       }
 
       const result = await prisma.log.createMany({
-        data: validEntries.map((entry) => ({
+        data: validEntries.map((raw) => this.sanitize(raw)).map((entry) => ({
           level: entry.level,
           message: entry.message,
           metadata: entry.metadata || {},
