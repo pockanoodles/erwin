@@ -15,6 +15,9 @@
 
 # next.js
 /.next/
+# `next dev` writes here instead of /.next/ so a dev session can't clobber
+# the production build that launchd serves (see next.config.js distDir).
+/.next-dev/
 /out/
 
 # production
