@@ -354,17 +354,15 @@ describe("CalDAV single-instance EXDATE value-type matching (issues #135/#100)",
   }
 
   /**
-   * A service with the bits `deleteEvent` calls outside the EXDATE block stubbed:
-   * `getClient` (only used for the DELETE fallback) and `syncCalendar` (runs
-   * after the EXDATE PUT and would otherwise hit the full sync pipeline).
+   * A service with `syncCalendar` stubbed — it runs after the EXDATE PUT and
+   * would otherwise hit the full sync pipeline.
+   *
+   * Nothing needs to stub the tsdav client: egress goes through
+   * `@/lib/caldav/client`, which only builds one for the write *fallbacks*,
+   * and the `fetch` mock above answers the direct DELETE with a 200.
    */
   function makeService(): CalDAVCalendarService {
     const service = new CalDAVCalendarService(stubAccount);
-    (
-      service as unknown as { getClient: () => Promise<unknown> }
-    ).getClient = jest.fn().mockResolvedValue({
-      deleteObject: jest.fn().mockResolvedValue({ status: 200 }),
-    });
     (
       service as unknown as { syncCalendar: () => Promise<unknown> }
     ).syncCalendar = jest

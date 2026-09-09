@@ -1,20 +1,27 @@
 import { CalendarEvent, ConnectedAccount, Prisma } from "@prisma/client";
 import ICAL from "ical.js";
-import { DAVDepth, DAVResponse, createDAVClient } from "tsdav";
+import { DAVResponse } from "tsdav";
 
+import {
+  CalDAVConnection,
+  connectionFromAccount,
+  deleteObject,
+  getCalendarCtag,
+  getObjectText,
+  putObject,
+  queryEvents,
+  resolveObjectUrl,
+} from "@/lib/caldav/client";
 import { newDate, newDateFromYMD } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 import { CalendarEventWithFeed } from "@/types/calendar";
 
-import { fetchCalendarCtag } from "./caldav-ctag";
 import { convertVEventToCalendarEvent } from "./caldav-helpers";
 import {
   CalDAVCalendarObject,
   CalendarEventInput,
-  CalendarQueryParams,
-  ExtendedDAVClient,
   SyncResult,
 } from "./caldav-interfaces";
 import {
@@ -87,54 +94,28 @@ function buildInstanceReference(
  * Service for interacting with CalDAV servers
  */
 export class CalDAVCalendarService {
-  private client: ExtendedDAVClient | null = null;
+  private conn: CalDAVConnection | null = null;
 
   /**
    * Creates a new CalDAV calendar service
-   * @param prisma Prisma client instance
    * @param account Connected account with CalDAV credentials
    */
-  constructor(private account: ConnectedAccount) {
-    // Initialize client when needed
-  }
+  constructor(private account: ConnectedAccount) {}
 
   /**
-   * Creates and initializes the CalDAV client
-   * @returns Initialized DAVClient
+   * The account's CalDAV endpoint and credential, built once and reused so the
+   * transport layer can cache a tsdav client against it. Built lazily rather
+   * than in the constructor, because a feed can be constructed for an account
+   * with no CalDAV URL and should fail when it tries to talk, not before.
+   *
+   * Everything that leaves this process goes through `@/lib/caldav/client`;
+   * this class no longer builds requests or auth headers of its own.
    */
-  private async getClient(): Promise<ExtendedDAVClient> {
-    if (this.client) {
-      return this.client;
+  private connection(): CalDAVConnection {
+    if (!this.conn) {
+      this.conn = connectionFromAccount(this.account);
     }
-
-    if (!this.account.caldavUrl) {
-      throw new Error("CalDAV URL is required");
-    }
-
-    try {
-      // Use type assertion to tell TypeScript this is our extended client type
-      this.client = (await createDAVClient({
-        serverUrl: this.account.caldavUrl,
-        credentials: {
-          username: this.account.caldavUsername || this.account.email,
-          password: this.account.accessToken,
-        },
-        authMethod: "Basic",
-        defaultAccountType: "caldav",
-      })) as unknown as ExtendedDAVClient;
-
-      return this.client;
-    } catch (error) {
-      logger.error(
-        "Failed to create CalDAV client",
-        {
-          error: error instanceof Error ? error.message : "Unknown error",
-          accountId: this.account.id,
-        },
-        LOG_SOURCE
-      );
-      throw error;
-    }
+    return this.conn;
   }
 
   private async expandRecurringEvents(
@@ -237,12 +218,8 @@ export class CalDAVCalendarService {
     calendarPath: string
   ): Promise<CalendarEvent[]> {
     try {
-      const client = await this.getClient();
-      if (!client) return [];
-
       // Fetch master events (without expand)
       const masterEvents = await this.fetchMasterEvents(
-        client,
         start,
         end,
         calendarPath
@@ -267,96 +244,28 @@ export class CalDAVCalendarService {
   }
 
   /**
-   * Format a date for CalDAV requests (YYYYMMDDTHHMMSSZ)
-   * @param date Date to format
-   * @returns Formatted date string
-   */
-  private formatDateForCalDAV(date: Date): string {
-    return date
-      .toISOString()
-      .replace(/[-:]/g, "")
-      .replace(/\.\d{3}/, "");
-  }
-
-  /**
    * Fetch master events from the CalDAV server
-   * @param client CalDAV client
    * @param start Start date
    * @param end End date
    * @param calendarPath Path to the calendar
    * @returns Array of master events
    */
   private async fetchMasterEvents(
-    client: ExtendedDAVClient,
     start: Date,
     end: Date,
     calendarPath: string
   ): Promise<CalendarEvent[]> {
-    // Create query parameters for master events
-    const queryParams = this.createCalDAVQueryParams(
-      calendarPath,
+    // No expand: the server returns masters, and expandRecurringEvents derives
+    // the instances locally.
+    const calendarObjects = await queryEvents(this.connection(), {
+      calendarUrl: calendarPath,
       start,
       end,
-      false // Don't use expand for master events
-    );
-
-    // Fetch calendar objects
-    const calendarObjects = await client.calendarQuery(queryParams);
+      expand: false,
+    });
 
     // Process the calendar objects to extract master events
     return await this.processCalendarObjects(calendarObjects);
-  }
-
-  /**
-   * Create CalDAV query parameters
-   * @param calendarPath Path to the calendar
-   * @param start Start date
-   * @param end End date
-   * @param useExpand Whether to use the expand parameter
-   * @returns CalDAV query parameters
-   */
-  private createCalDAVQueryParams(
-    calendarPath: string,
-    start: Date,
-    end: Date,
-    useExpand: boolean
-  ): CalendarQueryParams {
-    const props: Record<string, unknown> = {
-      "calendar-data": useExpand
-        ? {
-            expand: {
-              _attributes: {
-                start: this.formatDateForCalDAV(start),
-                end: this.formatDateForCalDAV(end),
-              },
-            },
-          }
-        : {}, // No expand for master events
-    };
-
-    return {
-      url: calendarPath,
-      props,
-      filters: {
-        "comp-filter": {
-          _attributes: {
-            name: "VCALENDAR",
-          },
-          "comp-filter": {
-            _attributes: {
-              name: "VEVENT",
-            },
-            "time-range": {
-              _attributes: {
-                start: this.formatDateForCalDAV(start),
-                end: this.formatDateForCalDAV(end),
-              },
-            },
-          },
-        },
-      },
-      depth: "1" as DAVDepth,
-    };
   }
 
   /**
@@ -516,6 +425,69 @@ export class CalDAVCalendarService {
    * @param calendarPath Path to the calendar
    * @returns Sync result with added, updated, and deleted events
    */
+  /**
+   * The collection's CTag, or null if it cannot be determined.
+   *
+   * A CTag is only an optimization — it lets an unchanged calendar cost one
+   * PROPFIND instead of a full sync — so any failure degrades to "unknown"
+   * and the full sync proceeds. The transport layer throws; swallowing is
+   * this caller's policy, not the client's.
+   */
+  private async readCtag(calendarPath: string): Promise<string | null> {
+    try {
+      return await getCalendarCtag(this.connection(), calendarPath);
+    } catch (error) {
+      logger.warn(
+        "Could not read calendar CTag; falling back to a full sync",
+        {
+          error: error instanceof Error ? error.message : String(error),
+          accountId: this.account.id,
+        },
+        LOG_SOURCE
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Read a recurring master, add a single-instance exception to it, and write
+   * it back.
+   *
+   * Shared by the two single-instance paths, which differ only in which
+   * property they add: `updateEvent` adds a RECURRENCE-ID so the server pairs
+   * the edited instance with the series, `deleteEvent` adds an EXDATE so the
+   * server drops it. Both were the same 48 lines before.
+   *
+   * Best-effort by design: if the master cannot be read or has no VEVENT there
+   * is nothing to amend, and in the delete path the remote DELETE has already
+   * succeeded, so failing here would abort halfway through.
+   */
+  private async amendMasterWithInstanceReference(params: {
+    name: "recurrence-id" | "exdate";
+    masterEventUrl: string;
+    instanceStart: Date;
+  }): Promise<void> {
+    const icalData = await getObjectText(
+      this.connection(),
+      params.masterEventUrl
+    );
+    if (!icalData) return;
+
+    const vcalendar = new ICAL.Component(ICAL.parse(icalData));
+    const vevent = vcalendar.getFirstSubcomponent("vevent");
+    if (!vevent) return;
+
+    vevent.addProperty(
+      buildInstanceReference(params.name, vevent, params.instanceStart)
+    );
+
+    await putObject(this.connection(), {
+      url: params.masterEventUrl,
+      ical: vcalendar.toString(),
+      context: { property: params.name },
+    });
+  }
+
   async syncCalendar(
     feedId: string,
     calendarPath: string,
@@ -541,12 +513,7 @@ export class CalDAVCalendarService {
 
       let remoteCtag: string | null = null;
       if (!forceFullSync && this.account.caldavUrl) {
-        remoteCtag = await fetchCalendarCtag({
-          accountBaseUrl: this.account.caldavUrl,
-          calendarPathOrUrl: calendarPath,
-          username: this.account.caldavUsername || this.account.email,
-          password: this.account.accessToken,
-        });
+        remoteCtag = await this.readCtag(calendarPath);
         if (remoteCtag && feed.ctag === remoteCtag) {
           await prisma.calendarFeed.update({
             where: { id: feed.id, userId },
@@ -588,12 +555,7 @@ export class CalDAVCalendarService {
 
       const newCtag =
         !forceFullSync && this.account.caldavUrl
-          ? await fetchCalendarCtag({
-              accountBaseUrl: this.account.caldavUrl,
-              calendarPathOrUrl: calendarPath,
-              username: this.account.caldavUsername || this.account.email,
-              password: this.account.accessToken,
-            })
+          ? await this.readCtag(calendarPath)
           : remoteCtag;
 
       // Update the feed's last sync time and sync token
@@ -637,17 +599,8 @@ export class CalDAVCalendarService {
     userId: string
   ): Promise<CalendarEvent> {
     try {
-      // Get the CalDAV client
-      const client = await this.getClient();
-
-      // For Fastmail compatibility, we'll use a PUT request to a specific URL
-      // Ensure the calendar path doesn't have a trailing slash
-      const normalizedCalendarPath = calendarPath.endsWith("/")
-        ? calendarPath.slice(0, -1)
-        : calendarPath;
-
       // Create a URL for the event using the externalEventId
-      const eventUrl = `${normalizedCalendarPath}/${externalEventId}.ics`;
+      const eventUrl = resolveObjectUrl(calendarPath, externalEventId);
 
       // Resolve the user's timezone so timed events serialize with a TZID
       // (keeps wall-clock time across DST for recurring events; issue #135).
@@ -661,68 +614,14 @@ export class CalDAVCalendarService {
         timeZone,
       });
 
-      let response;
       try {
-        // Try using PUT method first (works better with some CalDAV servers like Fastmail)
-        response = await fetch(eventUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "text/calendar; charset=utf-8",
-            Authorization:
-              "Basic " +
-              Buffer.from(
-                `${this.account.caldavUsername || this.account.email}:${
-                  this.account.accessToken
-                }`
-              ).toString("base64"),
-          },
-          body: icalData,
+        await putObject(this.connection(), {
+          url: eventUrl,
+          ical: icalData,
+          fallback: { mode: "update", url: eventUrl },
+          operation: "update",
+          context: { calendarPath, eventId: externalEventId, mode },
         });
-
-        // Check if the response indicates success (2xx status code)
-        if (response.status < 200 || response.status >= 300) {
-          logger.error(
-            "Server returned error status when updating event with PUT",
-            {
-              status: response.status,
-              statusText: response.statusText,
-              calendarPath,
-              eventId: externalEventId,
-              eventUrl,
-              mode,
-            },
-            LOG_SOURCE
-          );
-
-          // If PUT fails, fall back to the updateObject method
-          response = await client.updateObject({
-            url: eventUrl,
-            data: icalData,
-            headers: {
-              "Content-Type": "text/calendar; charset=utf-8",
-            },
-          });
-
-          // Check if the fallback method also failed
-          if (response.status < 200 || response.status >= 300) {
-            logger.error(
-              "Server returned error status when updating event with fallback method",
-              {
-                status: response.status,
-                statusText: response.statusText,
-                calendarPath,
-                eventId: externalEventId,
-                mode,
-              },
-              LOG_SOURCE
-            );
-            throw new Error(
-              `Failed to update event on server: ${
-                response.statusText || response.status
-              }`
-            );
-          }
-        }
       } catch (updateError) {
         logger.error(
           "Failed to update event on CalDAV server",
@@ -755,60 +654,28 @@ export class CalDAVCalendarService {
           },
         });
 
-        if (masterEvent && masterEvent.recurrenceRule) {
-          // Get the master event's iCalendar data
-          const masterEventUrl = `${normalizedCalendarPath}/${masterEvent.externalEventId}.ics`;
-          const masterEventResponse = await fetch(masterEventUrl, {
-            headers: {
-              Authorization:
-                "Basic " +
-                Buffer.from(
-                  `${this.account.caldavUsername || this.account.email}:${
-                    this.account.accessToken
-                  }`
-                ).toString("base64"),
-            },
+        // externalEventId is nullable, and without it there is no master URL to
+        // amend. The old string interpolation built `.../null.ics` and made a
+        // request that could only 404.
+        if (
+          masterEvent &&
+          masterEvent.recurrenceRule &&
+          masterEvent.externalEventId
+        ) {
+          // Create a RECURRENCE-ID for this instance, matching the master
+          // DTSTART's value type so the server can pair the exception with the
+          // right instance. For timed series use UTC (`...Z`) so it references
+          // the same absolute instant regardless of client timezone (GitHub
+          // issue #135); for all-day series keep the floating `VALUE=DATE`
+          // form the master uses (issue #100).
+          await this.amendMasterWithInstanceReference({
+            name: "recurrence-id",
+            masterEventUrl: resolveObjectUrl(
+              calendarPath,
+              masterEvent.externalEventId
+            ),
+            instanceStart: event.start,
           });
-
-          if (masterEventResponse.ok) {
-            const icalData = await masterEventResponse.text();
-            const jcalData = ICAL.parse(icalData);
-            const vcalendar = new ICAL.Component(jcalData);
-            const vevent = vcalendar.getFirstSubcomponent("vevent");
-
-            if (vevent) {
-              // Create a RECURRENCE-ID for this instance, matching the master
-              // DTSTART's value type so the server can pair the exception with
-              // the right instance. For timed series use UTC (`...Z`) so it
-              // references the same absolute instant regardless of client
-              // timezone (GitHub issue #135); for all-day series keep the
-              // floating `VALUE=DATE` form the master uses (issue #100).
-              const recurrenceId = buildInstanceReference(
-                "recurrence-id",
-                vevent,
-                event.start
-              );
-
-              // Add the RECURRENCE-ID to the event
-              vevent.addProperty(recurrenceId);
-
-              // Update the event on the server
-              await fetch(masterEventUrl, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "text/calendar; charset=utf-8",
-                  Authorization:
-                    "Basic " +
-                    Buffer.from(
-                      `${this.account.caldavUsername || this.account.email}:${
-                        this.account.accessToken
-                      }`
-                    ).toString("base64"),
-                },
-                body: vcalendar.toString(),
-              });
-            }
-          }
         }
       }
 
@@ -860,74 +727,15 @@ export class CalDAVCalendarService {
     userId: string
   ): Promise<void> {
     try {
-      // Get the CalDAV client
-      const client = await this.getClient();
-
-      // For Fastmail compatibility, we'll use a DELETE request to a specific URL
-      // Ensure the calendar path doesn't have a trailing slash
-      const normalizedCalendarPath = calendarPath.endsWith("/")
-        ? calendarPath.slice(0, -1)
-        : calendarPath;
-
       // Create a URL for the event using the externalEventId
-      const eventUrl = `${normalizedCalendarPath}/${externalEventId}.ics`;
+      const eventUrl = resolveObjectUrl(calendarPath, externalEventId);
 
-      let response;
       try {
-        // Try using DELETE method first (works better with some CalDAV servers like Fastmail)
-        response = await fetch(eventUrl, {
-          method: "DELETE",
-          headers: {
-            Authorization:
-              "Basic " +
-              Buffer.from(
-                `${this.account.caldavUsername || this.account.email}:${
-                  this.account.accessToken
-                }`
-              ).toString("base64"),
-          },
+        await deleteObject(this.connection(), {
+          url: eventUrl,
+          fallback: { url: eventUrl },
+          context: { calendarPath, eventId: externalEventId, mode },
         });
-
-        // Check if the response indicates success (2xx status code)
-        if (response.status < 200 || response.status >= 300) {
-          logger.error(
-            "Server returned error status when deleting event with DELETE",
-            {
-              status: response.status,
-              statusText: response.statusText,
-              calendarPath,
-              eventId: externalEventId,
-              eventUrl,
-              mode,
-            },
-            LOG_SOURCE
-          );
-
-          // If DELETE fails, fall back to the deleteObject method
-          response = await client.deleteObject({
-            url: eventUrl,
-          });
-
-          // Check if the fallback method also failed
-          if (response.status < 200 || response.status >= 300) {
-            logger.error(
-              "Server returned error status when deleting event with fallback method",
-              {
-                status: response.status,
-                statusText: response.statusText,
-                calendarPath,
-                eventId: externalEventId,
-                mode,
-              },
-              LOG_SOURCE
-            );
-            throw new Error(
-              `Failed to delete event on server: ${
-                response.statusText || response.status
-              }`
-            );
-          }
-        }
       } catch (deleteError) {
         logger.error(
           "Failed to delete event on CalDAV server",
@@ -959,59 +767,27 @@ export class CalDAVCalendarService {
           },
         });
 
-        if (masterEvent && masterEvent.recurrenceRule) {
-          // Get the master event's iCalendar data
-          const masterEventUrl = `${normalizedCalendarPath}/${masterEvent.externalEventId}.ics`;
-          const masterEventResponse = await fetch(masterEventUrl, {
-            headers: {
-              Authorization:
-                "Basic " +
-                Buffer.from(
-                  `${this.account.caldavUsername || this.account.email}:${
-                    this.account.accessToken
-                  }`
-                ).toString("base64"),
-            },
+        // externalEventId is nullable, and without it there is no master URL to
+        // amend. The old string interpolation built `.../null.ics` and made a
+        // request that could only 404.
+        if (
+          masterEvent &&
+          masterEvent.recurrenceRule &&
+          masterEvent.externalEventId
+        ) {
+          // Create an EXDATE for this instance, matching the master DTSTART's
+          // value type so the server excludes the right instance. For timed
+          // series use UTC (`...Z`) so it matches the master's instants
+          // regardless of client timezone (GitHub issue #135); for all-day
+          // series keep the floating `VALUE=DATE` form (issue #100).
+          await this.amendMasterWithInstanceReference({
+            name: "exdate",
+            masterEventUrl: resolveObjectUrl(
+              calendarPath,
+              masterEvent.externalEventId
+            ),
+            instanceStart: event.start,
           });
-
-          if (masterEventResponse.ok) {
-            const icalData = await masterEventResponse.text();
-            const jcalData = ICAL.parse(icalData);
-            const vcalendar = new ICAL.Component(jcalData);
-            const vevent = vcalendar.getFirstSubcomponent("vevent");
-
-            if (vevent) {
-              // Create an EXDATE for this instance, matching the master
-              // DTSTART's value type so the server excludes the right instance.
-              // For timed series use UTC (`...Z`) so it matches the master's
-              // instants regardless of client timezone (GitHub issue #135); for
-              // all-day series keep the floating `VALUE=DATE` form (issue #100).
-              const exdate = buildInstanceReference(
-                "exdate",
-                vevent,
-                event.start
-              );
-
-              // Add the EXDATE to the event
-              vevent.addProperty(exdate);
-
-              // Update the event on the server
-              await fetch(masterEventUrl, {
-                method: "PUT",
-                headers: {
-                  "Content-Type": "text/calendar; charset=utf-8",
-                  Authorization:
-                    "Basic " +
-                    Buffer.from(
-                      `${this.account.caldavUsername || this.account.email}:${
-                        this.account.accessToken
-                      }`
-                    ).toString("base64"),
-                },
-                body: vcalendar.toString(),
-              });
-            }
-          }
         }
       }
 
@@ -1203,80 +979,23 @@ export class CalDAVCalendarService {
         timeZone,
       });
 
-      // Get the CalDAV client
-      const client = await this.getClient();
-
-      // For Fastmail compatibility, we'll use a PUT request to a specific URL
-      // Ensure the calendar path doesn't have a trailing slash
-      const normalizedCalendarPath = calendarPath.endsWith("/")
-        ? calendarPath.slice(0, -1)
-        : calendarPath;
-
       // Create a URL for the event using the UID
-      const eventUrl = `${normalizedCalendarPath}/${eventId}.ics`;
+      const eventUrl = resolveObjectUrl(calendarPath, eventId);
 
-      let response;
       try {
-        // Try using PUT method first (works better with some CalDAV servers like Fastmail)
-        response = await fetch(eventUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "text/calendar; charset=utf-8",
-            "If-None-Match": "*", // Ensures we're creating a new resource
-            Authorization:
-              "Basic " +
-              Buffer.from(
-                `${this.account.caldavUsername || this.account.email}:${
-                  this.account.accessToken
-                }`
-              ).toString("base64"),
-          },
-          body: icalData,
+        await putObject(this.connection(), {
+          url: eventUrl,
+          ical: icalData,
+          // Refuse to overwrite: this is a create, not an update.
+          ifNoneMatch: true,
+          // Note the asymmetry, inherited from upstream: the direct PUT targets
+          // the object URL, but the fallback posts to the collection and lets
+          // the server name the resource. Update and delete use the object URL
+          // for both. Preserved rather than "fixed" while moving the code.
+          fallback: { mode: "create", url: calendarPath },
+          operation: "create",
+          context: { calendarPath, eventId },
         });
-
-        // Check if the response indicates success (2xx status code)
-        if (response.status < 200 || response.status >= 300) {
-          logger.error(
-            "Server returned error status when creating event with PUT",
-            {
-              status: response.status,
-              statusText: response.statusText,
-              calendarPath,
-              eventId,
-              eventUrl,
-            },
-            LOG_SOURCE
-          );
-
-          // If PUT fails, fall back to the createObject method
-          response = await client.createObject({
-            url: calendarPath,
-            data: icalData,
-            headers: {
-              "Content-Type": "text/calendar; charset=utf-8",
-              "If-None-Match": "*", // Ensures we're creating a new resource
-            },
-          });
-
-          // Check if the fallback method also failed
-          if (response.status < 200 || response.status >= 300) {
-            logger.error(
-              "Server returned error status when creating event with fallback method",
-              {
-                status: response.status,
-                statusText: response.statusText,
-                calendarPath,
-                eventId,
-              },
-              LOG_SOURCE
-            );
-            throw new Error(
-              `Failed to create event on server: ${
-                response.statusText || response.status
-              }`
-            );
-          }
-        }
       } catch (createError) {
         logger.error(
           "Failed to create event on CalDAV server",

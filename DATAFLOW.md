@@ -134,13 +134,10 @@ key and every stored credential becomes unreadable** — you would have to
 reconnect each integration by hand. **Change the key** and the values have to
 be re-encrypted while the old key is still available.
 
-One remaining oddity inherited from the upstream project, worth fixing on its
-own: **a password hash is stored in a field meant for something else.** Local
-account passwords are hashed correctly, then written into a database column
-intended to hold an OAuth identity token. It works, but it misleads anyone
-reading the schema — and it is the reason that column is deliberately left out
-of the encryption above, since a hash needs no encrypting and doing it would
-cement the mistake.
+Your own login password is not in that list, and is not encrypted, because it
+is never stored: only a bcrypt hash of it is kept, in a column of its own on
+your user record. A hash cannot be turned back into the password, so there is
+nothing there to encrypt.
 
 Also worth noting: when a CalDAV connection succeeds or fails, the server
 address and username are written to the local log table. That is local, and no
@@ -154,12 +151,14 @@ accounts table — and unlike the accounts table, the log is not encrypted.
 Kept here so they are not rediscovered from scratch later.
 
 - **External calls are supposed to go through one module per service.** Canvas
-  follows this cleanly. Google, Microsoft and CalDAV do not — each has at least
-  one place that reaches out directly instead, and CalDAV has three competing
-  ways of talking to the same server. This makes "what exactly do we send?"
-  harder to answer than it should be, which is the reason the rule exists.
-- **Unused libraries that could send data if wired up.** A payment library and a
-  Microsoft authentication library are installed but called by nothing. They are
-  not egress today; they are loaded guns on the shelf and should be removed.
+  and CalDAV now follow this: every request to a CalDAV server is issued by one
+  file, which is also the only place the CalDAV password is read. Google and
+  Microsoft do not — each still has at least one place that reaches out
+  directly instead. This makes "what exactly do we send?" harder to answer than
+  it should be for those two, which is the reason the rule exists.
+- **Logs are not redacted.** Nothing currently writes a credential to the log,
+  and one place that could was fixed, but the logger will faithfully record
+  whatever a caller hands it. A redaction pass on the way in would make that a
+  property of the system rather than of every call site.
 - **Dormant webhook fields.** The database has columns for registering a Google
   Calendar push channel, but no code registers one, so Google never calls in.

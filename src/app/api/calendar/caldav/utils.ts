@@ -1,8 +1,23 @@
 import { DAVClient } from "tsdav";
 
+import {
+  createSetupClient,
+  listCalendars,
+  loginToServer,
+} from "@/lib/caldav/client";
 import { logger } from "@/lib/logger";
 
 const LOG_SOURCE = "CalDAVUtils";
+
+/**
+ * What stayed here: `classifyCalDAVError` and `formatAbsoluteUrl`, which map a
+ * failure onto an HTTP response and sanitize user-typed URLs — route concerns,
+ * and both nearly pure upstream code that future ports will keep touching.
+ *
+ * What left: the three functions that actually talk to a CalDAV server. They
+ * now live in `@/lib/caldav/client`, the single audited egress, and are
+ * re-exported here so the four route files' imports are unchanged.
+ */
 
 /** Whether a CalDAV login failure was a connection or an authentication error. */
 export type CalDAVErrorKind = "connection" | "auth";
@@ -205,15 +220,7 @@ export function createCalDAVClient(
   username: string,
   password: string
 ) {
-  return new DAVClient({
-    serverUrl,
-    credentials: {
-      username,
-      password,
-    },
-    authMethod: "Basic" as const,
-    defaultAccountType: "caldav" as const,
-  });
+  return createSetupClient(serverUrl, username, password);
 }
 
 /**
@@ -228,27 +235,7 @@ export async function loginToCalDAVServer(
   serverUrl: string,
   username: string
 ) {
-  try {
-    await client.login();
-    logger.info(
-      "Successfully logged in to CalDAV server",
-      { serverUrl, username },
-      LOG_SOURCE
-    );
-    return true;
-  } catch (loginError) {
-    logger.error(
-      "Failed to login to CalDAV server",
-      {
-        error:
-          loginError instanceof Error ? loginError.message : String(loginError),
-        serverUrl,
-        username,
-      },
-      LOG_SOURCE
-    );
-    throw loginError;
-  }
+  return loginToServer(client, serverUrl, username);
 }
 
 /**
@@ -281,17 +268,5 @@ export function handleFastmailPath(
  * @returns A promise that resolves to the list of calendars
  */
 export async function fetchCalDAVCalendars(client: DAVClient) {
-  try {
-    const calendars = await client.fetchCalendars();
-    return calendars;
-  } catch (error) {
-    logger.error(
-      "Failed to fetch CalDAV calendars",
-      {
-        error: error instanceof Error ? error.message : String(error),
-      },
-      LOG_SOURCE
-    );
-    throw error;
-  }
+  return listCalendars(client);
 }

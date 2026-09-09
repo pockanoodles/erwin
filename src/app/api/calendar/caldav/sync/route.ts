@@ -54,7 +54,12 @@ export async function PUT(req: NextRequest) {
       logger.error(
         "Invalid CalDAV calendar",
         {
-          feed: JSON.stringify(feed),
+          // Never serialize the feed itself: it is loaded with `account`
+          // included, and the extension decrypts credentials on read, so
+          // stringifying it would write a live password into the log.
+          feedId,
+          type: feed?.type ?? null,
+          hasAccount: !!feed?.account,
           timestamp: new Date().toISOString(),
         },
         LOG_SOURCE
