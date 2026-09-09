@@ -1,6 +1,6 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import type { Db as PrismaDb, DbTransaction } from "@/lib/prisma";
 
-type Db = PrismaClient | Prisma.TransactionClient;
+type Db = PrismaDb | DbTransaction;
 
 /**
  * Erwin v3 goal DAG: goals within a cycle link parent→child many-to-many.

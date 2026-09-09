@@ -5,9 +5,10 @@
  * GoalCycle row for the hex covering today.
  */
 
-import type { GoalCycle, Prisma, PrismaClient } from "@prisma/client";
+import type { GoalCycle } from "@prisma/client";
 
 import { newDate } from "@/lib/date-utils";
+import type { Db } from "@/lib/prisma";
 
 import { deactivateActiveCycles } from "./goal-cycles";
 
@@ -65,13 +66,13 @@ export function hexLabel(hex: Pick<Hex, "year" | "index">): string {
  * other stray actives are archived (one active cycle per user).
  */
 export async function ensureCurrentHex(
-  prisma: PrismaClient,
+  prisma: Db,
   userId: string
 ): Promise<GoalCycle> {
   const now = newDate();
   const hex = hexForDate(now);
 
-  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+  return prisma.$transaction(async (tx) => {
     const existing = await tx.goalCycle.findFirst({
       where: { userId, startDate: hex.startDate, endDate: hex.endDate },
     });

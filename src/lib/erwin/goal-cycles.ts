@@ -2,7 +2,7 @@
  * Goal cycle helpers: enforce "one active cycle at a time" per user.
  */
 
-import type { Prisma } from "@prisma/client";
+import type { DbTransaction } from "@/lib/prisma";
 
 /**
  * Archives any currently-active cycles for a user (except `exceptId` when
@@ -10,7 +10,7 @@ import type { Prisma } from "@prisma/client";
  * activation is atomic.
  */
 export async function deactivateActiveCycles(
-  tx: Prisma.TransactionClient,
+  tx: DbTransaction,
   userId: string,
   exceptId?: string
 ): Promise<void> {
