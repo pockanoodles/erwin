@@ -75,18 +75,3 @@ export function getEnergyLevelForTime(
 
   return null;
 }
-
-export function isWorkingHour(
-  date: Date,
-  settings: AutoScheduleSettings
-): boolean {
-  const hour = date.getHours();
-  const day = date.getDay();
-  const workDays = parseWorkDays(settings.workDays);
-
-  return (
-    workDays.includes(day) &&
-    hour >= settings.workHourStart &&
-    hour < settings.workHourEnd
-  );
-}
