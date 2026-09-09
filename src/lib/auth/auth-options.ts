@@ -25,13 +25,25 @@ export async function getAuthOptions(): Promise<NextAuthOptions> {
   const googleCredentials = await getGoogleCredentials();
   const outlookCredentials = await getOutlookCredentials();
 
+  // Sessions are JWTs signed with this key, so anyone who knows it can mint a
+  // valid session for any user. Upstream shipped a hardcoded fallback here,
+  // which meant an install that forgot the variable silently signed sessions
+  // with a key published in a public repository. Refuse to start instead.
+  //
+  // Nothing is lost by failing: every verifier (`getToken` in api-auth.ts and
+  // middleware.ts) already reads the bare variable with no fallback, so a
+  // missing key never produced a working install — only one where sign-in
+  // appeared to succeed and every subsequent request read as unauthenticated.
+  const secret = process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error(
+      "NEXTAUTH_SECRET is not set. Generate one with `openssl rand -base64 32` " +
+        "and add it to .env."
+    );
+  }
+
   return {
-    // Add secret for production - required for security
-    secret:
-      process.env.NEXTAUTH_SECRET ||
-      // Fallback secret - only used if NEXTAUTH_SECRET is not set
-      // In production, this should always be set via environment variable
-      "EM2RYkch0Uj+Qt2Cu0eDCmo/kv0MenNnHUaciNAjSrM=",
+    secret,
 
     providers: [
       // Keep existing providers for calendar connections
