@@ -22,12 +22,13 @@ import { decryptSecret, encryptSecret } from "./secret-box";
  */
 
 /**
- * `Account` is intentionally absent. Its only populated secret column is
- * `id_token`, which holds a bcrypt password hash rather than an OAuth token —
- * a hash needs no encryption, and encrypting it here would cement a schema
- * mistake that wants fixing on its own terms. Its real `access_token` and
- * `refresh_token` columns are never written (sessions are JWTs; there is no
- * NextAuth database adapter).
+ * `Account` is intentionally absent: nothing writes it. Sessions are JWTs and
+ * there is no NextAuth database adapter, so its `access_token` /
+ * `refresh_token` columns stay empty — the live integration tokens live in
+ * `ConnectedAccount` and `TaskProvider` below.
+ *
+ * `User.passwordHash` is absent for a different reason: it is a bcrypt hash,
+ * which needs no encryption, and encrypting it would break `compare()`.
  */
 const ENCRYPTED_FIELDS: Record<string, readonly string[]> = {
   ConnectedAccount: ["accessToken", "refreshToken"],

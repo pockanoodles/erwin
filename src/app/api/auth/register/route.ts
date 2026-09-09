@@ -61,14 +61,7 @@ export async function POST(req: NextRequest) {
       data: {
         email,
         name: name || email.split("@")[0], // Use part of email as name if not provided
-        accounts: {
-          create: {
-            type: "credentials",
-            provider: "credentials",
-            providerAccountId: email,
-            id_token: hashedPassword, // Store the hashed password in the id_token field
-          },
-        },
+        passwordHash: hashedPassword,
         userSettings: {
           create: {
             theme: "system",

@@ -33,6 +33,9 @@ model ConnectedAccount {
   @@index([userId])
 }
 
+/// A link to an external identity provider. Upstream stored the local password
+/// hash here in `id_token`; Erwin keeps it on `User.passwordHash` instead, so
+/// every column below means what its name says.
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -61,11 +64,17 @@ model Session {
 }
 
 model User {
-  id                   String                @id @default(cuid())
-  name                 String?
-  email                String?               @unique
-  emailVerified        DateTime?
-  image                String?
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  /// bcrypt hash for password sign-in. Null for a user who has no password.
+  /// Deliberately *not* covered by the credential-encryption extension: a hash
+  /// needs no encryption, and encrypting it would break `compare()`.
+  passwordHash String?
+
   role                 String                @default("user") // Possible values: "user", "admin"
   subscription         Subscription?
   accounts             Account[]

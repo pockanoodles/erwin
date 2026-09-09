@@ -18,17 +18,10 @@ export async function authenticateUser(email: string, password: string) {
     // Find the user by email
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        accounts: {
-          where: {
-            provider: "credentials",
-          },
-        },
-      },
     });
 
     // If user doesn't exist, return null
-    if (!user || !user.accounts || user.accounts.length === 0) {
+    if (!user) {
       logger.warn(
         "Authentication failed: User not found",
         { email },
@@ -37,15 +30,10 @@ export async function authenticateUser(email: string, password: string) {
       return null;
     }
 
-    // Get the credentials account
-    const credentialsAccount = user.accounts.find(
-      (account) => account.provider === "credentials"
-    );
-
-    // If no credentials account exists, return null
-    if (!credentialsAccount || !credentialsAccount.id_token) {
+    // A user with no hash has no password sign-in (OAuth only, or never set)
+    if (!user.passwordHash) {
       logger.warn(
-        "Authentication failed: No credentials account found",
+        "Authentication failed: User has no password set",
         { email },
         LOG_SOURCE
       );
@@ -53,7 +41,7 @@ export async function authenticateUser(email: string, password: string) {
     }
 
     // Compare the provided password with the stored hash
-    const passwordMatch = await compare(password, credentialsAccount.id_token);
+    const passwordMatch = await compare(password, user.passwordHash);
 
     if (!passwordMatch) {
       logger.warn(
@@ -70,10 +58,10 @@ export async function authenticateUser(email: string, password: string) {
       LOG_SOURCE
     );
 
-    // Return the user without the accounts
+    // Return the user without the hash — this value feeds the JWT callback
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { accounts, ...userWithoutAccounts } = user;
-    return userWithoutAccounts;
+    const { passwordHash, ...safeUser } = user;
+    return safeUser;
   } catch (error) {
     logger.error(
       "Error authenticating user",

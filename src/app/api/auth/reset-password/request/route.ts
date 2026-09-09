@@ -24,17 +24,10 @@ export async function POST(request: NextRequest) {
     // Find the user
     const user = await prisma.user.findUnique({
       where: { email },
-      include: {
-        accounts: {
-          where: {
-            provider: "credentials",
-          },
-        },
-      },
     });
 
     // Don't reveal if the user exists or not
-    if (!user || !user.accounts || user.accounts.length === 0) {
+    if (!user || !user.passwordHash) {
       logger.info(
         "Password reset requested for non-existent user",
         { email },

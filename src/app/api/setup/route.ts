@@ -51,17 +51,7 @@ export async function POST(request: Request) {
         name,
         email,
         role: "admin",
-        // Store the hashed password in a way that's compatible with NextAuth
-        // This assumes you'll be using the credentials provider in the future
-        accounts: {
-          create: {
-            type: "credentials",
-            provider: "credentials",
-            providerAccountId: email,
-            // Store the hashed password in a field that won't conflict with OAuth providers
-            id_token: hashedPassword,
-          },
-        },
+        passwordHash: hashedPassword,
       },
     });
 

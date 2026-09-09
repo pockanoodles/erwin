@@ -58,23 +58,11 @@ export async function POST(request: NextRequest) {
         usedAt: null,
       },
       include: {
-        user: {
-          include: {
-            accounts: {
-              where: {
-                provider: "credentials",
-              },
-            },
-          },
-        },
+        user: true,
       },
     });
 
-    if (
-      !resetRequest ||
-      !resetRequest.user ||
-      !resetRequest.user.accounts?.[0]
-    ) {
+    if (!resetRequest || !resetRequest.user) {
       logger.warn("Invalid or expired reset token used", { token }, LOG_SOURCE);
       return NextResponse.json(
         { error: "Invalid or expired reset token" },
@@ -87,12 +75,12 @@ export async function POST(request: NextRequest) {
 
     // Update the password and mark token as used
     await prisma.$transaction([
-      prisma.account.update({
+      prisma.user.update({
         where: {
-          id: resetRequest.user.accounts[0].id,
+          id: resetRequest.userId,
         },
         data: {
-          id_token: hashedPassword,
+          passwordHash: hashedPassword,
         },
       }),
       prisma.passwordReset.update({
