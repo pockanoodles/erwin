@@ -156,6 +156,18 @@ model CalendarEvent {
   instances        CalendarEvent[] @relation("EventInstances")
   recurringEventId String? // Google Calendar's recurring event ID
 
+  // One row per (feed, external event, occurrence start).
+  //
+  // A recurring series is stored as one `isMaster` row plus its expanded instance
+  // rows, all sharing the series UID in `externalEventId` and differing only by
+  // `start` — so `start` must be part of the key or legitimate instances collide.
+  // Conversely, the master row IS the series' first occurrence, so without `start`
+  // in the key nothing stops an expansion from re-inserting that occurrence as a
+  // second row (the bug this constraint closes).
+  //
+  // `externalEventId` is nullable and Postgres treats NULLs as distinct, so
+  // locally-created events (no external identity) are deliberately unconstrained.
+  @@unique([feedId, externalEventId, start])
   @@index([feedId])
   @@index([start, end])
   @@index([externalEventId])

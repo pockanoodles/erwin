@@ -175,7 +175,14 @@ export class CalDAVCalendarService {
       const rule = new RRule(options);
 
       // Get all occurrences between the start and end dates
-      const occurrences = rule.between(timeRange.start, timeRange.end, true);
+      const occurrences = rule
+        .between(timeRange.start, timeRange.end, true)
+        // The master row is persisted as a real event and already represents the
+        // series' first occurrence (its start/end come straight from DTSTART/DTEND).
+        // RRULE expansion is inclusive of DTSTART, so emitting that occurrence again
+        // would write a second row for the same instant — the duplicate every reader
+        // saw, since no read path filters `isMaster` out.
+        .filter((date) => date.getTime() !== masterEvent.start.getTime());
 
       // Create instance events for each occurrence
       const instanceEvents: CalendarEvent[] = occurrences
@@ -1362,15 +1369,26 @@ export class CalDAVCalendarService {
 
       // Create a map of external IDs to database IDs for linking instances
       const masterEventMap = new Map<string, string>();
+      // Slots the master rows already occupy under the (feed, external id, start)
+      // key. An instance landing on one of these would upsert the master row into
+      // an instance of itself, so those are dropped before the write.
+      const masterEventSlots = new Set<string>();
       for (const event of createdMasterEvents) {
         if (event.externalEventId) {
           masterEventMap.set(event.externalEventId, event.id);
+          masterEventSlots.add(
+            `${event.externalEventId}|${event.start.getTime()}`
+          );
         }
       }
 
       // Create instance events with proper links to master events
       const createdInstanceEvents = await this.createInstanceEvents(
-        instanceEvents,
+        instanceEvents.filter(
+          (e) =>
+            !e.externalEventId ||
+            !masterEventSlots.has(`${e.externalEventId}|${e.start.getTime()}`)
+        ),
         masterEventMap,
         feedId
       );
@@ -1391,6 +1409,33 @@ export class CalDAVCalendarService {
       );
       return { added: [], updated: [], deleted: [] };
     }
+  }
+
+  /**
+   * Writes one synced event, keyed on the (feedId, externalEventId, start) unique
+   * constraint, so a re-sync converges onto the existing row instead of inserting a
+   * second one. Events with no external id have no stable identity to match on and
+   * are inserted — which mirrors the database, where a NULL externalEventId is
+   * deliberately left unconstrained.
+   */
+  private async persistSyncedEvent(
+    eventData: Prisma.CalendarEventUncheckedCreateInput
+  ): Promise<CalendarEvent> {
+    const { feedId, externalEventId, start } = eventData;
+
+    if (!externalEventId) {
+      return prisma.calendarEvent.create({ data: eventData });
+    }
+
+    return prisma.calendarEvent.upsert({
+      where: {
+        feedId_externalEventId_start: { feedId, externalEventId, start },
+      },
+      create: eventData,
+      // The where clause already pins feedId/externalEventId/start, so re-writing
+      // them is a no-op; everything else is refreshed from the server's copy.
+      update: eventData,
+    });
   }
 
   private async createMasterEvents(
@@ -1425,9 +1470,7 @@ export class CalDAVCalendarService {
         };
 
         // Create the event
-        const createdEvent = await prisma.calendarEvent.create({
-          data: eventData,
-        });
+        const createdEvent = await this.persistSyncedEvent(eventData);
 
         createdEvents.push(createdEvent);
       } catch (error) {
@@ -1488,9 +1531,7 @@ export class CalDAVCalendarService {
         };
 
         // Create the event
-        const createdEvent = await prisma.calendarEvent.create({
-          data: eventData,
-        });
+        const createdEvent = await this.persistSyncedEvent(eventData);
 
         createdEvents.push(createdEvent);
       } catch (error) {
