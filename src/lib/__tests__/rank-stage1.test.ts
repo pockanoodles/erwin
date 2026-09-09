@@ -1,4 +1,5 @@
 import {
+  type TaskForRanking,
   computeStage1Scores,
   computeUrgencyTier,
   deadlinePressure,
@@ -7,9 +8,10 @@ import {
   effortFit,
   filterTasksForRanking,
   isPersonalFillerCandidate,
+  isSkipCooling,
   orderTasksStage1,
   pickTopTaskStage1,
-  type TaskForRanking,
+  skipPenalty,
 } from "../erwin/rank-stage1";
 
 const NOW = new Date("2026-06-01T12:00:00.000Z");
@@ -38,6 +40,7 @@ function makeTask(overrides: Partial<TaskForRanking> = {}): TaskForRanking {
     pointsPossible: null,
     courseId: null,
     skipCount: 0,
+    lastSkippedAt: null,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     goalImportanceScore: null,
     ...overrides,
@@ -366,5 +369,99 @@ describe("pickTopTaskStage1", () => {
     expect(
       pickTopTaskStage1([completed], NOW, { slotMinutes: null })
     ).toBeNull();
+  });
+});
+
+describe("skip cooldown", () => {
+  test("a task not skipped is never cooling and takes no penalty", () => {
+    const task = makeTask({ skipCount: 3, lastSkippedAt: null });
+    expect(isSkipCooling(task, NOW)).toBe(false);
+    expect(skipPenalty(task, NOW)).toBe(0);
+  });
+
+  test("cooling inside the window, not after it", () => {
+    expect(isSkipCooling(makeTask({ lastSkippedAt: at(-1) }), NOW)).toBe(true);
+    expect(isSkipCooling(makeTask({ lastSkippedAt: at(-3.9) }), NOW)).toBe(
+      true
+    );
+    expect(isSkipCooling(makeTask({ lastSkippedAt: at(-4.1) }), NOW)).toBe(
+      false
+    );
+  });
+
+  test("a future lastSkippedAt (clock skew) still counts as cooling", () => {
+    expect(isSkipCooling(makeTask({ lastSkippedAt: at(2) }), NOW)).toBe(true);
+  });
+
+  test("penalty grows with skip count and halves every 48h", () => {
+    const once = makeTask({ skipCount: 1, lastSkippedAt: NOW });
+    const thrice = makeTask({ skipCount: 3, lastSkippedAt: NOW });
+    expect(skipPenalty(once, NOW)).toBeCloseTo(0.05, 6);
+    expect(skipPenalty(thrice, NOW)).toBeCloseTo(0.15, 6);
+    // Capped at 0.2 however many times it's been skipped.
+    expect(skipPenalty(makeTask({ skipCount: 20, lastSkippedAt: NOW }), NOW)) //
+      .toBeCloseTo(0.2, 6);
+    expect(
+      skipPenalty(makeTask({ skipCount: 3, lastSkippedAt: at(-48) }), NOW)
+    ).toBeCloseTo(0.075, 6);
+  });
+
+  test("the skipped task loses the lead even when it is the DANGER one", () => {
+    // This is the bug: the top task is top *because* it is urgent, so a
+    // score-only penalty would leave it at #1 and Skip would do nothing.
+    const overdue = makeTask({
+      dueDate: at(-10),
+      gradeImpactScore: 0.9,
+      lastSkippedAt: at(-0.01),
+      skipCount: 1,
+    });
+    const calm = makeTask({ dueDate: at(72), gradeImpactScore: 0.1 });
+
+    const ordered = orderTasksStage1([overdue, calm], NOW, {
+      slotMinutes: null,
+    });
+    expect(ordered.map((t) => t.id)).toEqual([calm.id, overdue.id]);
+  });
+
+  test("it returns to the lead once the cooldown lapses", () => {
+    const overdue = makeTask({
+      dueDate: at(-10),
+      gradeImpactScore: 0.9,
+      lastSkippedAt: at(-5),
+      skipCount: 1,
+    });
+    const calm = makeTask({ dueDate: at(72), gradeImpactScore: 0.1 });
+
+    const ordered = orderTasksStage1([overdue, calm], NOW, {
+      slotMinutes: null,
+    });
+    expect(ordered[0]?.id).toBe(overdue.id);
+  });
+
+  test("cooling is a sort key, not a filter — Focus never runs dry", () => {
+    const only = makeTask({ dueDate: at(1), lastSkippedAt: NOW, skipCount: 1 });
+    expect(pickTopTaskStage1([only], NOW, { slotMinutes: null })?.id).toBe(
+      only.id
+    );
+  });
+
+  test("between two cooling tasks the normal ordering still decides", () => {
+    const urgent = makeTask({
+      dueDate: at(-10),
+      gradeImpactScore: 0.9,
+      lastSkippedAt: NOW,
+      skipCount: 1,
+    });
+    const calm = makeTask({
+      dueDate: at(72),
+      gradeImpactScore: 0.1,
+      lastSkippedAt: NOW,
+      skipCount: 1,
+    });
+
+    const ordered = orderTasksStage1([calm, urgent], NOW, {
+      slotMinutes: null,
+    });
+    expect(ordered[0]?.id).toBe(urgent.id);
   });
 });

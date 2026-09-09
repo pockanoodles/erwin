@@ -1,21 +1,20 @@
 /**
  * Shared ranking pipeline for Focus queue and briefing (docs/focus-mode.md).
  */
-
 import type { Prisma } from "@prisma/client";
 
+import { newDate } from "@/lib/date-utils";
 import {
   computeErwinAvailabilitySummary,
   filterTasksByAvailabilityCapacity,
 } from "@/lib/erwin/availability";
 import { computeFocusBriefing } from "@/lib/erwin/briefing";
 import {
+  type TaskForRanking,
   filterTasksForRanking,
   orderTasksStage1,
   stage1MetaForTasks,
-  type TaskForRanking,
 } from "@/lib/erwin/rank-stage1";
-import { newDate } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 
 export function toTaskForRanking(r: {
@@ -34,6 +33,7 @@ export function toTaskForRanking(r: {
   pointsPossible: number | null;
   courseId: string | null;
   skipCount: number;
+  lastSkippedAt: Date | null;
   createdAt: Date;
   goalLinks?: Array<{ goal: { importanceScore: number | null } }> | null;
 }): TaskForRanking {
@@ -53,6 +53,7 @@ export function toTaskForRanking(r: {
     pointsPossible: r.pointsPossible,
     courseId: r.courseId,
     skipCount: r.skipCount,
+    lastSkippedAt: r.lastSkippedAt,
     createdAt: r.createdAt,
     // Erwin v3: a task can serve several goals — it surfaces on its most
     // important one (see rank-stage1 computeStage1Scores).
@@ -87,7 +88,9 @@ export interface FocusQueueCoreResult {
 /**
  * Loads tasks, applies Stage 1 ranking with availability filtering.
  */
-export async function buildFocusQueueCore(userId: string): Promise<FocusQueueCoreResult> {
+export async function buildFocusQueueCore(
+  userId: string
+): Promise<FocusQueueCoreResult> {
   const now = newDate();
 
   const rows = await prisma.task.findMany({
@@ -120,12 +123,7 @@ export async function buildFocusQueueCore(userId: string): Promise<FocusQueueCor
     slotMinutes: slotMinutesForRank,
   });
 
-  const meta = stage1MetaForTasks(
-    ordered,
-    slotAware,
-    now,
-    slotMinutesForRank
-  );
+  const meta = stage1MetaForTasks(ordered, slotAware, now, slotMinutesForRank);
 
   return {
     rows,

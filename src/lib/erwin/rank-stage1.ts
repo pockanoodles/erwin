@@ -2,7 +2,6 @@
  * Erwin Stage 1 ranking (deterministic): filters, urgency tiers, base score, personal filler lane.
  * Spec: technical spec §5.2 (May 1, 2026).
  */
-
 import type { Task } from "@prisma/client";
 
 const W_IMPACT = 0.35;
@@ -12,6 +11,32 @@ const K_SIGMOID = 0.15;
 const HOURS_MIDPOINT = 48;
 const VISIBILITY_BOOST = 0.15;
 const LATE_PENALTY_PER_DAY = 0.1;
+
+/**
+ * Skip handling (spec §5.3.6 named the signal but only Stage 2 ever scored it,
+ * so until now Skip incremented `skipCount`/`lastSkippedAt` and changed nothing
+ * — the refetched queue returned the identical order and re-served the same
+ * card). Two mechanisms, deliberately separate:
+ *
+ * 1. A hard cooldown. Inside the window a task is "cooling" and sorts below
+ *    every non-cooling candidate, ahead of the score entirely. It has to
+ *    outrank DANGER: the task you skipped is usually top *because* it is
+ *    urgent, and a score-only penalty would leave it at #1 — which is the bug.
+ *    Cooling is a sort key, never a filter, so if everything is cooling the
+ *    normal order still applies and Focus never runs dry.
+ * 2. A decaying score penalty that outlives the cooldown, so a task you keep
+ *    skipping drifts down instead of bouncing back to #1 every four hours.
+ *    It halves every two days, so genuine avoidance costs a task its lead
+ *    while a single skip on a busy afternoon is forgotten by the weekend.
+ *
+ * Escalation still wins in the end: `isSkipSpiralDanger` promotes a
+ * high-impact task with a near deadline once it has been skipped three times,
+ * and that fires as soon as the cooldown lapses.
+ */
+const SKIP_COOLDOWN_HOURS = 4;
+const SKIP_PENALTY_PER_SKIP = 0.05;
+const SKIP_PENALTY_MAX = 0.2;
+const SKIP_PENALTY_HALF_LIFE_HOURS = 48;
 
 export type UrgencyTier = "DANGER" | "HIGH" | "NORMAL" | "LOW" | "NONE";
 
@@ -32,6 +57,7 @@ export type TaskForRanking = Pick<
   | "pointsPossible"
   | "courseId"
   | "skipCount"
+  | "lastSkippedAt"
   | "createdAt"
 > & {
   /**
@@ -91,11 +117,43 @@ export function isSkipSpiralDanger(task: TaskForRanking, now: Date): boolean {
   return h <= 24 * 5;
 }
 
-export function isDangerResolved(
-  task: TaskForRanking,
-  now: Date
-): boolean {
+export function isDangerResolved(task: TaskForRanking, now: Date): boolean {
   return isDangerForFocus(task, now) || isSkipSpiralDanger(task, now);
+}
+
+function hoursSinceSkip(task: TaskForRanking, now: Date): number | null {
+  if (!task.lastSkippedAt) {
+    return null;
+  }
+  const h =
+    (now.getTime() - new Date(task.lastSkippedAt).getTime()) / 3_600_000;
+  // A clock skew or a client-set future timestamp shouldn't read as "skipped
+  // ages ago" and quietly cancel the cooldown; treat it as skipped just now.
+  return Math.max(0, h);
+}
+
+/**
+ * Whether a task is inside its post-skip cooldown and must not lead the queue.
+ * See the SKIP_* constants for why this ranks above DANGER.
+ */
+export function isSkipCooling(task: TaskForRanking, now: Date): boolean {
+  const h = hoursSinceSkip(task, now);
+  return h != null && h < SKIP_COOLDOWN_HOURS;
+}
+
+/**
+ * Score penalty for repeated skips, decaying by half every
+ * SKIP_PENALTY_HALF_LIFE_HOURS since the most recent one. Zero for a task that
+ * has never been skipped, so untouched rankings are bit-identical to before.
+ */
+export function skipPenalty(task: TaskForRanking, now: Date): number {
+  const count = task.skipCount ?? 0;
+  const h = hoursSinceSkip(task, now);
+  if (count <= 0 || h == null) {
+    return 0;
+  }
+  const magnitude = Math.min(SKIP_PENALTY_MAX, SKIP_PENALTY_PER_SKIP * count);
+  return magnitude * Math.pow(0.5, h / SKIP_PENALTY_HALF_LIFE_HOURS);
 }
 
 /**
@@ -135,9 +193,7 @@ export function effectiveGradeImpact(task: TaskForRanking, now: Date): number {
   if (lock && now.getTime() > lock.getTime()) {
     return Math.max(0.05, g * 0.5);
   }
-  const daysLate = Math.floor(
-    (now.getTime() - due.getTime()) / 86_400_000
-  );
+  const daysLate = Math.floor((now.getTime() - due.getTime()) / 86_400_000);
   const penalty = Math.min(0.9, LATE_PENALTY_PER_DAY * Math.max(0, daysLate));
   return Math.max(0.05, g * (1 - penalty));
 }
@@ -168,7 +224,10 @@ function rawImpact(task: TaskForRanking, now: Date): number {
 /**
  * Spec §5.2.5 — effort fit vs available slot (0–1).
  */
-export function effortFit(estimatedMinutes: number, slotMinutes: number): number {
+export function effortFit(
+  estimatedMinutes: number,
+  slotMinutes: number
+): number {
   const est = Math.max(1, estimatedMinutes);
   const slot = Math.max(1, slotMinutes);
   return 1 - Math.abs(est - slot) / Math.max(est, slot);
@@ -307,6 +366,8 @@ export interface Stage1Scores {
   urgencyTier: UrgencyTier;
   danger: boolean;
   fillerDemoted: boolean;
+  /** Inside the post-skip cooldown: sorted below everything else. */
+  skipCooling: boolean;
 }
 
 export function computeStage1Scores(
@@ -319,8 +380,7 @@ export function computeStage1Scores(
   const danger = isDangerResolved(task, now);
   const urgencyTier = computeUrgencyTier(task, now, danger);
   const demote =
-    canvasHasDangerOrHigh(candidates, now) &&
-    isPersonalFillerCandidate(task);
+    canvasHasDangerOrHigh(candidates, now) && isPersonalFillerCandidate(task);
 
   // Impact term (weight 0.35) is the pool-normalized max of grade impact and
   // goal impact — a personal goal is a first-class reason to work on a task, so
@@ -330,9 +390,9 @@ export function computeStage1Scores(
   const dp = deadlinePressure(task, now);
   const slot = nominalSlotMinutes(slotMinutes);
   const ef = effortFit(task.duration ?? 30, slot);
-  let base =
-    W_IMPACT * ni + W_DEADLINE * dp + W_EFFORT * ef;
+  let base = W_IMPACT * ni + W_DEADLINE * dp + W_EFFORT * ef;
   base += visibilityBoost(task, candidates, now);
+  base -= skipPenalty(task, now);
   base = Math.min(2, Math.max(0, base));
 
   return {
@@ -340,6 +400,7 @@ export function computeStage1Scores(
     urgencyTier,
     danger,
     fillerDemoted: demote,
+    skipCooling: isSkipCooling(task, now),
   };
 }
 
@@ -369,7 +430,8 @@ export interface OrderStage1Options {
 }
 
 /**
- * Ordering: filler demotion when Canvas is urgent, then DANGER, then base score, then due, title.
+ * Ordering: post-skip cooldown, then filler demotion when Canvas is urgent,
+ * then DANGER, then base score, then due, title.
  */
 export function orderTasksStage1(
   tasks: TaskForRanking[],
@@ -388,6 +450,14 @@ export function orderTasksStage1(
   }));
 
   scored.sort((a, b) => {
+    // Outermost key, above DANGER: skipping a task has to move you on even
+    // when that task is the urgent one. If every candidate is cooling this
+    // compares equal and the rest of the ordering takes over unchanged.
+    const ca = a.skipCooling ? 1 : 0;
+    const cb = b.skipCooling ? 1 : 0;
+    if (ca !== cb) {
+      return ca - cb;
+    }
     const da = a.fillerDemoted ? 1 : 0;
     const db = b.fillerDemoted ? 1 : 0;
     if (da !== db) {
@@ -441,10 +511,7 @@ export function stage1MetaForTasks(
   const normImpact = normalizeImpactPool(pool, now);
   const out = new Map<string, Stage1Scores>();
   for (const t of ordered) {
-    out.set(
-      t.id,
-      computeStage1Scores(t, pool, now, slotMinutes, normImpact)
-    );
+    out.set(t.id, computeStage1Scores(t, pool, now, slotMinutes, normImpact));
   }
   return out;
 }
