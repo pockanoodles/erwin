@@ -108,34 +108,44 @@ code sends them today.
 
 ---
 
-## Where the keys are kept — and an honest caveat
+## Where the keys are kept
 
 All credentials live in the local Postgres database: OAuth tokens for Google and
 Microsoft, your Canvas token, your CalDAV password, and the API key for Resend.
 
-**They are stored as plain text.** There is no encryption layer in this
-codebase. Anyone who can read the database file, or who has a backup of it, can
-read every credential in it. The practical protection is that the database
-never leaves the laptop and the laptop is disk-encrypted — not that the values
-themselves are protected.
+**They are encrypted.** Each value is sealed with AES-256-GCM before it is
+written, using a key held outside the database in the environment
+(`ERWIN_SECRET_KEY`). Encryption is authenticated, which means a value altered
+in the database will refuse to decrypt rather than quietly turn into a broken
+credential that then gets sent to Google.
 
-Two related oddities, both inherited from the upstream project this is forked
-from, both worth fixing:
+Be clear about what that does and does not buy:
 
-1. **A fallback session-signing key is committed in the source code.** If the
-   proper environment variable is ever missing, the application silently falls
-   back to a key that is publicly visible in the upstream repository — which
-   would let anyone forge a login session. This install does set the
-   environment variable, so the fallback is not in use here. The fallback
-   should be deleted so a missing key fails loudly instead of quietly.
-2. **A password hash is stored in a field meant for something else.** Local
-   account passwords are hashed correctly, then written into a database column
-   intended to hold an OAuth identity token. It works, but it is misleading to
-   anyone reading the schema.
+- **It protects a copy of the database** — a `pg_dump`, a Time Machine
+  snapshot, a stray backup, another process reading the tables. That is the
+  realistic way these values would escape this laptop.
+- **It does not protect against anything running as you on this machine**,
+  which can read the key out of the environment just as easily as the database.
+  Closing that gap means moving the key into the macOS Keychain, which is a
+  separate change and not done yet.
+
+Two practical consequences of the key living outside the database: **lose the
+key and every stored credential becomes unreadable** — you would have to
+reconnect each integration by hand. **Change the key** and the values have to
+be re-encrypted while the old key is still available.
+
+One remaining oddity inherited from the upstream project, worth fixing on its
+own: **a password hash is stored in a field meant for something else.** Local
+account passwords are hashed correctly, then written into a database column
+intended to hold an OAuth identity token. It works, but it misleads anyone
+reading the schema — and it is the reason that column is deliberately left out
+of the encryption above, since a hash needs no encrypting and doing it would
+cement the mistake.
 
 Also worth noting: when a CalDAV connection succeeds or fails, the server
-address and username are written to the local log table. That is local, but it
-means those values appear in logs as well as in the accounts table.
+address and username are written to the local log table. That is local, and no
+password is logged, but it means those values appear in logs as well as in the
+accounts table — and unlike the accounts table, the log is not encrypted.
 
 ---
 
