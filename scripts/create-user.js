@@ -8,9 +8,9 @@ const prisma = new PrismaClient({
 });
 
 /**
- * Creates a local credentials user and linked credentials account.
- * The password hash is stored in Account.id_token for compatibility
- * with src/lib/auth/credentials-provider.ts.
+ * Creates a local user who can sign in with a password. The hash goes in
+ * User.passwordHash, which is where src/lib/auth/credentials-provider.ts
+ * reads it from.
  */
 async function main() {
   const [, , rawEmail, rawPassword] = process.argv;
@@ -39,24 +39,11 @@ async function main() {
 
   const hashedPassword = await passwordHasher.hash(password, 12);
 
-  const user = await prisma.$transaction(async (tx) => {
-    const createdUser = await tx.user.create({
-      data: {
-        email,
-      },
-    });
-
-    await tx.account.create({
-      data: {
-        userId: createdUser.id,
-        type: "credentials",
-        provider: "credentials",
-        providerAccountId: email,
-        id_token: hashedPassword,
-      },
-    });
-
-    return createdUser;
+  const user = await prisma.user.create({
+    data: {
+      email,
+      passwordHash: hashedPassword,
+    },
   });
 
   console.log("User created successfully.");
