@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { clearResendInstance } from "@/lib/email/resend";
 import { logger } from "@/lib/logger";
 
 import { useSettingsStore } from "@/store/settings";
@@ -63,11 +62,6 @@ export function SystemSettings() {
       });
       const data = await response.json();
       updateSystemSettings(data);
-
-      // Clear Resend instance if the API key was updated
-      if ("resendApiKey" in updates) {
-        clearResendInstance();
-      }
     } catch (error) {
       logger.error(
         "Failed to update system settings",

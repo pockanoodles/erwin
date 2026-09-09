@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/auth/api-auth";
+import { clearResendInstance } from "@/lib/email/resend";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -73,6 +74,15 @@ export async function PATCH(request: NextRequest) {
         });
       }
     });
+
+    // The Resend client memoizes the API key it was built with, so a rotated
+    // key would go unused until the process restarted. This used to be called
+    // from the settings page instead, where it only ever cleared a variable in
+    // the browser — the server kept the stale key, and the import dragged
+    // Prisma into the client bundle.
+    if ("resendApiKey" in updates) {
+      clearResendInstance();
+    }
 
     // Log if the homepage setting was updated
     if ("disableHomepage" in updates) {
