@@ -6,6 +6,7 @@ import {
   isToday,
   isTomorrow,
   newDate,
+  newDateFromYMD,
 } from "@/lib/date-utils";
 
 import {
@@ -213,23 +214,44 @@ export const compareTaskEnergyLevel = (
     direction
   );
 
-// Format date in a contextual way (Today, Tomorrow, etc.)
+/**
+ * A task date as a column-width label: "Today", "Tomorrow", "Friday",
+ * "Mar 10", "Overdue: Aug 31".
+ *
+ * Task dates are stored at UTC midnight, so reading them in local time lands
+ * on 8:00 PM the day before (or noon, depending on the zone) and printing the
+ * clock shows that artifact as if it were data. Take the UTC calendar date and
+ * rebuild it locally. There were three copies of this — two correct ones
+ * pasted into cell components and this exported one, which had drifted into
+ * printing the phantom time; the copies now import this.
+ */
 export const formatContextualDate = (date: Date) => {
+  const localDate = newDateFromYMD(
+    date.getUTCFullYear(),
+    date.getUTCMonth(),
+    date.getUTCDate()
+  );
   const now = newDate();
-  const isOverdue = date < now && !isToday(date);
-  let text;
+  now.setHours(0, 0, 0, 0);
 
-  if (isToday(date)) {
-    text = `Today, ${format(date, "p")}`;
-  } else if (isTomorrow(date)) {
-    text = `Tomorrow, ${format(date, "p")}`;
-  } else if (isThisWeek(date)) {
-    text = format(date, "EEEE, p");
-  } else if (isThisYear(date)) {
-    text = format(date, "MMM d, p");
+  const isOverdue = localDate < now && !isToday(localDate);
+  const isFuture = isFutureDate(localDate);
+
+  let text: string;
+  if (isToday(localDate)) {
+    text = "Today";
+  } else if (isTomorrow(localDate)) {
+    text = "Tomorrow";
+  } else if (isThisWeek(localDate)) {
+    text = format(localDate, "EEEE");
+  } else if (isThisYear(localDate)) {
+    text = format(localDate, "MMM d");
   } else {
-    text = format(date, "MMM d, yyyy, p");
+    text = format(localDate, "MMM d, yyyy");
+  }
+  if (isOverdue) {
+    text = `Overdue: ${text}`;
   }
 
-  return { text, isOverdue };
+  return { text, isOverdue, isFuture };
 };

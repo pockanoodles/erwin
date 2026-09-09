@@ -6,12 +6,17 @@ import {
   HiOutlineCog,
   HiOutlineFlag,
   HiOutlineLightningBolt,
+  HiOutlineMenu,
   HiOutlineTrendingUp,
 } from "react-icons/hi";
+
+import { useNavUIStore } from "@/store/navUi";
 
 import { Command } from "../types";
 
 export function useNavigationCommands(): Command[] {
+  const { isNavOpen, setNavOpen } = useNavUIStore();
+
   return [
     {
       id: "navigation.calendar",
@@ -78,6 +83,18 @@ export function useNavigationCommands(): Command[] {
       perform: (router?: AppRouterInstance) => {
         if (router) router.push("/settings");
       },
+    },
+    {
+      // The rail collapses to zero width, so this and the edge tab in AppNav
+      // are the only ways back in — registering it here rather than as a bare
+      // keydown gets it into the palette and the shortcuts sheet for free.
+      id: "navigation.toggle-sidebar",
+      title: "Toggle Sidebar",
+      keywords: ["sidebar", "nav", "rail", "toggle", "collapse", "expand"],
+      icon: HiOutlineMenu,
+      section: "navigation",
+      shortcut: "meta+\\",
+      perform: () => setNavOpen(!isNavOpen),
     },
   ];
 }

@@ -827,8 +827,12 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
           return false;
         }
 
-        if (task.isAutoScheduled && task.scheduledStart && task.scheduledEnd) {
-          // For auto-scheduled tasks, check if scheduled time is within range
+        // A scheduled window is a scheduled window regardless of who set it.
+        // This used to require isAutoScheduled, so a task you placed by hand
+        // (which turns auto-scheduling off) fell through to the due-date branch
+        // and reappeared as a 9 AM all-day chip — the time you just set was on
+        // the record but never on the grid.
+        if (task.scheduledStart && task.scheduledEnd) {
           const scheduledStart = newDate(task.scheduledStart);
           return scheduledStart >= startDay && scheduledStart <= endDay;
         } else if (task.dueDate) {
@@ -844,8 +848,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         return false;
       })
       .map((task) => {
-        if (task.isAutoScheduled && task.scheduledStart && task.scheduledEnd) {
-          // For auto-scheduled tasks, use the scheduled times
+        if (task.scheduledStart && task.scheduledEnd) {
+          // Scheduled times win, whoever set them (see the filter above).
           return {
             id: `${task.id}`,
             feedId: "tasks",
@@ -865,7 +869,10 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
               energyLevel: task.energyLevel?.toString() || undefined,
               preferredTime: task.preferredTime?.toString(),
               tags: task.tags,
-              isAutoScheduled: true,
+              // Was hardcoded true, which was only ever right while this
+              // branch required isAutoScheduled.
+              isAutoScheduled: task.isAutoScheduled,
+              scheduleLocked: task.scheduleLocked,
               scheduleScore: task.scheduleScore,
               dueDate: task.dueDate
                 ? newDate(task.dueDate).toISOString()

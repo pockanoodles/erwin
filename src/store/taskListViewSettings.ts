@@ -56,6 +56,14 @@ interface TaskListViewSettings {
   // Column visibility ("title" is always visible and not stored)
   visibleColumns: TaskColumnId[];
 
+  /**
+   * Widths set by dragging a header edge, in px. Only columns the user has
+   * actually resized appear here — everything else falls back to the width in
+   * the column registry, so changing a default still reaches anyone who never
+   * touched that column.
+   */
+  columnWidths: Partial<Record<TaskColumnId, number>>;
+
   // Actions
   setSortBy: (sortBy: TaskListViewSettings["sortBy"]) => void;
   setSortDirection: (direction: TaskListViewSettings["sortDirection"]) => void;
@@ -73,7 +81,15 @@ interface TaskListViewSettings {
   ) => void;
   resetFilters: () => void;
   toggleColumn: (column: TaskColumnId) => void;
+  setColumnWidth: (column: TaskColumnId, width: number) => void;
+  /** Back to the registry default — the double-click on a header edge. */
+  resetColumnWidth: (column: TaskColumnId) => void;
 }
+
+/** Narrow enough to park a column you rarely read, wide enough to still be
+ *  grabbable; the ceiling just stops a runaway drag from stranding the sheet. */
+export const MIN_COLUMN_WIDTH = 56;
+export const MAX_COLUMN_WIDTH = 900;
 
 const DEFAULT_STATUS_FILTERS = [TaskStatus.TODO, TaskStatus.IN_PROGRESS];
 
@@ -93,6 +109,7 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       hideUpcomingTasks: false,
 
       visibleColumns: DEFAULT_VISIBLE_COLUMNS,
+      columnWidths: {},
 
       // Actions
       setSortBy: (sortBy) => set({ sortBy }),
@@ -113,10 +130,30 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
             ? state.visibleColumns.filter((c) => c !== column)
             : [...state.visibleColumns, column],
         })),
+      setColumnWidth: (column, width) =>
+        set((state) => ({
+          columnWidths: {
+            ...state.columnWidths,
+            [column]: Math.round(
+              Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, width))
+            ),
+          },
+        })),
+      resetColumnWidth: (column) =>
+        set((state) => {
+          // Drop the entry rather than writing the default into it, so the
+          // column goes back to tracking the registry.
+          const next = { ...state.columnWidths };
+          delete next[column];
+          return { columnWidths: next };
+        }),
     }),
     {
       name: "task-list-view-settings",
       storage: ssrSafeJsonStorage,
+      // No migration needed for `columnWidths`: persist's default merge is
+      // `{...initial, ...persisted}`, so a blob written before this key
+      // existed simply leaves the initial `{}` in place.
     }
   )
 );

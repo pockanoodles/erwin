@@ -7,13 +7,11 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { formatDay } from "@/components/goals/types";
 
-import { format, isToday, newDate } from "@/lib/date-utils";
-import {
-  parseTaskFromApi,
-  primaryLadderGoal,
-  type FocusQueueTask,
-} from "@/lib/erwin/parse-task";
+import { isToday } from "@/lib/date-utils";
+import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
+
+import { useErwinStatusStore } from "@/store/erwinStatus";
 
 // Tier idiom, mirrored from FocusTaskCard so the whole app reads danger/urgency
 // the same way: DANGER = red, HIGH-and-due-today = amber, else quiet.
@@ -48,32 +46,15 @@ function tierBadge(
 }
 
 export function CommandDashboard() {
-  const [tasks, setTasks] = useState<FocusQueueTask[]>([]);
-  const [slotNarrative, setSlotNarrative] = useState<string | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "error">(
-    "loading"
-  );
+  // The queue is shared with the top bar's status strip (store/erwinStatus.ts)
+  // — this page used to own it, which is why the counts could only be seen
+  // while standing on /today.
+  const tasks = useErwinStatusStore((s) => s.tasks);
+  const status = useErwinStatusStore((s) => s.status);
+  const load = useErwinStatusStore((s) => s.load);
+  const removeTask = useErwinStatusStore((s) => s.removeTask);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/erwin/focus/queue");
-      if (!res.ok) {
-        setStatus("error");
-        return;
-      }
-      const data = await res.json();
-      const parsed: FocusQueueTask[] = (data.ranked ?? []).map(parseTaskFromApi);
-      setTasks(parsed);
-      setSlotNarrative(data.briefing?.slotNarrative ?? null);
-      setSelectedId((prev) =>
-        prev && parsed.some((t) => t.id === prev) ? prev : parsed[0]?.id ?? null
-      );
-      setStatus("ready");
-    } catch {
-      setStatus("error");
-    }
-  }, []);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   useEffect(() => {
     load();
@@ -84,66 +65,40 @@ export function CommandDashboard() {
     [tasks, selectedId]
   );
 
-  const markDone = useCallback(async (id: string) => {
-    // Optimistic: drop it and slide selection to the next task.
-    setTasks((prev) => {
-      const idx = prev.findIndex((t) => t.id === id);
-      const next = prev.filter((t) => t.id !== id);
+  const markDone = useCallback(
+    async (id: string) => {
+      // Optimistic: drop it and slide selection to the next task. The status
+      // strip is reading the same list, so its counts fall at the same moment.
+      const idx = tasks.findIndex((t) => t.id === id);
+      const next = tasks.filter((t) => t.id !== id);
+      removeTask(id);
       setSelectedId(next[Math.min(idx, next.length - 1)]?.id ?? null);
-      return next;
-    });
-    try {
-      await fetch("/api/erwin/focus/interact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          taskId: id,
-          action: "COMPLETED",
-          sessionId: crypto.randomUUID(),
-        }),
-      });
-    } catch {
-      // A failed completion shouldn't silently look done — reload truth.
-      load();
-    }
-  }, [load]);
-
-  const dueToday = tasks.filter((t) => t.dueDate && isToday(t.dueDate)).length;
-  const dangerCount = tasks.filter(
-    (t) => t.erwin?.danger || t.erwin?.urgencyTier === "DANGER"
-  ).length;
+      try {
+        await fetch("/api/erwin/focus/interact", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            taskId: id,
+            action: "COMPLETED",
+            sessionId: crypto.randomUUID(),
+          }),
+        });
+      } catch {
+        // A failed completion shouldn't silently look done — reload truth.
+        load({ force: true });
+      }
+    },
+    [tasks, removeTask, load]
+  );
 
   return (
+    // No header: the date and the counts that used to sit here are permanent
+    // furniture in the app top bar now.
     <div className="flex h-full flex-col">
-      <header className="flex-none border-b border-border px-6 py-5 md:px-8">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          Today · {format(newDate(), "EEE, MMM d")}
-        </p>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          <span>{tasks.length} open</span>
-          <span aria-hidden>·</span>
-          <span>{dueToday} due today</span>
-          {dangerCount > 0 && (
-            <>
-              <span aria-hidden>·</span>
-              <span className="font-medium text-red-700 dark:text-red-400">
-                {dangerCount} in danger
-              </span>
-            </>
-          )}
-          {slotNarrative && (
-            <>
-              <span aria-hidden>·</span>
-              <span>{slotNarrative}</span>
-            </>
-          )}
-        </p>
-      </header>
-
       <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_23rem] xl:grid-cols-[1fr_27rem]">
         {/* LEFT — the climb: ranked queue */}
         <section className="min-h-0 overflow-y-auto border-b border-border lg:border-b-0 lg:border-r">
-          {status === "loading" && (
+          {(status === "idle" || status === "loading") && (
             <p className="p-6 text-sm text-muted-foreground">Loading today…</p>
           )}
           {status === "error" && (

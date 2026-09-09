@@ -1,0 +1,538 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { HiChevronDown, HiChevronUp, HiPencil, HiTrash } from "react-icons/hi";
+
+import { cn } from "@/lib/utils";
+
+import { useLordStore } from "@/store/lord";
+import {
+  useTaskListViewSettings,
+  type TaskColumnId,
+} from "@/store/taskListViewSettings";
+
+import { Task, TaskStatus } from "@/types/task";
+
+import { useDraggableTask } from "../../dnd/useDragAndDrop";
+import { isUpcomingTask } from "../utils/task-list-utils";
+import { TASK_COLUMNS, type SortKey, type TaskPatch } from "./columns";
+import { useColumnResize } from "./useColumnResize";
+import { ValueBar } from "./ValueBar";
+
+/**
+ * The task list as a datasheet.
+ *
+ * The old table was a Notion-shaped thing: 44px rows, no vertical rules, cells
+ * that opened editors inline and grew, values silently truncated with no way
+ * to see the rest. This is the spreadsheet reading of the same data — a fixed
+ * row height so your eye can scan a column, ruled cells so a value belongs
+ * visibly to a column, a numbered gutter so you can refer to a row, and one
+ * cell selected at a time with its full contents in the bar above.
+ *
+ * Density is deliberate and desktop-only: 26px rows are below the 44px touch
+ * target floor, which is the correct trade for a sheet you drive with a
+ * pointer and arrow keys. Every other surface in the app keeps the floor.
+ */
+
+/** Uniform row height. The one property that makes a sheet scannable. */
+const ROW = "h-[26px]";
+
+const GUTTER_WIDTH = 44;
+const DONE_WIDTH = 32;
+const ACTIONS_WIDTH = 60;
+
+interface TaskSheetProps {
+  /** Already filtered and sorted by TaskList. */
+  tasks: Task[];
+  visibleColumns: Set<TaskColumnId>;
+  sortBy: SortKey;
+  sortDirection: "asc" | "desc";
+  onSort: (key: SortKey) => void;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+  onInlineEdit: (task: TaskPatch) => void;
+}
+
+interface CellRef {
+  row: number;
+  col: number;
+}
+
+export function TaskSheet({
+  tasks,
+  visibleColumns,
+  sortBy,
+  sortDirection,
+  onSort,
+  onEdit,
+  onDelete,
+  onStatusChange,
+  onInlineEdit,
+}: TaskSheetProps) {
+  const lords = useLordStore((s) => s.lords);
+  const ctx = useMemo(() => ({ lords }), [lords]);
+
+  const columnWidths = useTaskListViewSettings((s) => s.columnWidths);
+  const setColumnWidth = useTaskListViewSettings((s) => s.setColumnWidth);
+  const resetColumnWidth = useTaskListViewSettings((s) => s.resetColumnWidth);
+  const resize = useColumnResize(setColumnWidth);
+
+  const columns = useMemo(
+    () => TASK_COLUMNS.filter((c) => visibleColumns.has(c.id)),
+    [visibleColumns]
+  );
+
+  /** Registry default, unless the header edge has been dragged. */
+  const widthOf = (id: TaskColumnId, fallback: number) =>
+    resize.active?.column === id
+      ? resize.active.width
+      : (columnWidths[id] ?? fallback);
+
+  // Widths are absolute once they're draggable — proportional columns would
+  // quietly steal the pixels back from a neighbour as you widened one, which
+  // is not what pulling an edge means. Below the container the table still
+  // stretches to fill it and the trailing filler column takes the slack, so
+  // there's no dead space and no scrollbar until you've earned one.
+  const tableWidth =
+    GUTTER_WIDTH +
+    DONE_WIDTH +
+    ACTIONS_WIDTH +
+    columns.reduce((sum, c) => sum + widthOf(c.id, c.width), 0);
+
+  const [active, setActive] = useState<CellRef>({ row: 0, col: 0 });
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Filtering or sorting can pull the selected cell out from under the
+  // selection; clamp rather than clear, so the cursor stays roughly put.
+  const row = Math.min(active.row, Math.max(0, tasks.length - 1));
+  const col = Math.min(active.col, Math.max(0, columns.length - 1));
+  const activeTask: Task | null = tasks[row] ?? null;
+  const activeColumn = columns[col] ?? null;
+
+  const move = useCallback(
+    (dRow: number, dCol: number) => {
+      setActive(() => {
+        let r = row + dRow;
+        let c = col + dCol;
+        // Horizontal overflow wraps to the next/previous row, like Tab does in
+        // a spreadsheet — otherwise Tab dead-ends at the last column.
+        if (c < 0) {
+          c = columns.length - 1;
+          r -= 1;
+        } else if (c > columns.length - 1) {
+          c = 0;
+          r += 1;
+        }
+        return {
+          row: Math.max(0, Math.min(tasks.length - 1, r)),
+          col: Math.max(0, Math.min(columns.length - 1, c)),
+        };
+      });
+    },
+    [row, col, columns.length, tasks.length]
+  );
+
+  // Keep the selection on screen when it's driven from the keyboard.
+  useEffect(() => {
+    scrollRef.current
+      ?.querySelector("[data-active-cell]")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [row, col]);
+
+  const focusValueBar = () => {
+    const field = document.querySelector<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >("[data-value-bar-input]");
+    field?.focus();
+    // Only the text-ish fields have text to preselect; a <select> has no
+    // `select()` at all, so calling it unconditionally would throw.
+    if (
+      field instanceof HTMLInputElement ||
+      field instanceof HTMLTextAreaElement
+    ) {
+      field.select();
+    }
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    switch (e.key) {
+      case "ArrowUp":
+        e.preventDefault();
+        move(-1, 0);
+        break;
+      case "ArrowDown":
+        e.preventDefault();
+        move(1, 0);
+        break;
+      case "ArrowLeft":
+        e.preventDefault();
+        move(0, -1);
+        break;
+      case "ArrowRight":
+        e.preventDefault();
+        move(0, 1);
+        break;
+      case "Tab":
+        e.preventDefault();
+        move(0, e.shiftKey ? -1 : 1);
+        break;
+      case "Home":
+        e.preventDefault();
+        setActive({ row: e.metaKey || e.ctrlKey ? 0 : row, col: 0 });
+        break;
+      case "End":
+        e.preventDefault();
+        setActive({
+          row: e.metaKey || e.ctrlKey ? tasks.length - 1 : row,
+          col: columns.length - 1,
+        });
+        break;
+      case "Enter":
+      case "F2":
+        e.preventDefault();
+        focusValueBar();
+        break;
+      default:
+        break;
+    }
+  };
+
+  if (tasks.length === 0) {
+    return (
+      <div className="flex h-full min-h-0 flex-col">
+        <ValueBar
+          task={null}
+          rowNumber={null}
+          column={null}
+          ctx={ctx}
+          onCommit={onInlineEdit}
+        />
+        <p className="p-8 text-center text-sm text-muted-foreground">
+          No tasks found. Try adjusting your filters or create a new task.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <ValueBar
+        task={activeTask}
+        rowNumber={activeTask ? row + 1 : null}
+        column={activeColumn}
+        ctx={ctx}
+        onCommit={onInlineEdit}
+        onCommitted={() => {
+          // Excel advances a row on commit, which is what makes a column of
+          // edits fast. Put focus back on the grid so arrows work again.
+          move(1, 0);
+          scrollRef.current?.focus();
+        }}
+      />
+
+      <div
+        ref={scrollRef}
+        tabIndex={0}
+        onKeyDown={onKeyDown}
+        aria-label="Task sheet"
+        className="min-h-0 flex-1 overflow-auto outline-none"
+      >
+        {/* border-separate, not collapse: a sticky header with collapsed
+            borders drops its bottom rule in WebKit as soon as it detaches. */}
+        <table
+          style={{ width: tableWidth }}
+          // `select-none` on the whole grid, permanently. Dragging across a
+          // spreadsheet selects cells, not the text inside them, and here it
+          // would fight three separate drags — resize, row-to-calendar, and
+          // cell selection — each of which otherwise leaves a blue smear
+          // across the sheet behind it. The value bar is outside the table and
+          // stays selectable, which is where you copy a value from anyway.
+          className="min-w-full table-fixed select-none border-separate border-spacing-0 text-[13px]"
+        >
+          <colgroup>
+            <col style={{ width: GUTTER_WIDTH }} />
+            <col style={{ width: DONE_WIDTH }} />
+            {columns.map((c) => (
+              <col key={c.id} style={{ width: widthOf(c.id, c.width) }} />
+            ))}
+            <col style={{ width: ACTIONS_WIDTH }} />
+            {/* Excel's empty columns: the grid keeps going past the data. */}
+            <col />
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th
+                scope="col"
+                className={cn(
+                  ROW,
+                  "sticky left-0 top-0 z-30 border-b border-r border-border bg-muted px-2",
+                  "font-mono text-[10px] font-normal uppercase tracking-wide text-muted-foreground"
+                )}
+              >
+                #
+              </th>
+              <th
+                scope="col"
+                className={cn(
+                  ROW,
+                  "sticky top-0 z-20 border-b border-r border-border bg-muted"
+                )}
+              >
+                <span className="sr-only">Completed</span>
+              </th>
+              {columns.map((c, i) => {
+                const isSorted = sortBy === c.sortKey;
+                return (
+                  <th
+                    key={c.id}
+                    scope="col"
+                    aria-sort={
+                      isSorted
+                        ? sortDirection === "asc"
+                          ? "ascending"
+                          : "descending"
+                        : "none"
+                    }
+                    className={cn(
+                      ROW,
+                      "sticky top-0 z-20 border-b border-r border-border p-0 text-left",
+                      // The active cell's column header lights up, so a
+                      // selection deep in the sheet still says what it is.
+                      i === col ? "bg-cobalt/20" : "bg-muted"
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => onSort(c.sortKey)}
+                      className={cn(
+                        "flex h-full w-full items-center gap-1 px-2",
+                        "font-mono text-[10px] uppercase tracking-wide transition-colors duration-150",
+                        // Headers sit over their data, so a numeric column's
+                        // header goes right with it.
+                        c.align === "right" && "justify-end",
+                        isSorted
+                          ? "text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <span className="truncate">{c.label}</span>
+                      {isSorted ? (
+                        sortDirection === "asc" ? (
+                          <HiChevronUp className="h-3 w-3 flex-none" />
+                        ) : (
+                          <HiChevronDown className="h-3 w-3 flex-none" />
+                        )
+                      ) : null}
+                    </button>
+
+                    {/* Drag the edge to resize; double-click to snap back to
+                        the default. Sits over the right end of the sort
+                        button, so it stops the pointer event reaching it. */}
+                    <span
+                      role="separator"
+                      aria-orientation="vertical"
+                      aria-label={`Resize ${c.label} column`}
+                      tabIndex={0}
+                      onDoubleClick={() => resetColumnWidth(c.id)}
+                      {...resize.handleProps(c.id, widthOf(c.id, c.width))}
+                      className={cn(
+                        "absolute inset-y-0 right-0 z-10 w-1.5 translate-x-1/2 cursor-col-resize select-none",
+                        "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2",
+                        "after:transition-colors after:duration-150 after:content-['']",
+                        "focus:outline-none focus-visible:after:bg-cobalt hover:after:bg-cobalt",
+                        resize.active?.column === c.id
+                          ? "after:bg-cobalt"
+                          : "after:bg-transparent"
+                      )}
+                    />
+                  </th>
+                );
+              })}
+              <th
+                scope="col"
+                className={cn(
+                  ROW,
+                  "sticky top-0 z-20 border-b border-r border-border bg-muted"
+                )}
+              >
+                <span className="sr-only">Actions</span>
+              </th>
+              <th
+                scope="col"
+                className={cn(ROW, "sticky top-0 z-20 border-b border-border bg-muted")}
+              />
+            </tr>
+          </thead>
+
+          <tbody>
+            {tasks.map((task, r) => (
+              <SheetRow
+                key={task.id}
+                task={task}
+                rowNumber={r + 1}
+                isActiveRow={r === row}
+                activeCol={r === row ? col : -1}
+                columns={columns}
+                ctx={ctx}
+                onSelect={(c) => setActive({ row: r, col: c })}
+                onOpenValueBar={focusValueBar}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onStatusChange={onStatusChange}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SheetRow({
+  task,
+  rowNumber,
+  isActiveRow,
+  activeCol,
+  columns,
+  ctx,
+  onSelect,
+  onOpenValueBar,
+  onEdit,
+  onDelete,
+  onStatusChange,
+}: {
+  task: Task;
+  rowNumber: number;
+  isActiveRow: boolean;
+  activeCol: number;
+  columns: typeof TASK_COLUMNS;
+  ctx: { lords: ReturnType<typeof useLordStore.getState>["lords"] };
+  onSelect: (col: number) => void;
+  onOpenValueBar: () => void;
+  onEdit: (task: Task) => void;
+  onDelete: (taskId: string) => void;
+  onStatusChange: (taskId: string, status: TaskStatus) => void;
+}) {
+  const { draggableProps, isDragging } = useDraggableTask(task);
+  const isCompleted = task.status === TaskStatus.COMPLETED;
+  const isUpcoming = isUpcomingTask(task);
+
+  const cellBase = cn(
+    ROW,
+    "relative max-w-0 truncate border-b border-r border-border/60 px-2 align-middle"
+  );
+
+  return (
+    <tr
+      className={cn(
+        "group",
+        isDragging && "opacity-50",
+        isUpcoming && "text-muted-foreground",
+        isCompleted && "text-muted-foreground line-through decoration-1"
+      )}
+    >
+      {/* Row header doubles as the drag grip — the same place you'd grab a row
+          in a spreadsheet, and it keeps drag-to-calendar without spending a
+          column on a handle nobody can see until they hover it. */}
+      <td
+        {...draggableProps}
+        className={cn(
+          ROW,
+          "sticky left-0 z-10 cursor-grab select-none border-b border-r border-border px-2 text-right",
+          "font-mono text-[10px] tabular-nums",
+          // Opaque, not a tint. A frozen column with a translucent background
+          // lets the columns scrolling underneath show straight through it —
+          // the row numbers end up printed over other rows' text.
+          isActiveRow
+            ? "bg-accent text-accent-foreground"
+            : "bg-muted text-muted-foreground"
+        )}
+        title="Drag onto the calendar to schedule"
+      >
+        {rowNumber}
+      </td>
+
+      <td
+        className={cn(
+          ROW,
+          "border-b border-r border-border/60 text-center align-middle",
+          isActiveRow && "bg-cobalt/5"
+        )}
+      >
+        <input
+          type="checkbox"
+          checked={isCompleted}
+          onChange={() =>
+            onStatusChange(
+              task.id,
+              isCompleted ? TaskStatus.TODO : TaskStatus.COMPLETED
+            )
+          }
+          aria-label={isCompleted ? "Mark as todo" : "Mark as completed"}
+          className="h-3.5 w-3.5 cursor-pointer border-border bg-transparent text-cobalt focus:ring-0 focus:ring-offset-0"
+        />
+      </td>
+
+      {columns.map((c, i) => {
+        const isActive = i === activeCol;
+        return (
+          <td
+            key={c.id}
+            data-active-cell={isActive || undefined}
+            onClick={() => onSelect(i)}
+            onDoubleClick={() => {
+              onSelect(i);
+              onOpenValueBar();
+            }}
+            title={c.text(task, ctx) || undefined}
+            className={cn(
+              cellBase,
+              c.align === "right" && "text-right",
+              isActive
+                ? "z-20 outline outline-2 -outline-offset-2 outline-cobalt"
+                : "cursor-cell",
+              isActiveRow && !isActive && "bg-cobalt/5",
+              !isActiveRow && "group-hover:bg-muted/40"
+            )}
+          >
+            {c.render(task, ctx)}
+          </td>
+        );
+      })}
+
+      <td
+        className={cn(
+          ROW,
+          "border-b border-r border-border/60 px-1",
+          isActiveRow && "bg-cobalt/5"
+        )}
+      >
+        <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={() => onEdit(task)}
+            title="Open task"
+            aria-label="Open task"
+            className="flex h-5 w-5 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-foreground"
+          >
+            <HiPencil className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(task.id)}
+            title="Delete task"
+            aria-label="Delete task"
+            className="flex h-5 w-5 items-center justify-center text-muted-foreground transition-colors duration-150 hover:text-destructive"
+          >
+            <HiTrash className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </td>
+
+      <td className={cn(ROW, "border-b border-border/60")} />
+    </tr>
+  );
+}

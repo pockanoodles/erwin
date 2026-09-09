@@ -12,6 +12,7 @@ import FullCalendar from "@fullcalendar/react";
 
 import { TaskModal } from "@/components/tasks/TaskModal";
 
+import { resolveEventChipColors } from "@/lib/calendar-event-display";
 import { useEventModalStore } from "@/lib/commands/groups/calendar";
 import { newDate } from "@/lib/date-utils";
 
@@ -25,6 +26,7 @@ import { Task, TaskStatus } from "@/types/task";
 import { CalendarEventContent } from "./CalendarEventContent";
 import { EventModal } from "./EventModal";
 import { EventQuickView } from "./EventQuickView";
+import { useTaskReschedule } from "./useTaskReschedule";
 
 interface MultiMonthViewProps {
   currentDate: Date;
@@ -64,7 +66,10 @@ export function MultiMonthView({
   const [quickViewItem, setQuickViewItem] = useState<CalendarEvent | Task>();
   const [isTask, setIsTask] = useState(false);
   const eventModalStore = useEventModalStore();
-  const [clickedElement, setClickedElement] = useState<HTMLElement | null>(null);
+  const { handleEventDrop } = useTaskReschedule();
+  const [clickedElement, setClickedElement] = useState<HTMLElement | null>(
+    null
+  );
 
   // Update events when the calendar view changes
   const handleDatesSet = useCallback(
@@ -76,35 +81,41 @@ export function MultiMonthView({
           const feed = feeds.find((f) => f.id === item.feedId);
           return feed?.enabled;
         })
-        .map((item) => ({
-          id: item.id,
-          title: item.title,
-          start: newDate(item.start),
-          end: newDate(item.end),
-          location: item.location,
-          backgroundColor:
+        .map((item) => {
+          const color =
             item.feedId === "tasks"
               ? item.color || "#4f46e5"
-              : feeds.find((f) => f.id === item.feedId)?.color || "#3b82f6",
-          borderColor:
-            item.feedId === "tasks"
-              ? item.color || "#4f46e5"
-              : feeds.find((f) => f.id === item.feedId)?.color || "#3b82f6",
-          allDay: item.allDay,
-          classNames: [
-            item.extendedProps?.isTask ? "calendar-task" : "calendar-event",
-          ],
-          extendedProps: {
-            ...item,
-            isTask: item.extendedProps?.isTask,
-            isRecurring: item.isRecurring,
-            status: item.extendedProps?.status,
-            priority: item.extendedProps?.priority,
-            // Used as the accessible label for the timed-event color dot so
-            // calendar identity is not conveyed by color alone (issue #95).
-            calendarName: feeds.find((f) => f.id === item.feedId)?.name,
-          },
-        }));
+              : feeds.find((f) => f.id === item.feedId)?.color || "#3b82f6";
+
+          return {
+            id: item.id,
+            title: item.title,
+            start: newDate(item.start),
+            end: newDate(item.end),
+            location: item.location,
+            ...resolveEventChipColors(color, item.allDay),
+            allDay: item.allDay,
+            classNames: [
+              item.extendedProps?.isTask ? "calendar-task" : "calendar-event",
+            ],
+            // Tasks move, calendar events don't — an event belongs to
+            // Google/CalDAV and moving it is a provider write with its own
+            // failure modes. All-day chips are included on purpose: a task
+            // showing by due date with no scheduled window is exactly the one
+            // you most want to drag into the grid to give it a time.
+            editable: item.extendedProps?.isTask === true,
+            extendedProps: {
+              ...item,
+              isTask: item.extendedProps?.isTask,
+              isRecurring: item.isRecurring,
+              status: item.extendedProps?.status,
+              priority: item.extendedProps?.priority,
+              // Used as the accessible label for the timed-event color dot so
+              // calendar identity is not conveyed by color alone (issue #95).
+              calendarName: feeds.find((f) => f.id === item.feedId)?.name,
+            },
+          };
+        });
 
       setEvents(formattedItems);
     },
@@ -284,6 +295,10 @@ export function MultiMonthView({
         select={handleDateSelect}
         selectable={true}
         selectMirror={true}
+        // Gate is per-event (`editable` in handleDatesSet), not global.
+        editable={true}
+        eventDurationEditable={false}
+        eventDrop={handleEventDrop}
         datesSet={handleDatesSet}
         eventContent={renderEventContent}
       />

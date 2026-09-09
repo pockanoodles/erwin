@@ -1,14 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
+
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import {
-  HiOutlineChevronDoubleLeft,
-  HiOutlineChevronDoubleRight,
-  HiOutlineSearch,
-} from "react-icons/hi";
-
+import { useIsMobile } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { useNavUIStore } from "@/store/navUi";
@@ -19,98 +16,140 @@ interface AppNavProps {
   className?: string;
 }
 
-/** Left nav rail. Collapsing animates only the rail's width: the inner nav
- *  keeps a fixed width, so the toggle and every icon stay at the exact same
- *  coordinates in both states — labels fade and get clipped instead. */
+const LINKS = [
+  { href: "/today", label: "Today" },
+  { href: "/focus", label: "Focus" },
+  { href: "/calendar", label: "Calendar" },
+  { href: "/tasks", label: "Tasks" },
+  { href: "/goals", label: "Bosses" },
+];
+
+/** Left nav rail — links only. Collapsing animates the rail's width against a
+ *  fixed-width inner nav, so the labels fade and get clipped instead of
+ *  reflowing.
+ *
+ *  Collapsed is zero width, not an icon strip: the links are text-only, so a
+ *  strip would be five blank rows charging 56px for them. Nothing lives in
+ *  here that you lose when it's gone — the collapse toggle and search sit in
+ *  the app top bar, which is always on screen at a fixed position (that
+ *  replaced a semi-transparent tab that floated in the middle of the left
+ *  edge, which is the thing this rail should never need again).
+ *
+ *  Below `md` the same links render as an overlay drawer instead. A 192px
+ *  column inside a 393px viewport is half the screen, so on a phone the rail
+ *  stops being a column and starts being something you pull over the page and
+ *  dismiss. The top-bar toggle stays in the identical spot either way — it just
+ *  drives a different piece of state. */
 export function AppNav({ className }: AppNavProps) {
   const pathname = usePathname();
-  const { isNavOpen, isHydrated, setNavOpen } = useNavUIStore();
+  const isMobile = useIsMobile();
+  const { isNavOpen, isDrawerOpen, isHydrated, setDrawerOpen } =
+    useNavUIStore();
 
-  // Function to trigger command palette
-  const openCommandPalette = () => {
-    // Simulate Cmd+K / Ctrl+K
-    const event = new KeyboardEvent("keydown", {
-      key: "k",
-      metaKey: true,
-      bubbles: true,
-    });
-    document.dispatchEvent(event);
-  };
+  // Navigating is the drawer's job done — leaving it open would bury the page
+  // the tap just loaded.
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname, setDrawerOpen]);
 
-  const links = [
-    { href: "/today", label: "Today" },
-    { href: "/focus", label: "Focus" },
-    { href: "/calendar", label: "Calendar" },
-    { href: "/tasks", label: "Tasks" },
-    { href: "/goals", label: "Bosses" },
-  ];
+  // Rotating to landscape (or resizing a desktop window down and back) must not
+  // strand a drawer open on top of the inline rail.
+  useEffect(() => {
+    if (!isMobile) setDrawerOpen(false);
+  }, [isMobile, setDrawerOpen]);
+
+  useEffect(() => {
+    if (!isDrawerOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [isDrawerOpen, setDrawerOpen]);
 
   const label = cn(
     "transition-opacity duration-200 motion-reduce:transition-none",
     isNavOpen ? "opacity-100" : "opacity-0"
   );
 
+  const links = (
+    <>
+      {LINKS.map((link) => {
+        const isActive = pathname === link.href;
+
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            title={link.label}
+            tabIndex={isMobile ? (isDrawerOpen ? 0 : -1) : isNavOpen ? 0 : -1}
+            className={cn(
+              "flex items-center whitespace-nowrap px-[18px] text-sm font-medium transition-colors duration-150",
+              // 40px is fine for a pointer and under the 44px touch floor.
+              isMobile ? "h-12" : "h-10",
+              isActive ? "text-cobalt" : "text-foreground hover:bg-muted"
+            )}
+          >
+            <span className={isMobile ? undefined : label}>{link.label}</span>
+          </Link>
+        );
+      })}
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Rendered unconditionally and faded, so the drawer can animate out
+            rather than vanishing the instant state flips. */}
+        <div
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden
+          className={cn(
+            "fixed inset-0 z-40 bg-background/70 transition-opacity duration-200 motion-reduce:transition-none",
+            isDrawerOpen
+              ? "opacity-100"
+              : "pointer-events-none opacity-0"
+          )}
+        />
+        <div
+          className={cn(
+            "fixed bottom-0 left-0 top-topbar z-50 w-64 border-r border-border bg-background",
+            "transition-transform duration-200 ease-out motion-reduce:transition-none",
+            isDrawerOpen ? "translate-x-0" : "-translate-x-full",
+            className
+          )}
+        >
+          <nav
+            className="flex h-full flex-col py-2"
+            aria-hidden={!isDrawerOpen}
+          >
+            {links}
+            <div className="mt-auto">
+              <SettingsMenu />
+            </div>
+          </nav>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div
       className={cn(
-        // overflow-clip (not hidden): focusing the full-width Settings/search
-        // rows must never scroll the clipped rail and shove the icons offscreen.
-        "sticky top-0 z-40 h-dvh flex-none overflow-clip border-r border-border bg-background",
+        // overflow-clip (not hidden): focusing the full-width Settings row must
+        // never scroll the clipped rail and shove it offscreen.
+        "h-full flex-none overflow-clip bg-background",
         "transition-[width] duration-300 ease-out motion-reduce:transition-none",
-        isNavOpen ? "w-48" : "w-14",
+        // The hairline is part of the rail, so it leaves with it — a border on
+        // a zero-width element still paints a 1px line down the page.
+        isNavOpen ? "w-rail border-r border-border" : "w-0",
         !isHydrated && "duration-0",
         className
       )}
     >
-      <nav className="flex h-full w-48 flex-col py-3">
-        <div className="mb-4 flex h-10 items-center">
-          <button
-            onClick={() => setNavOpen(!isNavOpen)}
-            aria-label={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
-            aria-expanded={isNavOpen}
-            title={isNavOpen ? "Collapse sidebar" : "Expand sidebar"}
-            className="flex h-10 w-14 flex-none items-center px-[18px] text-muted-foreground transition-colors duration-150 hover:text-foreground"
-          >
-            {isNavOpen ? (
-              <HiOutlineChevronDoubleLeft className="h-4 w-4 flex-none" />
-            ) : (
-              <HiOutlineChevronDoubleRight className="h-4 w-4 flex-none" />
-            )}
-          </button>
-          <button
-            onClick={openCommandPalette}
-            title="Search or run a command (⌘K)"
-            tabIndex={isNavOpen ? 0 : -1}
-            className={cn(
-              "mr-3 flex h-8 min-w-0 flex-1 items-center gap-2 border border-border px-2 text-sm text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground",
-              label,
-              !isNavOpen && "pointer-events-none"
-            )}
-          >
-            <HiOutlineSearch className="h-4 w-4 flex-none" />
-            <span>Search</span>
-          </button>
-        </div>
-
-        {links.map((link) => {
-          const isActive = pathname === link.href;
-
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              title={link.label}
-              className={cn(
-                "flex h-10 items-center whitespace-nowrap px-[18px] text-sm font-medium transition-colors duration-150",
-                isActive
-                  ? "text-cobalt"
-                  : "text-foreground hover:bg-muted"
-              )}
-            >
-              <span className={label}>{link.label}</span>
-            </Link>
-          );
-        })}
+      <nav className="flex h-full w-rail flex-col py-2" aria-hidden={!isNavOpen}>
+        {links}
 
         <div className="mt-auto">
           <SettingsMenu labelClassName={label} />

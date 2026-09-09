@@ -4,14 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { AnimatePresence, motion } from "framer-motion";
 
-import { TaskStatus } from "@/types/task";
-import type { BriefingData } from "@/types/focus-briefing";
-import {
-  parseTaskFromApi,
-  type FocusQueueTask,
-} from "@/lib/erwin/parse-task";
+import { type FocusQueueTask, parseTaskFromApi } from "@/lib/erwin/parse-task";
 
 import { useTaskStore } from "@/store/task";
+
+import type { BriefingData } from "@/types/focus-briefing";
+import { TaskStatus } from "@/types/task";
 
 import { CompactBriefing } from "./CompactBriefing";
 import { DailyBriefing } from "./DailyBriefing";
@@ -46,6 +44,8 @@ export function ErwinFocusMode() {
   const [queueLoading, setQueueLoading] = useState(true);
   const [briefingLoading, setBriefingLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Non-error feedback for an action that legitimately changed nothing. */
+  const [notice, setNotice] = useState<string | null>(null);
   const [acting, setActing] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
@@ -56,8 +56,16 @@ export function ErwinFocusMode() {
   const surfaceLoggedRef = useRef<Set<string>>(new Set());
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
 
-  const loadQueue = useCallback(async () => {
-    setQueueLoading(true);
+  /**
+   * `background: true` refetches without dropping to the loading state, so the
+   * card already on screen stays put until its replacement arrives. Flashing
+   * "Loading your next task..." between two cards is what made Skip read as a
+   * flicker rather than a transition.
+   */
+  const loadQueue = useCallback(async ({ background = false } = {}) => {
+    if (!background) {
+      setQueueLoading(true);
+    }
     setError(null);
     try {
       const res = await fetch("/api/erwin/focus/queue");
@@ -77,10 +85,14 @@ export function ErwinFocusMode() {
         }
       }
       setRanked(list);
+      return list;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
+      return null;
     } finally {
-      setQueueLoading(false);
+      if (!background) {
+        setQueueLoading(false);
+      }
     }
   }, []);
 
@@ -142,7 +154,9 @@ export function ErwinFocusMode() {
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
-        throw new Error((j as { error?: string }).error ?? "Interaction failed");
+        throw new Error(
+          (j as { error?: string }).error ?? "Interaction failed"
+        );
       }
     },
     []
@@ -165,21 +179,27 @@ export function ErwinFocusMode() {
     });
   }, [top?.id, queueLoading, logInteraction]);
 
+  // `cardDir` is deliberately never reset: it records the direction of the last
+  // action and is only read as the exit/enter offset. Clearing it in `finally`
+  // batched with `setRanked`, so the incoming card mounted with an offset of 0
+  // and the slide never played.
   const handleDone = async () => {
     if (!top) {
       return;
     }
     setActing(true);
     setCardDir("left");
+    setNotice(null);
     try {
       await logInteraction(top.id, "COMPLETED");
+      // Completion changes the task itself, so the shared store other views
+      // read from has to be refreshed too.
       await fetchTasks();
-      await loadQueue();
+      await loadQueue({ background: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not complete task");
     } finally {
       setActing(false);
-      setCardDir(null);
     }
   };
 
@@ -189,15 +209,31 @@ export function ErwinFocusMode() {
     }
     setActing(true);
     setCardDir("right");
+    setNotice(null);
+    // The task re-enters the queue once its cooldown lapses, and that is a
+    // genuine new surfacing — drop it from the dedupe set so it logs SURFACED
+    // again instead of returning silently.
+    surfaceLoggedRef.current.delete(top.id);
     try {
       await logInteraction(top.id, "SKIPPED");
-      await fetchTasks();
-      await loadQueue();
+      // No `fetchTasks()` here: skipping touches only `skipCount` /
+      // `lastSkippedAt`, which nothing outside the focus queue reads, and the
+      // extra round-trip only lengthened the gap before the next card.
+      const next = await loadQueue({ background: true });
+      // Cooling is a sort key, not a filter, so when it's the only task left —
+      // or everything else is already cooling — the same card comes back. Say
+      // so, otherwise the button silently does nothing.
+      if (next && next[0]?.id === top.id) {
+        setNotice(
+          next.length === 1
+            ? "That's the only task in your queue right now."
+            : "Everything else is already skipped — this is still the top one."
+        );
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Skip failed");
     } finally {
       setActing(false);
-      setCardDir(null);
     }
   };
 
@@ -250,7 +286,9 @@ export function ErwinFocusMode() {
     const parts: string[] = [];
     parts.push(`${briefingData.tasksCompletedToday} done today`);
     if (briefingData.nextEvent) {
-      parts.push(`Next: ${briefingData.nextEvent.title} ${briefingData.nextEvent.startsIn}`);
+      parts.push(
+        `Next: ${briefingData.nextEvent.title} ${briefingData.nextEvent.startsIn}`
+      );
     }
     if (briefingData.dangerZoneTasks.length > 0) {
       parts.push(`${briefingData.dangerZoneTasks.length} danger zone task(s)`);
@@ -293,6 +331,14 @@ export function ErwinFocusMode() {
           {error}
         </p>
       ) : null}
+      {notice && !error ? (
+        <p
+          className="px-4 py-2 text-sm text-muted-foreground md:px-8"
+          role="status"
+        >
+          {notice}
+        </p>
+      ) : null}
 
       <div className="flex flex-1 flex-col gap-6 p-4 md:flex-row md:p-8">
         <main className="flex min-h-0 flex-1 flex-col">
@@ -300,9 +346,12 @@ export function ErwinFocusMode() {
             <p className="text-muted-foreground">Loading your next task...</p>
           ) : briefingData && briefingData.totalPendingTasks === 0 ? (
             <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <p className="text-lg font-medium text-foreground">No tasks pending.</p>
+              <p className="text-lg font-medium text-foreground">
+                No tasks pending.
+              </p>
               <p className="mt-2 max-w-sm text-sm">
-                Connect Canvas to auto-import assignments, or tap + to add a task.
+                Connect Canvas to auto-import assignments, or tap + to add a
+                task.
               </p>
             </div>
           ) : !top ? (
@@ -320,7 +369,10 @@ export function ErwinFocusMode() {
               <AnimatePresence initial={false} mode="wait">
                 <motion.div
                   key={top.id}
-                  initial={{ opacity: 0, x: cardDir === "right" ? 32 : cardDir === "left" ? -32 : 0 }}
+                  initial={{
+                    opacity: 0,
+                    x: cardDir === "right" ? 32 : cardDir === "left" ? -32 : 0,
+                  }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: cardDir === "left" ? -40 : 40 }}
                   transition={{ duration: 0.2 }}

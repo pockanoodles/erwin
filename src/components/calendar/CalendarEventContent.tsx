@@ -1,9 +1,12 @@
 import { memo } from "react";
 
 import type { EventContentArg } from "@fullcalendar/core";
-import { IoCheckmarkCircle, IoRepeat, IoTimeOutline } from "react-icons/io5";
+import { IoCheckmarkCircle, IoRepeat } from "react-icons/io5";
 
-import { getMonthEventDisplay } from "@/lib/calendar-event-display";
+import {
+  getMonthEventDisplay,
+  isDayGridView,
+} from "@/lib/calendar-event-display";
 import { isTaskOverdue } from "@/lib/task-utils";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +24,7 @@ const priorityColors = {
   [Priority.HIGH]: "border-red-500",
   [Priority.MEDIUM]: "border-orange-500",
   [Priority.LOW]: "border-blue-500",
-  [Priority.NONE]: "border-gray-500",
+  [Priority.NONE]: "border-muted-foreground",
 };
 
 export const CalendarEventContent = memo(function CalendarEventContent({
@@ -51,6 +54,10 @@ export const CalendarEventContent = memo(function CalendarEventContent({
   const calendarTimeZone =
     (eventInfo.view.calendar.getOption("timeZone") as string | undefined) ??
     "local";
+  // Which chips sit on a tint of the page rather than a fill: every day-grid
+  // chip, plus the all-day row above the day and week grids.
+  const isTintedChip =
+    isDayGridView(eventInfo.view.type) || eventInfo.event.allDay;
   const { isDayGridTimed, showTimeChip, timeText } = getMonthEventDisplay({
     viewType: eventInfo.view.type,
     allDay: eventInfo.event.allDay,
@@ -60,9 +67,11 @@ export const CalendarEventContent = memo(function CalendarEventContent({
     timeFormat: userSettings.timeFormat,
     timeZone: calendarTimeZone,
   });
+  // Border first: month chips tint their background, so only the border still
+  // carries the calendar colour at full strength.
   const eventColor =
-    eventInfo.event.backgroundColor ||
     eventInfo.event.borderColor ||
+    eventInfo.event.backgroundColor ||
     DEFAULT_EVENT_COLOR;
 
   return (
@@ -70,58 +79,63 @@ export const CalendarEventContent = memo(function CalendarEventContent({
       data-testid={isTask ? "calendar-task" : "calendar-event"}
       className={cn(
         "flex h-full flex-col justify-start gap-1 overflow-hidden text-[11px]",
+        // Tinted chips take page foreground. Time-grid blocks are still filled
+        // with the calendar's full-strength colour and must keep inheriting
+        // FullCalendar's on-fill text colour instead.
+        isTintedChip && "text-foreground",
         isTask && "border-l-4",
-        isTask && "text-gray-700",
         isTask && priority && priorityColors[priority as Priority],
         isTask &&
           !priority && {
             "border-green-500": status === TaskStatus.COMPLETED,
             "border-yellow-500": status === TaskStatus.IN_PROGRESS,
-            "border-gray-500": status === TaskStatus.TODO,
+            "border-muted-foreground": status === TaskStatus.TODO,
           },
-        isOverdue && "border-red-500 font-medium text-red-600",
-        status === TaskStatus.COMPLETED && "text-gray-500 line-through"
+        // Overdue reads from the priority bar and the weight, not from a red
+        // title. A chip is tinted with its own calendar's colour, which the
+        // user picks — a light one (a near-white task colour, say) drops red
+        // text to ~2.7:1 on dark. The bar is drawn over the page, so it stays
+        // legible whatever the fill happens to be.
+        isOverdue && "border-red-600 font-medium dark:border-red-400",
+        status === TaskStatus.COMPLETED && "text-muted-foreground line-through"
       )}
     >
-      <div className="flex w-full items-center gap-1.5">
+      <div className="flex w-full items-baseline gap-1.5">
+        {/* Leading mark. All-day events carry no icon: in a month cell the
+            chip's own tint already says "all day", and a clock on every one of
+            them was the single biggest source of visual noise in the grid. */}
         {isTask ? (
-          <IoCheckmarkCircle className="h-3.5 w-3.5 flex-shrink-0 text-current opacity-75" />
-        ) : showTimeChip ? (
-          isRecurring ? (
-            <IoRepeat
-              className="h-3.5 w-3.5 flex-shrink-0"
-              style={{ color: eventColor }}
-            />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="h-2 w-2 flex-shrink-0 rounded-full"
-              style={{ backgroundColor: eventColor }}
-            />
-          )
+          <IoCheckmarkCircle className="h-3.5 w-3.5 flex-shrink-0 self-center text-current opacity-75" />
         ) : isRecurring ? (
-          <IoRepeat className="h-3.5 w-3.5 flex-shrink-0 text-current opacity-75" />
-        ) : (
-          <IoTimeOutline className="h-3.5 w-3.5 flex-shrink-0 text-current opacity-75" />
-        )}
-        <div className="min-w-0 flex-1">
-          <div
-            className={cn(
-              "calendar-event-title font-medium leading-snug",
-              duration <= 1800000 ? "truncate" : "line-clamp-2 break-words"
-            )}
-          >
-            {isDayGridTimed && calendarName && (
-              <span className="sr-only">{calendarName}, </span>
-            )}
-            {showTimeChip && timeText && (
-              <span className="mr-1 font-normal tabular-nums opacity-75">
-                {timeText}
-              </span>
-            )}
-            {title}
-          </div>
+          <IoRepeat
+            className="h-3.5 w-3.5 flex-shrink-0 self-center"
+            style={{ color: showTimeChip ? eventColor : undefined }}
+          />
+        ) : showTimeChip ? (
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 flex-shrink-0 self-center rounded-full"
+            style={{ backgroundColor: eventColor }}
+          />
+        ) : null}
+        <div
+          className={cn(
+            "calendar-event-title min-w-0 flex-1 font-medium leading-snug",
+            duration <= 1800000 ? "truncate" : "line-clamp-2 break-words"
+          )}
+        >
+          {isDayGridTimed && calendarName && (
+            <span className="sr-only">{calendarName}, </span>
+          )}
+          {title}
         </div>
+        {/* Time trails the title, right-aligned and muted, so a column of chips
+            scans as titles first and times second. */}
+        {showTimeChip && timeText && (
+          <span className="flex-none font-normal tabular-nums text-muted-foreground">
+            {timeText}
+          </span>
+        )}
       </div>
       {location && duration > 1800000 && (
         <div className="event-location truncate pl-5 text-[10px] leading-snug opacity-80">

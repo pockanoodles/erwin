@@ -23,7 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { format, newDate } from "@/lib/date-utils";
+import { newDate } from "@/lib/date-utils";
 import { RecurrenceConverterFactory } from "@/lib/task-sync/recurrence/recurrence-converter-factory";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,18 @@ interface TaskModalProps {
   /** Pre-links a created task to a goal (e.g. the tasks page's active Lord). */
   initialGoalId?: string | null;
 }
+
+/** Date -> the "YYYY-MM-DDTHH:mm" a `datetime-local` input expects, in local
+ *  time. `toISOString()` would shift it to UTC and show the wrong clock time. */
+const toDateTimeInput = (value: Date | string | null | undefined): string => {
+  if (!value) return "";
+  const d = newDate(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
+    d.getHours()
+  )}:${pad(d.getMinutes())}`;
+};
 
 //TODO: move to utils
 const formatEnumValue = (value: string) => {
@@ -115,6 +127,9 @@ export function TaskModal({
   const [scheduleLocked, setScheduleLocked] = useState(
     task?.scheduleLocked || false
   );
+  // `datetime-local` strings ("YYYY-MM-DDTHH:mm"), converted on submit.
+  const [scheduledStart, setScheduledStart] = useState("");
+  const [scheduledEnd, setScheduledEnd] = useState("");
   const [priority, setPriority] = useState<Priority | null>(
     task?.priority || null
   );
@@ -139,6 +154,8 @@ export function TaskModal({
     setRecurrenceRule(undefined);
     setIsAutoScheduled(true);
     setScheduleLocked(false);
+    setScheduledStart("");
+    setScheduledEnd("");
     setPriority(null);
     setGoalId(initialGoalId ?? null);
   }, [initialProjectId, initialGoalId]);
@@ -193,6 +210,8 @@ export function TaskModal({
       setRecurrenceRule(task.recurrenceRule || undefined);
       setIsAutoScheduled(task.isAutoScheduled);
       setScheduleLocked(task.scheduleLocked);
+      setScheduledStart(toDateTimeInput(task.scheduledStart));
+      setScheduledEnd(toDateTimeInput(task.scheduledEnd));
       setPriority(task.priority || null);
       setGoalId(task.goalLinks?.[0]?.goalId ?? null);
     } else if (!task && isOpen) {
@@ -213,6 +232,16 @@ export function TaskModal({
 
     setIsSubmitting(true);
     try {
+      // Setting a time by hand means keeping it. Every save triggers a full
+      // re-schedule, and that run clears `scheduledStart` on any auto-scheduled
+      // task that isn't locked — so without this the time would be written and
+      // wiped in the same submit. Same rule as dragging on the calendar
+      // (see components/calendar/useTaskReschedule.ts).
+      const scheduleChanged =
+        scheduledStart !== toDateTimeInput(task?.scheduledStart) ||
+        scheduledEnd !== toDateTimeInput(task?.scheduledEnd);
+      const hasManualTime = Boolean(scheduledStart && scheduledEnd);
+
       await onSave({
         title: title.trim(),
         description: description.trim() || undefined,
@@ -227,7 +256,10 @@ export function TaskModal({
         isRecurring,
         recurrenceRule: isRecurring ? recurrenceRule : undefined,
         isAutoScheduled,
-        scheduleLocked,
+        scheduleLocked:
+          scheduleChanged && hasManualTime ? true : scheduleLocked,
+        scheduledStart: scheduledStart ? newDate(scheduledStart) : null,
+        scheduledEnd: scheduledEnd ? newDate(scheduledEnd) : null,
         priority,
         goalId,
       });
@@ -424,36 +456,89 @@ export function TaskModal({
             </div>
 
             {isAutoScheduled && (
-              <>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label>Lock Schedule</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Prevent automatic rescheduling
-                    </p>
-                  </div>
-                  <Switch
-                    checked={scheduleLocked}
-                    onCheckedChange={setScheduleLocked}
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Lock Schedule</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Prevent automatic rescheduling
+                  </p>
+                </div>
+                <Switch
+                  checked={scheduleLocked}
+                  onCheckedChange={setScheduleLocked}
+                />
+              </div>
+            )}
+
+            {/* Deliberately outside the Auto-Schedule branch. This block used
+                to be read-only text, and only visible when auto-scheduling was
+                on — so the one case where you most wanted to set a time by
+                hand was the case where the field wasn't rendered. */}
+            <div className="space-y-2">
+              <Label>Scheduled time</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">Start</span>
+                  <Input
+                    type="datetime-local"
+                    value={scheduledStart}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setScheduledStart(next);
+                      // Keep the block the length the estimate says, so setting
+                      // a start is one interaction instead of two.
+                      if (next && !scheduledEnd) {
+                        const mins = parseInt(duration, 10);
+                        const end = newDate(next);
+                        end.setMinutes(
+                          end.getMinutes() +
+                            (Number.isFinite(mins) && mins > 0 ? mins : 30)
+                        );
+                        setScheduledEnd(toDateTimeInput(end));
+                      }
+                    }}
                   />
                 </div>
+                <div className="space-y-1">
+                  <span className="text-xs text-muted-foreground">End</span>
+                  <Input
+                    type="datetime-local"
+                    value={scheduledEnd}
+                    onChange={(e) => setScheduledEnd(e.target.value)}
+                  />
+                </div>
+              </div>
 
-                {task?.scheduledStart && task?.scheduledEnd && (
-                  <div className="rounded-md bg-primary/10 p-3">
-                    <div className="text-sm text-primary">
-                      Scheduled for{" "}
-                      {format(newDate(task.scheduledStart), "PPp")} to{" "}
-                      {format(newDate(task.scheduledEnd), "p")}
-                    </div>
-                    {task.scheduleScore && (
-                      <div className="mt-1 text-sm text-primary/70">
-                        Confidence: {Math.round(task.scheduleScore * 100)}%
-                      </div>
-                    )}
-                  </div>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs text-muted-foreground">
+                  {scheduledStart && scheduledEnd
+                    ? "A time you set by hand is locked, so auto-schedule won't move it."
+                    : "Leave empty to let auto-schedule place this task."}
+                </p>
+                {(scheduledStart || scheduledEnd) && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="flex-none"
+                    onClick={() => {
+                      setScheduledStart("");
+                      setScheduledEnd("");
+                      setScheduleLocked(false);
+                    }}
+                  >
+                    Clear
+                  </Button>
                 )}
-              </>
-            )}
+              </div>
+
+              {task?.scheduleScore ? (
+                <p className="text-xs text-muted-foreground">
+                  Auto-schedule confidence:{" "}
+                  {Math.round(task.scheduleScore * 100)}%
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div>

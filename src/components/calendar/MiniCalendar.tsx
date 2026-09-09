@@ -55,35 +55,38 @@ export function MiniCalendar({ currentDate, onDateClick }: MiniCalendarProps) {
   const emptyDays = adjustedFirstDay - 1;
 
   return (
-    <div className="mx-auto p-2">
+    <div className="px-2 py-1">
       {/* Month Navigation */}
-      <div className="mb-2 flex items-center justify-between px-1">
-        <h2 className="text-sm font-medium text-foreground">
+      <div className="mb-1 flex items-center justify-between">
+        <h2 className="text-[13px] font-medium text-foreground">
           {format(calendarDate, "MMMM yyyy")}
         </h2>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center">
           <button
             onClick={handlePrevMonth}
-            className="rounded-full p-1 text-foreground hover:bg-muted/50"
+            aria-label="Previous month"
+            className="p-1 text-muted-foreground transition-colors duration-150 hover:text-foreground"
           >
-            <IoChevronBack className="h-4 w-4" />
+            <IoChevronBack className="h-3.5 w-3.5" />
           </button>
           <button
             onClick={handleNextMonth}
-            className="rounded-full p-1 text-foreground hover:bg-muted/50"
+            aria-label="Next month"
+            className="p-1 text-muted-foreground transition-colors duration-150 hover:text-foreground"
           >
-            <IoChevronForward className="h-4 w-4" />
+            <IoChevronForward className="h-3.5 w-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-0">
+      {/* Calendar Grid — 7 × 24px keeps the whole panel inside the 224px
+          sidebar (the `w-sidebar` token, 14rem). */}
+      <div className="grid grid-cols-7">
         {/* Weekday headers */}
         {weekDays.map((day) => (
           <div
             key={day.key}
-            className="flex h-7 items-center justify-center text-xs font-medium text-muted-foreground"
+            className="flex h-6 items-center justify-center text-[10px] font-medium text-muted-foreground"
           >
             {day.label}
           </div>
@@ -91,7 +94,7 @@ export function MiniCalendar({ currentDate, onDateClick }: MiniCalendarProps) {
 
         {/* Empty days */}
         {Array.from({ length: emptyDays }).map((_, index) => (
-          <div key={`empty-${index}`} className="h-7" />
+          <div key={`empty-${index}`} className="h-6" />
         ))}
 
         {/* Calendar days */}
@@ -100,11 +103,11 @@ export function MiniCalendar({ currentDate, onDateClick }: MiniCalendarProps) {
             key={day.toISOString()}
             onClick={() => onDateClick?.(day)}
             className={cn(
-              "mx-0.5 flex h-7 items-center justify-center rounded-full text-xs",
+              "flex h-6 items-center justify-center text-[11px] tabular-nums transition-colors duration-150",
               isSameDay(day, currentDate)
-                ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                ? "bg-cobalt font-semibold text-background"
                 : isToday(day)
-                  ? "bg-accent text-accent-foreground hover:bg-accent/90"
+                  ? "font-semibold text-cobalt hover:bg-muted/50"
                   : isSameMonth(day, calendarDate)
                     ? "text-foreground hover:bg-muted/50"
                     : "text-muted-foreground/50 hover:bg-muted/50"

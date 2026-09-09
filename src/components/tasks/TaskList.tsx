@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
+import { useIsMobile } from "@/hooks/use-media-query";
 import { newDate } from "@/lib/date-utils";
-import { cn } from "@/lib/utils";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
 import {
@@ -26,7 +26,9 @@ import {
 
 import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 
-import { SortableHeader, TaskRow } from "./components";
+import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
+import { TaskSheet } from "./datasheet/TaskSheet";
+import { TaskCards } from "./TaskCards";
 import {
   compareTaskEnergyLevel,
   compareTaskPriority,
@@ -39,39 +41,10 @@ interface TaskListProps {
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
-  onInlineEdit: (task: Task) => void;
+  onInlineEdit: (task: TaskPatch) => void;
 }
 
 type SortKey = ReturnType<typeof useTaskListViewSettings.getState>["sortBy"];
-
-/** Column registry: order here is render order. Title is always visible. */
-const COLUMNS: {
-  id: TaskColumnId;
-  label: string;
-  sortKey: SortKey;
-  width?: string;
-}[] = [
-  { id: "status", label: "Status", sortKey: "status", width: "w-28" },
-  { id: "title", label: "Title", sortKey: "title" },
-  { id: "priority", label: "Priority", sortKey: "priority", width: "w-24" },
-  { id: "energyLevel", label: "Energy", sortKey: "energyLevel", width: "w-24" },
-  {
-    id: "preferredTime",
-    label: "Time",
-    sortKey: "preferredTime",
-    width: "w-24",
-  },
-  { id: "dueDate", label: "Due date", sortKey: "dueDate", width: "w-28" },
-  { id: "duration", label: "Duration", sortKey: "duration", width: "w-20" },
-  { id: "lord", label: "Lord", sortKey: "lord", width: "w-40" },
-  { id: "schedule", label: "Schedule", sortKey: "schedule", width: "w-44" },
-  {
-    id: "startDate",
-    label: "Start date",
-    sortKey: "startDate",
-    width: "w-28",
-  },
-];
 
 export function TaskList({
   tasks,
@@ -80,6 +53,7 @@ export function TaskList({
   onStatusChange,
   onInlineEdit,
 }: TaskListProps) {
+  const isMobile = useIsMobile();
   const {
     sortBy,
     sortDirection,
@@ -121,8 +95,9 @@ export function TaskList({
   // First, scope to the selected Lord's section (its whole path in the DAG)
   const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
 
-  // Then apply other filters (single source of truth in task-list-utils so the
-  // "Hide upcoming tasks" filter stays consistent with the "Upcoming" badge).
+  // Then apply other filters (single source of truth in task-list-utils, so
+  // the "Hide upcoming tasks" filter and the sheet's row tint agree on what
+  // "upcoming" means — the old per-row "Upcoming" badge is gone).
   const filteredTasks = useMemo(() => {
     return lordFilteredTasks.filter((task) =>
       taskMatchesListFilters(task, {
@@ -245,8 +220,12 @@ export function TaskList({
   );
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="flex h-full min-h-0 flex-col">
+      {/* Filter strip. Kept on the page rather than promoted into the app top
+          bar: the bar holds what's true everywhere, and a filter is a property
+          of this sheet. Sized to match the bar's controls so the two rows read
+          as one stack. */}
+      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-border px-2 py-1.5">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex h-8 flex-none items-center gap-1.5 border border-dashed border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground">
@@ -356,8 +335,8 @@ export function TaskList({
           {sortedTasks.length} task{sortedTasks.length === 1 ? "" : "s"}
         </span>
 
-        <div className="ml-auto flex items-center gap-2">
-          <div className="relative">
+        <div className="ml-auto flex flex-1 items-center gap-2 md:flex-none">
+          <div className="relative flex-1 md:flex-none">
             <HiSearch className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={search || ""}
@@ -365,18 +344,19 @@ export function TaskList({
                 setFilters({ search: e.target.value || undefined })
               }
               placeholder="Search tasks..."
-              className="h-8 w-56 pl-8"
+              className="h-8 w-full pl-8 md:w-56"
             />
           </div>
+          {/* Card view has no columns to pick. */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground">
+              <button className="hidden h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground md:flex">
                 <HiOutlineViewBoards className="h-3.5 w-3.5" />
                 Columns
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
-              {COLUMNS.map((col) => (
+              {TASK_COLUMNS.map((col) => (
                 <DropdownMenuCheckboxItem
                   key={col.id}
                   checked={visible.has(col.id)}
@@ -391,51 +371,27 @@ export function TaskList({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col border bg-background">
-        <div className="min-h-0 flex-1 overflow-auto">
-          <table className="w-full table-fixed divide-y divide-border">
-            <thead className="sticky top-0 z-10 border-b border-border bg-background">
-              <tr>
-                <th scope="col" className="w-8 px-2 py-2">
-                  {/* Drag handle column */}
-                </th>
-                {COLUMNS.filter((col) => visible.has(col.id)).map((col) => (
-                  <SortableHeader
-                    key={col.id}
-                    column={col.sortKey === "project" ? "lord" : col.sortKey}
-                    label={col.label}
-                    currentSort={sortBy === "project" ? "lord" : sortBy}
-                    direction={sortDirection}
-                    onSort={handleSort}
-                    className={cn(col.width)}
-                  />
-                ))}
-                <th scope="col" className="relative w-28 px-2 py-2">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-background">
-              {sortedTasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  visibleColumns={visible}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusChange={onStatusChange}
-                  onInlineEdit={onInlineEdit}
-                />
-              ))}
-            </tbody>
-          </table>
-          {sortedTasks.length === 0 && (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No tasks found. Try adjusting your filters or create a new task.
-            </div>
-          )}
-        </div>
-      </div>
+      {isMobile ? (
+        <TaskCards
+          tasks={sortedTasks}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onStatusChange={onStatusChange}
+        />
+      ) : (
+        <TaskSheet
+          tasks={sortedTasks}
+          visibleColumns={visible}
+          // "project" is the legacy persisted name for the Lord sort key.
+          sortBy={sortBy === "project" ? "lord" : sortBy}
+          sortDirection={sortDirection}
+          onSort={handleSort}
+          onEdit={onEdit}
+          onDelete={onDelete}
+          onStatusChange={onStatusChange}
+          onInlineEdit={onInlineEdit}
+        />
+      )}
     </div>
   );
 }

@@ -93,7 +93,38 @@
 
 @layer base {
   * {
-    @apply border-border transition-colors duration-200;
+    @apply border-border;
+  }
+  /* Design 02's colour transitions, on the things that actually change colour
+     when you interact with them. This used to sit on `*`, which put six
+     animatable properties on every node in the tree — a month grid alone is
+     ~1500 of them — and made a theme toggle animate the entire document.
+     Components that need it elsewhere (a hoverable row, a chip) already
+     declare `transition-colors` themselves. */
+  :is(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    label,
+    [role="button"],
+    [role="checkbox"],
+    [role="menuitem"],
+    [role="option"],
+    [role="tab"]
+  ) {
+    @apply transition-colors duration-150;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+    }
   }
   body {
     @apply bg-background text-foreground;
@@ -106,158 +137,158 @@
   border-radius: 0;
 }
 
-/* FullCalendar Customization */
+/* ── Calendar (FullCalendar) ───────────────────────────────────────────────
+   Modelled on Apple Calendar: the month grid fills its container exactly with
+   six equal rows and no inner scrollbar, structure comes from hairlines alone,
+   and the field stays one flat surface — the current month, today and the
+   selection are all signalled on the date number, never by shading cells.
+   Every colour resolves from a design token, so light and dark share a single
+   rule set instead of the old hardcoded-gray + `.dark` override pair. */
+
 .fc {
   @apply h-full;
+
+  --fc-small-font-size: 0.6875rem;
+  --fc-page-bg-color: hsl(var(--background));
+  --fc-neutral-bg-color: transparent;
+  --fc-neutral-text-color: hsl(var(--muted-foreground));
+  --fc-border-color: hsl(var(--border));
+
+  --fc-event-bg-color: hsl(var(--cobalt));
+  --fc-event-border-color: hsl(var(--cobalt));
+  /* Time-grid blocks are still filled with the calendar's full-strength colour,
+     so their label needs to contrast with that fill, not with the page. Only
+     the month chips are tinted, and they override this below. */
+  --fc-event-text-color: hsl(var(--primary-foreground));
+  --fc-event-selected-overlay-color: hsl(var(--foreground) / 0.08);
+
+  --fc-more-link-bg-color: transparent;
+  --fc-more-link-text-color: hsl(var(--muted-foreground));
+
+  --fc-non-business-color: hsl(var(--muted) / 0.3);
+  --fc-bg-event-color: hsl(var(--cobalt));
+  --fc-bg-event-opacity: 0.15;
+  --fc-highlight-color: hsl(var(--cobalt) / 0.14);
+  --fc-today-bg-color: transparent;
+  --fc-now-indicator-color: hsl(var(--destructive));
 }
 
-.fc .fc-toolbar {
-  @apply p-4;
+/* The window edge already frames the grid; FullCalendar's outer border only
+   doubles the app chrome's own hairlines. */
+.fc .fc-scrollgrid,
+.fc .fc-scrollgrid > tbody > tr > td {
+  border-left: 0;
+  border-right: 0;
+}
+.fc .fc-scrollgrid-section-header > * {
+  border-top: 0;
+}
+.fc .fc-scrollgrid-section-sticky > * {
+  background: hsl(var(--background));
 }
 
-.fc .fc-toolbar-title {
-  @apply text-xl font-semibold;
+/* Weekday header: small, muted, right-aligned over its column. */
+.fc .fc-col-header-cell {
+  background: transparent;
+}
+.fc .fc-col-header-cell-cushion {
+  @apply block w-full px-2 py-2 text-right text-[11px] font-medium text-muted-foreground;
 }
 
-.fc .fc-button {
-  @apply bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
-}
-
-.fc .fc-button-primary {
-  @apply bg-blue-600 text-white border-blue-600 hover:bg-blue-700;
-}
-
+/* Day cells. Dropping the 150px floor is what lets `expandRows` size six equal
+   rows to the container instead of overflowing it into a scroller. */
 .fc .fc-daygrid-day-frame {
-  @apply min-h-[150px];
+  min-height: 0;
 }
-
-.fc .fc-timegrid-slot {
-  @apply h-20;
-}
-
-.fc .fc-timegrid-slot-label {
-  @apply text-xs text-gray-500;
-}
-
-.fc .fc-event {
-  @apply rounded shadow-sm border-none cursor-pointer;
-}
-
-.fc .fc-event-main {
-  @apply p-1;
-}
-
 .fc .fc-daygrid-day-events {
   margin-bottom: 0;
 }
+.fc .fc-daygrid-day,
+.fc .fc-daygrid-day.fc-day-other,
+.fc .fc-daygrid-day.fc-day-today {
+  background: transparent;
+}
 
+/* Date numbers: top-right and quiet. Days outside the month dim their number
+   rather than shading the cell, so the field reads as one surface.
+   (FullCalendar already lays `.fc-daygrid-day-top` out `row-reverse`, so the
+   number is right-aligned without any help — don't add `justify-*` here, it
+   flips against the reversed axis and drags the number to the left.) */
+.fc .fc-daygrid-day-number {
+  @apply px-2 py-1 text-[12px] font-medium tabular-nums text-foreground;
+}
+.fc .fc-day-other .fc-daygrid-day-number {
+  @apply font-normal text-muted-foreground;
+}
+
+/* Today is the one accent mark on the grid: a badge on the number, not a wash
+   across the whole cell. Sharp, per Design 02. */
+.fc .fc-day-today .fc-daygrid-day-number {
+  @apply mr-1 mt-1 flex h-5 min-w-[1.25rem] items-center justify-center bg-cobalt px-1 py-0 font-semibold text-background;
+}
+
+/* Event chips: sharp, single-line, quiet. Colour identity comes from the feed
+   tint plus a 2px left edge (MonthView tints the fill and keeps the full
+   -strength colour on the border) rather than a saturated block of colour. */
+.fc .fc-event {
+  @apply cursor-pointer border-none shadow-none;
+  border-radius: 0;
+}
+.fc .fc-event-main {
+  @apply p-0;
+}
+.fc .fc-daygrid-event {
+  @apply mx-1 my-px px-1 py-0;
+}
+/* Month chips sit on a tint of the page, so their label is page foreground. */
+.fc .fc-daygrid-event .fc-event-main {
+  color: hsl(var(--foreground));
+}
+.fc .fc-daygrid-block-event {
+  /* longhands, so FullCalendar's inline `border-color` still supplies the hue */
+  border-left-width: 2px;
+  border-left-style: solid;
+}
+.fc .fc-daygrid-block-event.calendar-task {
+  border-left-width: 0; /* the task chip draws its own priority bar */
+}
+.fc .fc-daygrid-dot-event {
+  @apply bg-transparent;
+}
+.fc .fc-daygrid-dot-event:hover {
+  background: hsl(var(--muted) / 0.6);
+}
 .fc .fc-event-title {
   @apply font-medium;
 }
 
-.fc .fc-event-time {
-  @apply text-xs opacity-90;
+/* "+N more" and its popover. */
+.fc .fc-daygrid-more-link {
+  @apply mx-1 px-1 text-[11px] font-medium text-muted-foreground hover:text-foreground;
+}
+.fc .fc-popover {
+  @apply border border-border bg-popover shadow-lg;
+  border-radius: 0;
+}
+.fc .fc-popover-header {
+  @apply bg-muted px-2 py-1 text-xs font-medium text-foreground;
 }
 
-.fc .fc-timegrid-now-indicator-line {
-  @apply border-red-500;
+/* Time grid (day/week). */
+.fc .fc-timegrid-slot {
+  height: 2.25rem;
 }
-
+.fc .fc-timegrid-slot-label-cushion,
+.fc .fc-timegrid-axis-cushion {
+  @apply text-[11px] text-muted-foreground;
+}
+.fc .fc-timegrid-slot-label,
+.fc .fc-timegrid-axis-frame {
+  background-color: hsl(var(--background));
+}
+.fc .fc-timegrid-now-indicator-line,
 .fc .fc-timegrid-now-indicator-arrow {
-  @apply border-red-500;
-}
-
-.fc .fc-day-today {
-  @apply bg-blue-50/30;
-}
-
-.fc .fc-day-header {
-  @apply py-2 border-b border-gray-200;
-}
-
-.fc .fc-scrollgrid {
-  @apply border-gray-200;
-}
-
-.fc .fc-col-header-cell {
-  @apply bg-white border-b border-gray-200;
-}
-
-/* Dark mode styles for FullCalendar */
-.dark .fc {
-  --fc-small-font-size: .85em;
-  --fc-page-bg-color: hsl(var(--background));
-  --fc-neutral-bg-color: hsl(var(--muted) / 0.2);
-  --fc-neutral-text-color: hsl(var(--muted-foreground));
-  --fc-border-color: hsl(var(--border));
-
-  --fc-button-text-color: hsl(var(--primary-foreground));
-  --fc-button-bg-color: hsl(var(--primary));
-  --fc-button-border-color: hsl(var(--primary));
-  --fc-button-hover-bg-color: hsl(var(--primary) / 0.9);
-  --fc-button-hover-border-color: hsl(var(--primary) / 0.9);
-  --fc-button-active-bg-color: hsl(var(--primary) / 0.8);
-  --fc-button-active-border-color: hsl(var(--primary) / 0.8);
-
-  --fc-event-bg-color: hsl(var(--primary));
-  --fc-event-border-color: hsl(var(--primary));
-  --fc-event-text-color: hsl(var(--primary-foreground));
-  --fc-event-selected-overlay-color: rgba(0, 0, 0, 0.25);
-
-  --fc-more-link-bg-color: hsl(var(--muted));
-  --fc-more-link-text-color: hsl(var(--muted-foreground));
-
-  --fc-non-business-color: hsl(var(--muted) / 0.3);
-  --fc-bg-event-color: hsl(var(--primary) / 0.3);
-  --fc-bg-event-opacity: 0.3;
-  --fc-highlight-color: hsl(var(--accent) / 0.3);
-  --fc-today-bg-color: hsl(var(--primary) / 0.1);
-  --fc-now-indicator-color: hsl(var(--destructive));
-}
-
-.dark .fc .fc-toolbar-title {
-  color: hsl(var(--foreground));
-}
-
-.dark .fc .fc-col-header-cell-cushion {
-  color: hsl(var(--foreground));
-}
-
-.dark .fc .fc-daygrid-day.fc-day-other {
-  background: var(--fc-neutral-bg-color);
-}
-
-.dark .fc .fc-scrollgrid-section-sticky > * {
-  background: unset;
-  position: sticky;
-  z-index: 3;
-}
-
-.dark :not(td[aria-labelledby]) > .fc-daygrid-day-frame {
-  background: var(--fc-neutral-bg-color);
-}
-
-.dark .fc .fc-scrollgrid-section-body {
-  background: var(--fc-page-bg-color);
-}
-
-.dark .fc .fc-timegrid-slot-label,
-.dark .fc .fc-timegrid-axis-frame {
-  background-color: var(--fc-page-bg-color);
-}
-
-.dark .fc .fc-col-header-cell {
-  background: var(--fc-page-bg-color);
-  border-color: var(--fc-border-color);
-}
-
-.dark .fc .fc-timegrid-slot-label-cushion,
-.dark .fc .fc-timegrid-axis-cushion {
-  color: hsl(var(--foreground));
-}
-
-.dark .fc .fc-daygrid-day-number {
-  color: hsl(var(--foreground));
+  border-color: hsl(var(--destructive));
 }
 
 /* Command Palette Styles */
@@ -361,15 +392,6 @@
 /* Ensure privacy mode toggle is always visible */
 .privacy-mode-toggle {
   z-index: 100;
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
 }
 
 /* Override toast description styles for better readability */

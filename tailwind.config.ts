@@ -63,6 +63,18 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      spacing: {
+        /** Height of the app top bar (AppTopBar). Pages that need to size
+         *  against the viewport minus the bar can use `h-[calc(100dvh-theme(spacing.topbar))]`. */
+        topbar: "2.75rem", // 44px
+        /** The one width every secondary sidebar uses — the calendar's feed
+         *  list and the tasks Lord list. They were 208px and 256px, so the
+         *  content edge jumped every time you changed page; a single token is
+         *  the only thing that keeps them honest as more pages grow one. */
+        sidebar: "14rem", // 224px
+        /** Width of the left nav rail when open. */
+        rail: "12rem", // 192px
+      },
     },
   },
   plugins: [tailwindcssAnimate, tailwindcssForms],

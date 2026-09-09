@@ -2,8 +2,6 @@ import { useCallback, useState } from "react";
 
 import { BsArrowRepeat, BsGoogle, BsMicrosoft, BsTrash } from "react-icons/bs";
 
-import { Checkbox } from "@/components/ui/checkbox";
-
 import { cn } from "@/lib/utils";
 
 import { useCalendarStore } from "@/store/calendar";
@@ -47,72 +45,101 @@ export function FeedManager() {
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="border-b border-border py-4">
-        <MiniCalendar currentDate={currentDate} onDateClick={setDate} />
-      </div>
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        <div className="space-y-2">
-          <h3 className="font-medium text-foreground">Your Calendars</h3>
-          {feeds.map((feed) => (
+      {/* Sources first, mini-calendar pinned to the bottom — the list is what
+          you actually reach for, and it's the part that needs to scroll. */}
+      <div className="flex-1 overflow-y-auto px-2 py-3">
+        <h3 className="mb-1 px-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          Calendars
+        </h3>
+        {feeds.map((feed) => {
+          const color = feed.color || "hsl(var(--primary))";
+          const isSyncing = syncingFeeds.has(feed.id);
+
+          return (
             <div
               key={feed.id}
-              className="flex items-center justify-between rounded-md p-2 hover:bg-muted/50"
+              className="group flex h-8 items-center gap-1 pl-1 pr-0.5 transition-colors duration-150 hover:bg-muted/50"
             >
-              <div className="flex items-center gap-3">
-                <Checkbox
-                  checked={feed.enabled}
-                  onCheckedChange={() => toggleFeed(feed.id)}
-                  className="h-4 w-4"
-                />
-                <div
-                  className="h-3 w-3 flex-shrink-0 rounded-full"
+              {/* The colour swatch is the toggle, as in Apple's source list —
+                  a separate checkbox plus a colour dot said the same thing
+                  twice. Whole label is the hit area. */}
+              <button
+                role="checkbox"
+                aria-checked={feed.enabled}
+                aria-label={`Show ${feed.name}`}
+                onClick={() => toggleFeed(feed.id)}
+                className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left"
+              >
+                <span
+                  aria-hidden="true"
+                  className="h-3.5 w-3.5 flex-none border-2 transition-colors duration-150"
                   style={{
-                    backgroundColor: feed.color || "hsl(var(--primary))",
+                    borderColor: color,
+                    backgroundColor: feed.enabled ? color : "transparent",
                   }}
                 />
-                <span className="calendar-name max-w-[150px] truncate text-sm text-foreground">
-                  {feed.name}
-                </span>
-                {feed.type === "GOOGLE" && (
-                  <BsGoogle className="h-4 w-4 flex-shrink-0 text-muted-foreground" title={feed.url} />
-                )}
-                {feed.type === "OUTLOOK" && (
-                  <BsMicrosoft className="h-4 w-4 flex-shrink-0 text-muted-foreground" title={feed.url} />
-                )}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => handleSyncFeed(feed.id)}
-                  disabled={syncingFeeds.has(feed.id)}
+                <span
                   className={cn(
-                    "rounded-full p-1.5 text-muted-foreground hover:text-foreground",
-                    "hover:bg-muted/50 focus:outline-none focus:ring-2",
-                    "focus:ring-ring focus:ring-offset-2 focus:ring-offset-background",
-                    "disabled:opacity-50"
+                    "calendar-name truncate text-[13px]",
+                    feed.enabled ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
+                  {feed.name}
+                </span>
+              </button>
+
+              {feed.type === "GOOGLE" && (
+                <BsGoogle
+                  className="h-3 w-3 flex-none text-muted-foreground"
+                  title={feed.url}
+                />
+              )}
+              {feed.type === "OUTLOOK" && (
+                <BsMicrosoft
+                  className="h-3 w-3 flex-none text-muted-foreground"
+                  title={feed.url}
+                />
+              )}
+
+              {/* Row actions stay out of the way until the row is hovered or
+                  keyboard-focused; they were competing with the names. */}
+              <div
+                className={cn(
+                  "flex flex-none items-center opacity-0 transition-opacity duration-150",
+                  "focus-within:opacity-100 group-hover:opacity-100",
+                  isSyncing && "opacity-100"
+                )}
+              >
+                <button
+                  onClick={() => handleSyncFeed(feed.id)}
+                  disabled={isSyncing}
+                  aria-label={`Sync ${feed.name}`}
+                  className="p-1.5 text-muted-foreground transition-colors duration-150 hover:text-foreground disabled:opacity-50"
+                >
                   <BsArrowRepeat
-                    className={cn(
-                      "h-3.5 w-3.5",
-                      syncingFeeds.has(feed.id) && "animate-spin"
-                    )}
+                    className={cn("h-3.5 w-3.5", isSyncing && "animate-spin")}
                   />
                 </button>
                 <button
                   onClick={() => handleRemoveFeed(feed.id)}
-                  className="rounded-full p-1.5 text-muted-foreground hover:bg-muted/50 hover:text-destructive focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+                  aria-label={`Remove ${feed.name}`}
+                  className="p-1.5 text-muted-foreground transition-colors duration-150 hover:text-destructive"
                 >
                   <BsTrash className="h-3.5 w-3.5" />
                 </button>
               </div>
             </div>
-          ))}
-          {feeds.length === 0 && (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              No calendars added yet
-            </p>
-          )}
-        </div>
+          );
+        })}
+        {feeds.length === 0 && (
+          <p className="px-1 py-4 text-[13px] text-muted-foreground">
+            No calendars added yet
+          </p>
+        )}
+      </div>
+
+      <div className="flex-none border-t border-border py-2">
+        <MiniCalendar currentDate={currentDate} onDateClick={setDate} />
       </div>
     </div>
   );

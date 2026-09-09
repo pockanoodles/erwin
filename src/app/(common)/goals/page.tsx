@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { BsDiagram3, BsListTask } from "react-icons/bs";
-
 import { GoalsListView } from "@/components/goals/GoalsListView";
 import { GoalsMapView } from "@/components/goals/GoalsMapView";
 import { HexHeader } from "@/components/goals/HexHeader";
@@ -11,12 +9,14 @@ import { ApplyOverview, GoalsOverview } from "@/components/goals/types";
 
 import { cn } from "@/lib/utils";
 
-type ViewMode = "list" | "map";
+import { useGoalsPageSettings } from "@/store/goalsPageSettings";
 
 export default function GoalsPage() {
   const [data, setData] = useState<GoalsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<ViewMode>("list");
+  // The List/Map switcher lives in the app top bar
+  // (components/goals/GoalsTopBar.tsx).
+  const view = useGoalsPageSettings((s) => s.viewMode);
   // Goals are vault-canonical — the ops project-goals pump mirrors them in from
   // ~/Brain, so edits made here are overwritten on the next sync. The page is a
   // read-only projection viewer; author goals in the vault (Obsidian).
@@ -53,44 +53,14 @@ export default function GoalsPage() {
         view === "map" ? "max-w-none" : "max-w-5xl"
       )}
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        {data ? (
-          <HexHeader
-            overview={data}
-            apply={apply}
-            refetch={loadOverview}
-            readOnly={readOnly}
-          />
-        ) : (
-          <div />
-        )}
-        <div className="flex border border-border">
-          <button
-            onClick={() => setView("list")}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
-              view === "list"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <BsListTask className="h-3.5 w-3.5" />
-            List
-          </button>
-          <button
-            onClick={() => setView("map")}
-            className={cn(
-              "flex items-center gap-2 px-3 py-1.5 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
-              view === "map"
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <BsDiagram3 className="h-3.5 w-3.5" />
-            Map
-          </button>
-        </div>
-      </div>
+      {data ? (
+        <HexHeader
+          overview={data}
+          apply={apply}
+          refetch={loadOverview}
+          readOnly={readOnly}
+        />
+      ) : null}
 
       {readOnly ? (
         <p className="border border-border bg-muted px-3 py-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">

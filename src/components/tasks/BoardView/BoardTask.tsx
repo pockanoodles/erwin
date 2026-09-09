@@ -10,21 +10,14 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 
-import {
-  format,
-  isFutureDate,
-  isThisWeek,
-  isThisYear,
-  isToday,
-  isTomorrow,
-  newDate,
-  newDateFromYMD,
-} from "@/lib/date-utils";
+import { format, newDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
 import { useLordStore } from "@/store/lord";
 
 import { Task, TimePreference } from "@/types/task";
+
+import { formatContextualDate } from "../utils/task-list-utils";
 
 interface BoardTaskProps {
   task: Task;
@@ -54,35 +47,6 @@ const formatEnumValue = (value: string) => {
     .split("_")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-};
-
-const formatContextualDate = (date: Date) => {
-  const localDate = newDateFromYMD(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate()
-  );
-  const now = newDate();
-  now.setHours(0, 0, 0, 0);
-
-  const isOverdue = localDate < now && !isToday(localDate);
-  const isFuture = isFutureDate(localDate);
-  let text = "";
-  if (isToday(localDate)) {
-    text = "Today";
-  } else if (isTomorrow(localDate)) {
-    text = "Tomorrow";
-  } else if (isThisWeek(localDate)) {
-    text = format(localDate, "EEEE");
-  } else if (isThisYear(localDate)) {
-    text = format(localDate, "MMM d");
-  } else {
-    text = format(localDate, "MMM d, yyyy");
-  }
-  if (isOverdue) {
-    text = `Overdue: ${text}`;
-  }
-  return { text, isOverdue, isFuture };
 };
 
 export function BoardTask({
