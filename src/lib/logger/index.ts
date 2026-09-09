@@ -1,5 +1,9 @@
 import { ClientLogger } from "./client";
-import { ServerLogger } from "./server";
+// Imported by absolute path so the client build can alias it to
+// `./server.browser` and keep Prisma out of the browser bundle — see that file
+// and the `webpack` hook in next.config.js. Keep this specifier exactly as it
+// is; a relative `./server` would not match the alias.
+import { ServerLogger } from "@/lib/logger/server";
 import { LogLevel, LogMetadata, LogStorageConfig } from "./types";
 
 class Logger {

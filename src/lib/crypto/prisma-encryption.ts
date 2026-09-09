@@ -22,7 +22,7 @@ import { decryptSecret, encryptSecret } from "./secret-box";
  *
  * Transformation is model-aware and follows relations to any depth, because
  * most callers read a credential through an `include` rather than directly.
- * See `RELATIONS` below for why that matters.
+ * See `relationsFor` below for why that matters.
  */
 
 /**
@@ -62,20 +62,34 @@ const ENCRYPTED_FIELDS: Record<string, readonly string[]> = {
  *
  * Deriving the map from `Prisma.dmmf` rather than hand-listing relations means
  * a new relation to a credential-bearing model is covered the day it is added.
+ *
+ * Built on first use, not at import. This module reaches the client bundle —
+ * the extension is attached where the Prisma singleton is created, and that
+ * module is pulled in transitively by client code — and `@prisma/client`
+ * resolves to a browser stub there whose `Prisma.dmmf` is `undefined` while
+ * `Prisma.defineExtension` still exists. Reading `.datamodel` at module scope
+ * therefore threw during hydration and took down every page with
+ * "a client-side exception has occurred". Nothing in the browser ever calls a
+ * query, so deferring the read costs nothing and keeps the import inert.
  */
-const RELATIONS: Record<string, Record<string, string>> = (() => {
-  const map: Record<string, Record<string, string>> = {};
-  for (const model of Prisma.dmmf.datamodel.models) {
-    const relations: Record<string, string> = {};
-    for (const field of model.fields) {
-      if (field.kind === "object") {
-        relations[field.name] = field.type;
+let relationsCache: Record<string, Record<string, string>> | null = null;
+
+function relationsFor(model: string): Record<string, string> {
+  if (!relationsCache) {
+    const map: Record<string, Record<string, string>> = {};
+    for (const entry of Prisma.dmmf.datamodel.models) {
+      const relations: Record<string, string> = {};
+      for (const field of entry.fields) {
+        if (field.kind === "object") {
+          relations[field.name] = field.type;
+        }
       }
+      map[entry.name] = relations;
     }
-    map[model.name] = relations;
+    relationsCache = map;
   }
-  return map;
-})();
+  return relationsCache[model] ?? {};
+}
 
 /** Operations whose `args` carry field values that need encrypting. */
 const WRITE_DATA_KEYS: Record<string, readonly string[]> = {
@@ -133,7 +147,7 @@ function transformRecord(
 
   const source = record as Record<string, unknown>;
   const fields = ENCRYPTED_FIELDS[model] ?? [];
-  const relations = RELATIONS[model] ?? {};
+  const relations = relationsFor(model);
   let changed = false;
   const result: Record<string, unknown> = { ...source };
 
@@ -251,7 +265,7 @@ function transformWriteRecord(model: string, record: unknown): unknown {
 
   const source = record as Record<string, unknown>;
   const fields = ENCRYPTED_FIELDS[model] ?? [];
-  const relations = RELATIONS[model] ?? {};
+  const relations = relationsFor(model);
   let changed = false;
   const result: Record<string, unknown> = { ...source };
 

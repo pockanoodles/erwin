@@ -1,4 +1,7 @@
-import { ChangeType } from "@/lib/task-sync/task-change-tracker";
+// `import type`, deliberately: `ChangeType` is a pure type alias, but the
+// module it lives in imports Prisma. Value syntax makes that a real edge in
+// the bundle graph for every client component that touches a task type.
+import type { ChangeType } from "@/lib/task-sync/task-change-tracker";
 
 import { Project } from "./project";
 

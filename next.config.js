@@ -16,6 +16,30 @@ const nextConfig = {
   // standalone with `next start` is unsupported — so gate it behind a flag.
   output: process.env.ERWIN_STANDALONE === "1" ? "standalone" : undefined,
 
+  // `@/lib/logger` is one facade used from both sides: it decides at runtime
+  // whether to write to the database or POST to /api/logs/batch. The bundler
+  // cannot see that decision, so its static import of the database half pulled
+  // the Prisma client into the browser bundle, where Prisma throws at module
+  // scope — every page rendered as "a client-side exception has occurred".
+  //
+  // Swap the database half for a stub in the client build. Fixing it here
+  // rather than by splitting the facade keeps the import unchanged in all 111
+  // files that use it, which matters on a fork that ports upstream commits.
+  // Matched on the resolved file rather than the import string: `@/…` paths go
+  // through Next's own tsconfig-paths resolver, which wins over resolve.alias.
+  webpack: (config, { isServer, webpack }) => {
+    if (!isServer) {
+      const path = require("path");
+      config.plugins.push(
+        new webpack.NormalModuleReplacementPlugin(
+          /src[\\/]lib[\\/]logger[\\/]server\.ts$/,
+          path.resolve(__dirname, "src/lib/logger/server.browser.ts")
+        )
+      );
+    }
+    return config;
+  },
+
   // Determine which file extensions to use based on SAAS enablement
   pageExtensions: (() => {
     const isSaasEnabled =
