@@ -19,6 +19,10 @@ import { decryptSecret, encryptSecret } from "./secret-box";
  * Nothing does — verified before writing this: no `where` clause anywhere
  * filters on a credential — and it is inherent to encrypting with a random IV
  * rather than a property of this implementation.
+ *
+ * Transformation is model-aware and follows relations to any depth, because
+ * most callers read a credential through an `include` rather than directly.
+ * See `RELATIONS` below for why that matters.
  */
 
 /**
@@ -39,6 +43,39 @@ const ENCRYPTED_FIELDS: Record<string, readonly string[]> = {
     "resendApiKey",
   ],
 };
+
+/**
+ * Relation field -> related model, per model, from Prisma's own datamodel.
+ *
+ * This is what makes the extension work at depth. A credential is very often
+ * read through a relation rather than directly:
+ *
+ *   prisma.calendarFeed.findUnique({ ..., include: { account: true } })
+ *
+ * Here the operation's model is `CalendarFeed`, which owns no credentials, so
+ * a model-name-only check sees nothing to do and hands back a *ciphertext*
+ * `account.accessToken` — which then gets sent to the provider as the
+ * password. Fifteen call sites read credentials this way, and CalDAV failed
+ * exactly like that: 401, the error swallowed by a `catch` that returns an
+ * empty event list, and a sync that reported success after having already
+ * deleted the feed's events.
+ *
+ * Deriving the map from `Prisma.dmmf` rather than hand-listing relations means
+ * a new relation to a credential-bearing model is covered the day it is added.
+ */
+const RELATIONS: Record<string, Record<string, string>> = (() => {
+  const map: Record<string, Record<string, string>> = {};
+  for (const model of Prisma.dmmf.datamodel.models) {
+    const relations: Record<string, string> = {};
+    for (const field of model.fields) {
+      if (field.kind === "object") {
+        relations[field.name] = field.type;
+      }
+    }
+    map[model.name] = relations;
+  }
+  return map;
+})();
 
 /** Operations whose `args` carry field values that need encrypting. */
 const WRITE_DATA_KEYS: Record<string, readonly string[]> = {
@@ -71,17 +108,32 @@ function mapFieldValue(
   return value;
 }
 
+/**
+ * Walks a record for `model`, transforming that model's credential fields and
+ * then recursing into whichever relations are actually present.
+ *
+ * Only relations present in the value are followed, so an ordinary query with
+ * no `include` costs one pass over the record's own field names.
+ */
 function transformRecord(
+  model: string,
   record: unknown,
-  fields: readonly string[],
   transform: (input: string) => string
 ): unknown {
   if (!record || typeof record !== "object") return record;
   if (Array.isArray(record)) {
-    return record.map((entry) => transformRecord(entry, fields, transform));
+    let arrayChanged = false;
+    const mapped = record.map((entry) => {
+      const next = transformRecord(model, entry, transform);
+      if (next !== entry) arrayChanged = true;
+      return next;
+    });
+    return arrayChanged ? mapped : record;
   }
 
   const source = record as Record<string, unknown>;
+  const fields = ENCRYPTED_FIELDS[model] ?? [];
+  const relations = RELATIONS[model] ?? {};
   let changed = false;
   const result: Record<string, unknown> = { ...source };
 
@@ -94,7 +146,155 @@ function transformRecord(
     }
   }
 
+  for (const [relation, relatedModel] of Object.entries(relations)) {
+    if (!(relation in source)) continue;
+    const next = transformRecord(relatedModel, source[relation], transform);
+    if (next !== source[relation]) {
+      result[relation] = next;
+      changed = true;
+    }
+  }
+
   return changed ? result : record;
+}
+
+/**
+ * A nested write names the relation, then the operation, then the record:
+ *
+ *   { account: { create: { accessToken: "..." } } }
+ *
+ * Each of these keys can hold one record or an array of them, and a few wrap
+ * the record one level deeper in `data`. Keys that only reference existing
+ * rows (`connect`, `disconnect`, `set`, `delete`) carry no field values and
+ * are skipped.
+ */
+function transformNestedWrite(
+  model: string,
+  operation: string,
+  payload: unknown
+): unknown {
+  switch (operation) {
+    case "create":
+    case "update":
+      // `update` is either bare fields or `{ where, data }`.
+      if (
+        payload &&
+        typeof payload === "object" &&
+        !Array.isArray(payload) &&
+        "data" in (payload as Record<string, unknown>)
+      ) {
+        return transformWriteKeys(model, payload, ["data"]);
+      }
+      return transformWriteRecord(model, payload);
+    case "updateMany":
+      return Array.isArray(payload)
+        ? payload.map((entry) => transformWriteKeys(model, entry, ["data"]))
+        : transformWriteKeys(model, payload, ["data"]);
+    case "createMany":
+      return transformWriteKeys(model, payload, ["data"]);
+    case "upsert":
+      return Array.isArray(payload)
+        ? payload.map((entry) =>
+            transformWriteKeys(model, entry, ["create", "update"])
+          )
+        : transformWriteKeys(model, payload, ["create", "update"]);
+    case "connectOrCreate":
+      return Array.isArray(payload)
+        ? payload.map((entry) => transformWriteKeys(model, entry, ["create"]))
+        : transformWriteKeys(model, payload, ["create"]);
+    default:
+      return payload;
+  }
+}
+
+/** Applies `transformWriteRecord` to named sub-keys of a wrapper object. */
+function transformWriteKeys(
+  model: string,
+  wrapper: unknown,
+  keys: readonly string[]
+): unknown {
+  if (!wrapper || typeof wrapper !== "object" || Array.isArray(wrapper)) {
+    return wrapper;
+  }
+
+  const source = wrapper as Record<string, unknown>;
+  let changed = false;
+  const result: Record<string, unknown> = { ...source };
+
+  for (const key of keys) {
+    if (!(key in source)) continue;
+    const next = transformWriteRecord(model, source[key]);
+    if (next !== source[key]) {
+      result[key] = next;
+      changed = true;
+    }
+  }
+
+  return changed ? result : wrapper;
+}
+
+/**
+ * Encrypts the credential fields in a write payload for `model`, following
+ * nested writes into related models.
+ */
+function transformWriteRecord(model: string, record: unknown): unknown {
+  if (!record || typeof record !== "object") return record;
+  if (Array.isArray(record)) {
+    let arrayChanged = false;
+    const mapped = record.map((entry) => {
+      const next = transformWriteRecord(model, entry);
+      if (next !== entry) arrayChanged = true;
+      return next;
+    });
+    return arrayChanged ? mapped : record;
+  }
+
+  const source = record as Record<string, unknown>;
+  const fields = ENCRYPTED_FIELDS[model] ?? [];
+  const relations = RELATIONS[model] ?? {};
+  let changed = false;
+  const result: Record<string, unknown> = { ...source };
+
+  for (const field of fields) {
+    if (!(field in source)) continue;
+    const next = mapFieldValue(source[field], encryptSecret);
+    if (next !== source[field]) {
+      result[field] = next;
+      changed = true;
+    }
+  }
+
+  for (const [relation, relatedModel] of Object.entries(relations)) {
+    if (!(relation in source)) continue;
+    const nested = source[relation];
+    if (!nested || typeof nested !== "object") continue;
+
+    let relationChanged = false;
+    const patched: Record<string, unknown> = {
+      ...(nested as Record<string, unknown>),
+    };
+
+    for (const [operation, payload] of Object.entries(
+      nested as Record<string, unknown>
+    )) {
+      const next = transformNestedWrite(relatedModel, operation, payload);
+      if (next !== payload) {
+        patched[operation] = next;
+        relationChanged = true;
+      }
+    }
+
+    if (relationChanged) {
+      result[relation] = patched;
+      changed = true;
+    }
+  }
+
+  return changed ? result : record;
+}
+
+export function encryptArgsForModel(model: string, args: unknown): unknown {
+  return transformWriteRecord(model, args);
 }
 
 /**
@@ -102,10 +302,10 @@ function transformRecord(
  * from a `findUnique` that missed, or `{ count }` from a bulk write. Only the
  * first two carry field values, and `transformRecord` no-ops on the rest.
  */
-function decryptResult(result: unknown, fields: readonly string[]): unknown {
+export function decryptResultForModel(model: string, result: unknown): unknown {
   if (result === null || result === undefined) return result;
   if (typeof result !== "object") return result;
-  return transformRecord(result, fields, decryptSecret);
+  return transformRecord(model, result, decryptSecret);
 }
 
 export const credentialEncryption = Prisma.defineExtension({
@@ -113,9 +313,9 @@ export const credentialEncryption = Prisma.defineExtension({
   query: {
     $allModels: {
       async $allOperations({ model, operation, args, query }) {
-        const fields = ENCRYPTED_FIELDS[model];
-        if (!fields) return query(args);
-
+        // No early return on the model name: a model that owns no credentials
+        // can still carry one in an included relation, and skipping those was
+        // the bug this replaced.
         const dataKeys = WRITE_DATA_KEYS[operation];
         let nextArgs = args;
 
@@ -126,11 +326,7 @@ export const credentialEncryption = Prisma.defineExtension({
 
           for (const dataKey of dataKeys) {
             if (!(dataKey in source)) continue;
-            const encrypted = transformRecord(
-              source[dataKey],
-              fields,
-              encryptSecret
-            );
+            const encrypted = encryptArgsForModel(model, source[dataKey]);
             if (encrypted !== source[dataKey]) {
               patched[dataKey] = encrypted;
               changed = true;
@@ -140,7 +336,7 @@ export const credentialEncryption = Prisma.defineExtension({
           if (changed) nextArgs = patched as typeof args;
         }
 
-        return decryptResult(await query(nextArgs), fields);
+        return decryptResultForModel(model, await query(nextArgs));
       },
     },
   },
