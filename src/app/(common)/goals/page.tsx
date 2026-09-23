@@ -7,8 +7,6 @@ import { GoalsMapView } from "@/components/goals/GoalsMapView";
 import { HexHeader } from "@/components/goals/HexHeader";
 import { ApplyOverview, GoalsOverview } from "@/components/goals/types";
 
-import { cn } from "@/lib/utils";
-
 import { useGoalsPageSettings } from "@/store/goalsPageSettings";
 
 export default function GoalsPage() {
@@ -47,12 +45,7 @@ export default function GoalsPage() {
   }, []);
 
   return (
-    <div
-      className={cn(
-        "mx-auto space-y-10 p-4 md:p-8",
-        view === "map" ? "max-w-none" : "max-w-5xl"
-      )}
-    >
+    <div className="max-w-none space-y-10 p-4 md:p-8">
       {data ? (
         <HexHeader
           overview={data}

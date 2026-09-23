@@ -38,6 +38,13 @@ import { ValueBar } from "./ValueBar";
 /** Uniform row height. The one property that makes a sheet scannable. */
 const ROW = "h-[26px]";
 
+/** Fakes ROW-height hairlines on the filler table below the last record. */
+const ROW_GRID_STYLE = {
+  backgroundImage:
+    "linear-gradient(to bottom, transparent 25px, hsl(var(--border) / 0.6) 25px, hsl(var(--border) / 0.6) 26px)",
+  backgroundSize: "100% 26px",
+};
+
 const GUTTER_WIDTH = 44;
 const DONE_WIDTH = 32;
 const ACTIONS_WIDTH = 60;
@@ -100,6 +107,21 @@ export function TaskSheet({
     DONE_WIDTH +
     ACTIONS_WIDTH +
     columns.reduce((sum, c) => sum + widthOf(c.id, c.width), 0);
+
+  // Shared by the data table and the filler table below it, so a resized
+  // column can't drift the two grids out of alignment.
+  const colgroup = (
+    <colgroup>
+      <col style={{ width: GUTTER_WIDTH }} />
+      <col style={{ width: DONE_WIDTH }} />
+      {columns.map((c) => (
+        <col key={c.id} style={{ width: widthOf(c.id, c.width) }} />
+      ))}
+      <col style={{ width: ACTIONS_WIDTH }} />
+      {/* Excel's empty columns: the grid keeps going past the data. */}
+      <col />
+    </colgroup>
+  );
 
   const [active, setActive] = useState<CellRef>({ row: 0, col: 0 });
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -237,7 +259,7 @@ export function TaskSheet({
         tabIndex={0}
         onKeyDown={onKeyDown}
         aria-label="Task sheet"
-        className="min-h-0 flex-1 overflow-auto outline-none"
+        className="flex min-h-0 flex-1 flex-col overflow-auto outline-none"
       >
         {/* border-separate, not collapse: a sticky header with collapsed
             borders drops its bottom rule in WebKit as soon as it detaches. */}
@@ -251,16 +273,7 @@ export function TaskSheet({
           // stays selectable, which is where you copy a value from anyway.
           className="min-w-full table-fixed select-none border-separate border-spacing-0 text-[13px]"
         >
-          <colgroup>
-            <col style={{ width: GUTTER_WIDTH }} />
-            <col style={{ width: DONE_WIDTH }} />
-            {columns.map((c) => (
-              <col key={c.id} style={{ width: widthOf(c.id, c.width) }} />
-            ))}
-            <col style={{ width: ACTIONS_WIDTH }} />
-            {/* Excel's empty columns: the grid keeps going past the data. */}
-            <col />
-          </colgroup>
+          {colgroup}
 
           <thead>
             <tr>
@@ -384,6 +397,43 @@ export function TaskSheet({
                 onStatusChange={onStatusChange}
               />
             ))}
+          </tbody>
+        </table>
+
+        {/* Excel keeps drawing the row grid past the last record instead of
+            going blank. A second table sharing the data table's colgroup
+            grows to fill whatever height is left in the scroller — one row,
+            so there's no per-row height to fight over — and a repeating
+            gradient fakes hairlines at the same 26px cadence, with each
+            column's own border-r continuing the vertical rules too. */}
+        <table
+          aria-hidden="true"
+          className="min-w-full flex-1 table-fixed border-separate border-spacing-0"
+        >
+          {colgroup}
+          <tbody>
+            <tr>
+              <td
+                colSpan={2}
+                className="border-r border-border/60 p-0"
+                style={ROW_GRID_STYLE}
+              />
+              {columns.map((c, i) => (
+                <td
+                  key={c.id}
+                  className={cn(
+                    "border-border/60 p-0",
+                    i < columns.length - 1 && "border-r"
+                  )}
+                  style={ROW_GRID_STYLE}
+                />
+              ))}
+              <td
+                className="border-r border-border/60 p-0"
+                style={ROW_GRID_STYLE}
+              />
+              <td className="p-0" style={ROW_GRID_STYLE} />
+            </tr>
           </tbody>
         </table>
       </div>
@@ -532,7 +582,13 @@ function SheetRow({
         </div>
       </td>
 
-      <td className={cn(ROW, "border-b border-border/60")} />
+      <td
+        className={cn(
+          ROW,
+          "border-b border-border/60",
+          isActiveRow ? "bg-cobalt/5" : "group-hover:bg-muted/40"
+        )}
+      />
     </tr>
   );
 }

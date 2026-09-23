@@ -85,7 +85,18 @@ export interface Task {
   category?: string | null;
   /** Erwin v3: goal links (many-to-many); a task can serve several goals */
   goalLinks?: { goalId: string }[];
+  /**
+   * One-level parent. Null/undefined = top-level inventory item. Children
+   * stay out of Focus and auto-schedule.
+   */
+  parentTaskId?: string | null;
+  /** Sibling order under a parent. Null on top-level tasks. */
+  order?: number | null;
+  skipSync?: boolean;
 }
+
+/** Query modes on `/tasks`. Slices the inventory by due date; not Focus. */
+export type TaskListMode = "all" | "today" | "upcoming" | "someday";
 
 export interface NewTask
   extends Omit<
@@ -104,6 +115,8 @@ export interface UpdateTask
     Omit<Task, "id" | "createdAt" | "updatedAt" | "tags" | "project">
   > {
   tagIds?: string[];
+  /** Single-goal setter; the API turns it into a TaskGoalLink (null clears links) */
+  goalId?: string | null;
 }
 
 export type NewTag = Omit<Tag, "id">;

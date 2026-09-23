@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { useErwinStatusStore } from "@/store/erwinStatus";
 
-// Tier idiom, mirrored from FocusTaskCard so the whole app reads danger/urgency
+// Tier idiom, mirrored from FocusDesk so the whole app reads danger/urgency
 // the same way: DANGER = red, HIGH-and-due-today = amber, else quiet.
 function tierRowAccent(task: FocusQueueTask): string {
   const tier = task.erwin?.urgencyTier;

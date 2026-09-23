@@ -10,6 +10,7 @@ import {
   Tag,
   Task,
   TaskFilters,
+  TaskStatus,
   UpdateTask,
 } from "@/types/task";
 
@@ -24,6 +25,16 @@ interface TaskState {
   fetchTasks: () => Promise<void>;
   createTask: (task: NewTask) => Promise<Task>;
   updateTask: (id: string, updates: UpdateTask) => Promise<Task>;
+  /**
+   * Field-level patch for inline list edits. Optimistic, no full-page loading
+   * overlay, no auto-reschedule. Reverts the row if the request fails.
+   */
+  patchTask: (id: string, updates: UpdateTask) => Promise<Task>;
+  /**
+   * Silent checklist add under a parent. No full-page spinner, no
+   * auto-reschedule — the parent is the scheduled work item.
+   */
+  createSubtask: (parentId: string, title: string) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
   setFilters: (filters: Partial<TaskFilters>) => void;
 
@@ -146,6 +157,87 @@ export const useTaskStore = create<TaskState>()(
         }
       },
 
+      patchTask: async (id: string, updates: UpdateTask) => {
+        const previous = get().tasks.find((task) => task.id === id);
+        if (!previous) {
+          throw new Error("Task not found");
+        }
+
+        const { tagIds, goalId, ...fieldUpdates } = updates;
+        const optimistic: Task = {
+          ...previous,
+          ...fieldUpdates,
+          tags: tagIds
+            ? get().tags.filter((tag) => tagIds.includes(tag.id))
+            : previous.tags,
+          ...(goalId !== undefined
+            ? { goalLinks: goalId ? [{ goalId }] : [] }
+            : {}),
+        };
+
+        set((state) => ({
+          tasks: state.tasks.map((task) =>
+            task.id === id ? optimistic : task
+          ),
+          error: null,
+        }));
+
+        try {
+          const response = await fetch(`/api/tasks/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(updates),
+          });
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to update task: ${errorText}`);
+          }
+          const updatedTask = (await response.json()) as Task;
+          set((state) => ({
+            tasks: state.tasks.map((task) =>
+              task.id === id ? updatedTask : task
+            ),
+          }));
+          return updatedTask;
+        } catch (error) {
+          set((state) => ({
+            tasks: state.tasks.map((task) =>
+              task.id === id ? previous : task
+            ),
+            error: error as Error,
+          }));
+          throw error;
+        }
+      },
+
+      createSubtask: async (parentId: string, title: string) => {
+        const trimmed = title.trim();
+        if (!trimmed) {
+          throw new Error("Title required");
+        }
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: trimmed,
+            parentTaskId: parentId,
+            status: TaskStatus.TODO,
+            isAutoScheduled: false,
+            scheduleLocked: false,
+          }),
+        });
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(errorText || "Failed to create subtask");
+        }
+        const newTask = (await response.json()) as Task;
+        set((state) => ({
+          tasks: [...state.tasks, newTask],
+          error: null,
+        }));
+        return newTask;
+      },
+
       deleteTask: async (id: string) => {
         set({ loading: true, error: null });
         try {
@@ -154,7 +246,9 @@ export const useTaskStore = create<TaskState>()(
           });
           if (!response.ok) throw new Error("Failed to delete task");
           set((state) => ({
-            tasks: state.tasks.filter((task) => task.id !== id),
+            tasks: state.tasks.filter(
+              (task) => task.id !== id && task.parentTaskId !== id
+            ),
           }));
           await get().triggerScheduleAllTasks();
         } catch (error) {

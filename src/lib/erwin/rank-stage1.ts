@@ -59,6 +59,7 @@ export type TaskForRanking = Pick<
   | "skipCount"
   | "lastSkippedAt"
   | "createdAt"
+  | "postponedUntil"
 > & {
   /**
    * Erwin v2.2: importance (0–100) of the linked Goal, if any. Resolved by the
@@ -66,6 +67,8 @@ export type TaskForRanking = Pick<
    * into the impact term parallel to gradeImpactScore. `null` when unlinked.
    */
   goalImportanceScore?: number | null;
+  /** Subtasks never surface in Focus; the parent is the work item. */
+  parentTaskId?: string | null;
 };
 
 const COMPLETED_STATUSES = new Set(["completed"]);
@@ -405,13 +408,17 @@ export function computeStage1Scores(
 }
 
 /**
- * Filters tasks that should never surface in Focus (completed, locked, etc.).
+ * Filters tasks that should never surface in Focus (completed, locked,
+ * still-deferred, etc.).
  */
 export function filterTasksForRanking(
   tasks: TaskForRanking[],
   now: Date
 ): TaskForRanking[] {
   return tasks.filter((t) => {
+    if (t.parentTaskId) {
+      return false;
+    }
     if (COMPLETED_STATUSES.has(t.status)) {
       return false;
     }
@@ -419,6 +426,9 @@ export function filterTasksForRanking(
       return false;
     }
     if (t.unlockAt && new Date(t.unlockAt) > now) {
+      return false;
+    }
+    if (t.postponedUntil && new Date(t.postponedUntil) > now) {
       return false;
     }
     return true;

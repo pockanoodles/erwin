@@ -155,7 +155,7 @@ export function AppTopBar() {
           onClick={() => openPalette(true)}
           aria-label="Search"
           className={cn(
-            "flex flex-none items-center gap-2 border border-border",
+            "flex flex-none items-center gap-2 rounded-md border border-border bg-background",
             "text-xs text-muted-foreground transition-colors duration-150",
             "hover:border-foreground/30 hover:text-foreground",
             // A 208px field would eat half a phone's bar to advertise a

@@ -109,6 +109,13 @@ export async function PUT(
       goalLinks,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       taskProviderId,
+      // parentTaskId is immutable after create (one-level, no reparent).
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      parentTaskId,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      parentTask,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      subtasks,
       ...updates
     } = json;
 

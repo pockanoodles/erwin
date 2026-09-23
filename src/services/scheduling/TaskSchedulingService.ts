@@ -1,3 +1,4 @@
+import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -130,16 +131,19 @@ export async function scheduleAllTasksForUser(
     }
 
     // Get all tasks marked for auto-scheduling that are not locked
+    const now = newDate();
     const tasksToSchedule = await prisma.task.findMany({
       where: {
         isAutoScheduled: true,
         scheduleLocked: false,
+        parentTaskId: null,
         status: {
           not: {
             in: [TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS],
           },
         },
         userId,
+        OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }],
       },
       include: {
         project: true,
@@ -152,6 +156,7 @@ export async function scheduleAllTasksForUser(
       where: {
         isAutoScheduled: true,
         scheduleLocked: true,
+        parentTaskId: null,
         status: {
           not: {
             in: [TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS],

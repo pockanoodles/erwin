@@ -42,6 +42,7 @@ function makeTask(overrides: Partial<TaskForRanking> = {}): TaskForRanking {
     skipCount: 0,
     lastSkippedAt: null,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
+    postponedUntil: null,
     goalImportanceScore: null,
     ...overrides,
   };
@@ -224,6 +225,24 @@ describe("filterTasksForRanking", () => {
   test("keeps a task whose unlock time has passed", () => {
     const unlocked = makeTask({ unlockAt: at(-1) });
     expect(filterTasksForRanking([unlocked], NOW)).toHaveLength(1);
+  });
+
+  test("removes a task still deferred past now", () => {
+    const deferred = makeTask({ postponedUntil: at(2) });
+    expect(filterTasksForRanking([deferred], NOW)).toHaveLength(0);
+  });
+
+  test("keeps a task whose defer time has passed", () => {
+    const due = makeTask({ postponedUntil: at(-1) });
+    expect(filterTasksForRanking([due], NOW)).toHaveLength(1);
+  });
+
+  test("removes subtasks so only the parent can surface", () => {
+    const parent = makeTask({ id: "parent" });
+    const child = makeTask({ id: "child", parentTaskId: "parent" });
+    expect(filterTasksForRanking([parent, child], NOW).map((t) => t.id)).toEqual(
+      ["parent"]
+    );
   });
 });
 

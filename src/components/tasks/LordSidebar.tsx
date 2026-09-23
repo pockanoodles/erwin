@@ -1,6 +1,5 @@
 "use client";
 
-import { useIsMobile } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { UNASSIGNED_LORD_ID, useLordStore, type Lord } from "@/store/lord";
@@ -16,18 +15,13 @@ interface LordEntry {
   count?: number;
 }
 
-/** Tasks-page sections come from the goals map: one section per Lord (root
- *  goal of the active hex), covering every boss and task on its path.
- *
- *  Two shapes, one list. A 224px column is a quarter of a laptop and well over
- *  half a phone, so below `md` the same entries render as a horizontal chip
- *  strip above the sheet. Hiding it outright was the cheaper fix and the wrong
- *  one — the Lord filter is how you make a 200-row list legible, which matters
- *  more on a small screen, not less. */
+/** Tasks-page tabs come from the goals map: one tab per Lord (root goal of
+ *  the active hex), covering every boss and task on its path — laid out as
+ *  a spreadsheet sheet-tab strip along the bottom of the table. One shape at
+ *  every width, so the filter never costs a column of horizontal space. */
 export function LordSidebar() {
   const { lords, activeLordId, setActiveLordId } = useLordStore();
   const { tasks } = useTaskStore();
-  const isMobile = useIsMobile();
 
   const openTasks = tasks.filter((t) => t.status !== TaskStatus.COMPLETED);
   const openCountFor = (lord: Lord) => {
@@ -67,68 +61,37 @@ export function LordSidebar() {
     },
   ];
 
-  const count = (n?: number) =>
-    n !== undefined && n > 0 ? (
-      <span className="flex-none font-mono text-xs text-muted-foreground">
-        {n}
-      </span>
-    ) : null;
-
-  if (isMobile) {
-    return (
-      <div className="flex flex-none gap-1.5 overflow-x-auto border-b border-border px-2 py-2">
-        {entries.map((e) => (
-          <button
-            key={e.key}
-            onClick={e.onClick}
-            className={cn(
-              "flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border px-3 text-sm transition-colors duration-150",
-              e.selected
-                ? "border-foreground bg-foreground font-medium text-background"
-                : "border-border text-muted-foreground"
-            )}
-          >
-            <span>{e.label}</span>
-            {e.count !== undefined && e.count > 0 ? (
-              <span
-                className={cn(
-                  "font-mono text-xs",
-                  e.selected ? "text-background/70" : "text-muted-foreground"
-                )}
-              >
-                {e.count}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
-    );
-  }
-
   return (
-    <div className="flex w-sidebar flex-none flex-col border-r border-border bg-background">
-      <div className="flex-1 space-y-1 overflow-y-auto p-3">
-        {entries.map((e) => (
-          <button
-            key={e.key}
-            onClick={e.onClick}
-            className={cn(
-              "flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors duration-150",
-              e.selected
-                ? "bg-accent font-medium text-foreground"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <span className="min-w-0 truncate">{e.label}</span>
-            {count(e.count)}
-          </button>
-        ))}
-        {lords.length === 0 ? (
-          <p className="px-3 py-2 text-xs text-muted-foreground">
-            No Lords yet — mint them on the map.
-          </p>
-        ) : null}
-      </div>
+    <div className="flex flex-none items-stretch overflow-x-auto border-t border-border bg-background">
+      {entries.map((e) => (
+        <button
+          key={e.key}
+          onClick={e.onClick}
+          className={cn(
+            "flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border-r border-border px-3 text-sm transition-colors duration-150",
+            e.selected
+              ? "bg-cobalt font-medium text-background"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          <span>{e.label}</span>
+          {e.count !== undefined && e.count > 0 ? (
+            <span
+              className={cn(
+                "font-mono text-xs",
+                e.selected ? "text-background/70" : "text-muted-foreground"
+              )}
+            >
+              {e.count}
+            </span>
+          ) : null}
+        </button>
+      ))}
+      {lords.length === 0 ? (
+        <span className="flex h-9 flex-none items-center px-3 text-xs text-muted-foreground">
+          No Lords yet — mint them on the map.
+        </span>
+      ) : null}
     </div>
   );
 }

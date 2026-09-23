@@ -1,6 +1,54 @@
+# Linear surface + Focus desks (2026-09-21)
+
+Sampled from Linear's own surfaces, not a remembered palette: brand page
+(Mercury White `#F4F5F8`, Nordic Gray `#222326`), `linear.app` computed CSS
+(`#08090a` field, `#f7f8f8` text, `#2e2e32` hairline, `#e2e4e7`, `#62666d`,
+`#9c9da1`, `#f34e52`, `#89d196`, `#ffc47c`), and the March 2026 refresh
+theme editor (`bgBase #0e1012`, `bgSub #060708`, `bgBaseHover #141517`,
+accent `lch(47.918% 59.303 288.421)` = `#5e6ad2`). Light and dark both ship.
+No logged-in issue-detail screenshot was available.
+
+- [x] Tokens, type, radius, flat controls
+- [x] Nav + top bar match the dimmer rail / 13px rows
+- [x] Focus desks (context / work / book + tape), existing actions kept
+- [x] Verify light and dark in the browser (the Prisma-in-client Turbopack gap that white-screened the embedded browser was fixed by the unrelated client-bundle-boundary commit; `/focus` now renders clean, zero console errors, in both themes)
+
 # Erwin (May 2026)
 
 Phased implementation from the Erwin technical spec: see [`docs/ERWIN-SPEC.md`](docs/ERWIN-SPEC.md) (foundation: Canvas sync, schema, ranking stub). Upstream FluidCalendar backlog follows below.
+
+---
+
+# LOCKED: Tududi task-manager adaptation (2026-09-20)
+
+Steal the **interaction model**, not the product. Tududi is a GTD life OS;
+Erwin is a secretary. `/focus` stays home. `/tasks` becomes the inventory.
+
+Do not add Areas, habits/streaks, notes, people/sharing, Telegram, or a second
+Today app. Map Areas → Lords/Goals. Keep RRULE storage. Recurrence UX, subtasks,
+and defer come later as listed. Cmdk entries (`tasks.today` / `upcoming` /
+`someday`) — confirm before adding.
+
+- [x] **Phase 1 — TaskRow (no schema).** Expand-in-place list as `/tasks`
+      default (desktop + mobile). Checkbox complete with undo toast. Toolbar:
+      due, defer (`startDate`), priority, lord. Full `TaskModal` for heavy
+      edits. Datasheet kept as optional Sheet view. Silent `patchTask` so a
+      checkbox does not flash the full-page spinner.
+- [x] **Phase 2 — Defer UX.** `postponedUntil` is hide-until (Focus + `/tasks`
+      + auto-schedule). `startDate` stays the scheduler/Outlook earliest-work
+      field. TaskRow Defer presets: Later today / Tomorrow / Next week.
+      Filter: Show deferred. Search still finds hidden rows.
+- [x] **Phase 3 — Subtasks.** `parentTaskId` + `order`; one level; nest under
+      parent; hide children from Focus. Canvas assignments stay flat (local
+      skipSync children allowed; sync never creates them).
+- [x] **Phase 4 — List modes.** Today / Upcoming (7-day groups) / Someday /
+      All as query modes on `/tasks`, not a replacement for Focus.
+- [ ] **Phase 5 — Status + saved views.** Add `waiting` and `cancelled`.
+      Persist `UserViewSettings` (already spec'd in `docs/tasklist-enhancements.md`).
+- [ ] **Phase 6 — Recurrence UX.** Badge, completion-based option, virtual
+      upcoming instances from RRULE. Do not switch storage off RRULE.
+
+---
 
 ---
 

@@ -41,6 +41,8 @@ export type FocusQueueTask = Task & {
   /** Goals this task climbs toward. The queue join (`goalLinks[].goal`) is
    *  mapped here; the base `Task.goalLinks` only carries ids. */
   ladderGoals?: LadderGoal[];
+  /** Checklist children. Focus ranks parents only; these ride along for the desk. */
+  subtasks?: { id: string; title: string; status: TaskStatus; order: number | null }[];
 };
 
 function parseDate(v: unknown): Date | null {
@@ -126,6 +128,14 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
     category: (raw.category as string | null | undefined) ?? null,
     erwin: raw.erwin as FocusQueueTask["erwin"],
     ladderGoals,
+    subtasks: Array.isArray(raw.subtasks)
+      ? (raw.subtasks as Array<Record<string, unknown>>).map((child) => ({
+          id: String(child.id),
+          title: String(child.title ?? ""),
+          status: (child.status as TaskStatus) ?? TaskStatus.TODO,
+          order: child.order == null ? null : Number(child.order),
+        }))
+      : [],
   };
 }
 

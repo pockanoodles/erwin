@@ -90,7 +90,7 @@ function SortableLord({
   );
 }
 
-/** Mirrors the Focus tier treatment (FocusTaskCard): red for DANGER, amber for HIGH. */
+/** Mirrors the Focus tier treatment (FocusDesk): red for DANGER, amber for HIGH. */
 function tierBadge(tier: string | null): { label: string; className: string } | null {
   if (tier === "DANGER") {
     return { label: "DANGER", className: "text-red-700 dark:text-red-400" };

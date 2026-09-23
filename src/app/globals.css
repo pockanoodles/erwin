@@ -3,91 +3,88 @@
 @tailwind utilities;
 
 @layer base {
+  /* Linear surface. Hexes are sampled, then stored as HSL for the shadcn tokens.
+     Light: Mercury White #F4F5F8 and Nordic Gray #222326 (linear.app/brand).
+     Rail #E2E4E7 and muted #62666D from linear.app CSS — the rail is a step
+     dimmer than the content, which is the 2026 refresh rule.
+     Dark: theme-editor bgBase #0e1012, bgSub #060708, bgBaseHover #141517.
+     Accent #5e6ad2 is lch(47.918% 59.303 288.421) from that same editor.
+     Status #89D196 / #FFC47C / #F34E52 are from linear.app CSS.
+     Elevated light panels are pure white so they lift off Mercury White. */
   :root {
     color-scheme: light;
-    --background: 45 49% 97%;
-    --foreground: 222.2 84% 4.9%;
+    --background: 225 22.2% 96.5%;
+    --foreground: 225 5.6% 14.1%;
+    --sidebar: 216 9.4% 89.6%;
 
-    --card: 44 60% 99%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 225 5.6% 14.1%;
 
-    --popover: 44 60% 99%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 225 5.6% 14.1%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 45 30% 97%;
+    --primary: 225 5.6% 14.1%;
+    --primary-foreground: 225 22.2% 96.5%;
 
-    --secondary: 40 33% 93%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 216 9.4% 89.6%;
+    --secondary-foreground: 225 5.6% 14.1%;
 
-    --muted: 40 33% 93%;
-    --muted-foreground: 215 13% 34%;
+    --muted: 216 9.4% 89.6%;
+    --muted-foreground: 218.2 5.3% 40.6%;
 
-    --accent: 40 33% 93%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 216 9.4% 89.6%;
+    --accent-foreground: 225 5.6% 14.1%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 45 30% 97%;
+    --destructive: 358.5 87.3% 62.9%;
+    --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 96% 89%;
+    --warning: 33 100% 74.3%;
+    --warning-foreground: 225 5.6% 14.1%;
 
-    --border: 36 25% 88%;
-    --input: 36 25% 88%;
-    --ring: 222.2 84% 4.9%;
+    --border: 216 9.4% 89.6%;
+    --input: 216 9.4% 89.6%;
+    --ring: 233.8 56.3% 59.6%;
 
-    --radius: 0.5rem;
+    --radius: 8px;
 
-    /* goals-page accent (Design 02 cobalt); dark variant keeps the hue, raises lightness for contrast on near-black */
-    --cobalt: 226 99% 35%;
-
-    --chart-1: 178 75% 44%;
-    --chart-2: 197 37% 24%;
-    --chart-3: 167 70% 48%;
-    --chart-4: 349 52% 61%;
-    --chart-5: 43 96% 56%;
+    --cobalt: 233.8 56.3% 59.6%;
   }
 
   .dark {
     color-scheme: dark;
-    --background: 0 0% 9%;
-    --foreground: 0 0% 93%;
+    --background: 210 12.5% 6.3%;
+    --foreground: 180 6.7% 97.1%;
+    --sidebar: 210 14.3% 2.7%;
 
-    --card: 0 0% 11%;
-    --card-foreground: 0 0% 93%;
+    --card: 220 7% 8.4%;
+    --card-foreground: 180 6.7% 97.1%;
 
-    --popover: 0 0% 11%;
-    --popover-foreground: 0 0% 93%;
+    --popover: 220 7% 8.4%;
+    --popover-foreground: 180 6.7% 97.1%;
 
-    --primary: 0 0% 93%;
-    --primary-foreground: 0 0% 9%;
+    --primary: 216 9.4% 89.6%;
+    --primary-foreground: 210 12.5% 6.3%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 93%;
+    --secondary: 220 7% 8.4%;
+    --secondary-foreground: 180 6.7% 97.1%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 55%;
+    --muted: 220 7% 8.4%;
+    --muted-foreground: 228 2.6% 62.2%;
 
-    --accent: 0 0% 15%;
-    --accent-foreground: 0 0% 93%;
+    --accent: 220 7% 8.4%;
+    --accent-foreground: 180 6.7% 97.1%;
 
-    --destructive: 0 62.8% 40%;
-    --destructive-foreground: 0 0% 93%;
+    --destructive: 358.5 87.3% 62.9%;
+    --destructive-foreground: 0 0% 100%;
 
-    --warning: 48 96% 89%;
-    --warning-foreground: 38 92% 50%;
+    --warning: 33 100% 74.3%;
+    --warning-foreground: 210 12.5% 6.3%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 0 0% 60%;
+    --border: 240 4.2% 18.8%;
+    --input: 240 4.2% 18.8%;
+    --ring: 233.8 56.3% 59.6%;
 
-    --cobalt: 227 100% 68%;
-
-    --chart-1: 178 70% 50%;
-    --chart-2: 197 50% 55%;
-    --chart-3: 167 70% 55%;
-    --chart-4: 349 52% 65%;
-    --chart-5: 43 96% 65%;
+    --cobalt: 233.8 56.3% 59.6%;
   }
 }
 
@@ -131,10 +128,10 @@
   }
 }
 
-/* App chrome (Design 02 "Cobalt Industrial"): sharp geometry — zero radius on controls.
+/* Linear product controls are 6px. Panels use --radius (8px) via rounded-lg.
    Identity/floating circles opt out with data-round. */
 .app-sharp :is(button, input, textarea, select, kbd):not([data-round]) {
-  border-radius: 0;
+  border-radius: 6px;
 }
 
 /* ── Calendar (FullCalendar) ───────────────────────────────────────────────

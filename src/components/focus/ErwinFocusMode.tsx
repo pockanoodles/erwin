@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { AnimatePresence, motion } from "framer-motion";
-
+import { endOfDay, newDate } from "@/lib/date-utils";
 import { type FocusQueueTask, parseTaskFromApi } from "@/lib/erwin/parse-task";
 
 import { useTaskStore } from "@/store/task";
@@ -13,9 +12,8 @@ import { TaskStatus } from "@/types/task";
 
 import { CompactBriefing } from "./CompactBriefing";
 import { DailyBriefing } from "./DailyBriefing";
-import { FocusTaskCard } from "./FocusTaskCard";
+import { FocusDesk } from "./FocusDesk";
 import { QuickAdd } from "./QuickAdd";
-import { UpNext } from "./UpNext";
 
 const STORAGE_LAST_BRIEFING = "erwin-last-briefing";
 const STORAGE_FOCUS_BOOST = "erwin-focus-boost";
@@ -50,7 +48,6 @@ export function ErwinFocusMode() {
   const [addOpen, setAddOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
-  const [cardDir, setCardDir] = useState<"left" | "right" | null>(null);
 
   const sessionId = useRef(crypto.randomUUID());
   const surfaceLoggedRef = useRef<Set<string>>(new Set());
@@ -179,16 +176,11 @@ export function ErwinFocusMode() {
     });
   }, [top?.id, queueLoading, logInteraction]);
 
-  // `cardDir` is deliberately never reset: it records the direction of the last
-  // action and is only read as the exit/enter offset. Clearing it in `finally`
-  // batched with `setRanked`, so the incoming card mounted with an offset of 0
-  // and the slide never played.
   const handleDone = async () => {
     if (!top) {
       return;
     }
     setActing(true);
-    setCardDir("left");
     setNotice(null);
     try {
       await logInteraction(top.id, "COMPLETED");
@@ -208,7 +200,6 @@ export function ErwinFocusMode() {
       return;
     }
     setActing(true);
-    setCardDir("right");
     setNotice(null);
     // The task re-enters the queue once its cooldown lapses, and that is a
     // genuine new surfacing — drop it from the dedupe set so it logs SURFACED
@@ -236,6 +227,88 @@ export function ErwinFocusMode() {
       setActing(false);
     }
   };
+
+  /**
+   * Hide the task until the end of today. Same stamp as TaskRow's
+   * "Later today" preset — Focus already drops future `postponedUntil`.
+   */
+  const handleLater = async () => {
+    if (!top) {
+      return;
+    }
+    setActing(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/tasks/${top.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postponedUntil: endOfDay(newDate()).toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Could not defer task");
+      }
+      await fetchTasks();
+      await loadQueue({ background: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not defer task");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  const handleToggleSubtask = async (id: string, completed: boolean) => {
+    setActing(true);
+    setNotice(null);
+    try {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: completed ? TaskStatus.COMPLETED : TaskStatus.TODO,
+        }),
+      });
+      if (!res.ok) {
+        throw new Error("Could not update subtask");
+      }
+      await loadQueue({ background: true });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update subtask");
+    } finally {
+      setActing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!top || showFullBriefing) {
+      return;
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || acting) {
+        return;
+      }
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        el?.isContentEditable
+      ) {
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key !== "d" && key !== "s" && key !== "l") {
+        return;
+      }
+      e.preventDefault();
+      if (key === "d") void handleDone();
+      else if (key === "s") void handleSkip();
+      else void handleLater();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const handleQuickAdd = async () => {
     const title = newTitle.trim();
@@ -305,7 +378,7 @@ export function ErwinFocusMode() {
   }
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {showFullBriefing && briefingLoading ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
           <p className="text-muted-foreground">Loading briefing…</p>
@@ -340,76 +413,50 @@ export function ErwinFocusMode() {
         </p>
       ) : null}
 
-      <div className="flex flex-1 flex-col gap-6 p-4 md:flex-row md:p-8">
-        <main className="flex min-h-0 flex-1 flex-col">
-          {queueLoading ? (
-            <p className="text-muted-foreground">Loading your next task...</p>
-          ) : briefingData && briefingData.totalPendingTasks === 0 ? (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <p className="text-lg font-medium text-foreground">
-                No tasks pending.
+      <div className="flex min-h-0 flex-1 flex-col">
+        {queueLoading ? (
+          <p className="px-6 py-8 text-[13px] text-muted-foreground">
+            Loading your next task...
+          </p>
+        ) : briefingData && briefingData.totalPendingTasks === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+            <p className="text-[15px] font-medium text-foreground">
+              No tasks pending.
+            </p>
+            <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
+              Connect Canvas to auto-import assignments, or tap + to add a
+              task.
+            </p>
+          </div>
+        ) : !top ? (
+          <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
+            <p className="text-[15px] font-medium text-foreground">All clear.</p>
+            <p className="mt-2 text-[13px] text-muted-foreground">
+              0 tasks pending.
+            </p>
+            {briefingData ? (
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                You completed {briefingData.tasksCompletedToday} tasks today.
               </p>
-              <p className="mt-2 max-w-sm text-sm">
-                Connect Canvas to auto-import assignments, or tap + to add a
-                task.
-              </p>
-            </div>
-          ) : !top ? (
-            <div className="flex flex-1 flex-col items-center justify-center p-8 text-center text-muted-foreground">
-              <p className="text-lg font-medium text-foreground">All clear.</p>
-              <p className="mt-2 text-sm">0 tasks pending.</p>
-              {briefingData ? (
-                <p className="mt-2 text-sm">
-                  You completed {briefingData.tasksCompletedToday} tasks today.
-                </p>
-              ) : null}
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <AnimatePresence initial={false} mode="wait">
-                <motion.div
-                  key={top.id}
-                  initial={{
-                    opacity: 0,
-                    x: cardDir === "right" ? 32 : cardDir === "left" ? -32 : 0,
-                  }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: cardDir === "left" ? -40 : 40 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <FocusTaskCard task={top} />
-                </motion.div>
-              </AnimatePresence>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  disabled={acting}
-                  onClick={() => void handleDone()}
-                  className="inline-flex h-11 min-w-[120px] items-center justify-center rounded-md bg-zinc-900 px-4 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
-                >
-                  Done
-                </button>
-                <button
-                  type="button"
-                  disabled={acting}
-                  onClick={() => void handleSkip()}
-                  className="inline-flex h-11 min-w-[120px] items-center justify-center rounded-md border border-border bg-zinc-100 px-4 text-sm font-medium text-zinc-700 hover:bg-zinc-200 disabled:opacity-50 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                >
-                  Skip
-                </button>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {!queueLoading && top ? (
-          <aside className="w-full shrink-0 md:w-72">
-            <h2 className="mb-3 text-sm font-medium text-muted-foreground">
-              Up next
-            </h2>
-            <UpNext tasks={upNext} />
-          </aside>
-        ) : null}
+            ) : null}
+          </div>
+        ) : (
+          <FocusDesk
+            task={top}
+            upNext={upNext}
+            position={{ index: 1, total: ranked.length }}
+            doneToday={briefingData?.tasksCompletedToday ?? null}
+            freeHours={briefingData?.freeHoursToday ?? null}
+            nextEvent={briefingData?.nextEvent ?? null}
+            acting={acting}
+            onDone={() => void handleDone()}
+            onSkip={() => void handleSkip()}
+            onLater={() => void handleLater()}
+            onToggleSubtask={(id, completed) =>
+              void handleToggleSubtask(id, completed)
+            }
+          />
+        )}
       </div>
 
       <QuickAdd

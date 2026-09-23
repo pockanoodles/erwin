@@ -84,10 +84,12 @@ export function AppNav({ className }: AppNavProps) {
             title={link.label}
             tabIndex={isMobile ? (isDrawerOpen ? 0 : -1) : isNavOpen ? 0 : -1}
             className={cn(
-              "flex items-center whitespace-nowrap px-[18px] text-sm font-medium transition-colors duration-150",
+              "mx-2 flex items-center whitespace-nowrap rounded-md px-2 text-[13px] font-normal tracking-tight transition-colors duration-150",
               // 40px is fine for a pointer and under the 44px touch floor.
-              isMobile ? "h-12" : "h-10",
-              isActive ? "text-cobalt" : "text-foreground hover:bg-muted"
+              isMobile ? "h-11" : "h-8",
+              isActive
+                ? "bg-background text-foreground dark:bg-secondary"
+                : "text-muted-foreground hover:bg-background/80 hover:text-foreground dark:hover:bg-secondary"
             )}
           >
             <span className={isMobile ? undefined : label}>{link.label}</span>
@@ -114,7 +116,7 @@ export function AppNav({ className }: AppNavProps) {
         />
         <div
           className={cn(
-            "fixed bottom-0 left-0 top-topbar z-50 w-64 border-r border-border bg-background",
+            "fixed bottom-0 left-0 top-topbar z-50 w-64 border-r border-border bg-sidebar",
             "transition-transform duration-200 ease-out motion-reduce:transition-none",
             isDrawerOpen ? "translate-x-0" : "-translate-x-full",
             className
@@ -139,7 +141,7 @@ export function AppNav({ className }: AppNavProps) {
       className={cn(
         // overflow-clip (not hidden): focusing the full-width Settings row must
         // never scroll the clipped rail and shove it offscreen.
-        "h-full flex-none overflow-clip bg-background",
+        "h-full flex-none overflow-clip bg-sidebar",
         "transition-[width] duration-300 ease-out motion-reduce:transition-none",
         // The hairline is part of the rail, so it leaves with it — a border on
         // a zero-width element still paints a 1px line down the page.
@@ -148,7 +150,7 @@ export function AppNav({ className }: AppNavProps) {
         className
       )}
     >
-      <nav className="flex h-full w-rail flex-col py-2" aria-hidden={!isNavOpen}>
+      <nav className="flex h-full w-rail flex-col py-3" aria-hidden={!isNavOpen}>
         {links}
 
         <div className="mt-auto">

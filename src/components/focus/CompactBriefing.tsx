@@ -26,7 +26,7 @@ export function CompactBriefing({
 
   if (loading) {
     return (
-      <div className="border-b border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground md:px-8">
+      <div className="border-b border-border px-4 py-2 text-[13px] text-muted-foreground md:px-6">
         Loading briefing…
       </div>
     );
@@ -34,10 +34,10 @@ export function CompactBriefing({
 
   return (
     <>
-      <div className="border-b border-border bg-muted/30">
+      <div className="border-b border-border">
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm md:px-8"
+          className="flex h-9 w-full items-center justify-between gap-3 px-4 text-left text-[13px] md:px-6"
           onClick={() => setExpanded((e) => !e)}
         >
           <span className="text-muted-foreground">{summaryLine}</span>

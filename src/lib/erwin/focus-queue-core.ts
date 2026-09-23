@@ -35,6 +35,8 @@ export function toTaskForRanking(r: {
   skipCount: number;
   lastSkippedAt: Date | null;
   createdAt: Date;
+  postponedUntil?: Date | null;
+  parentTaskId?: string | null;
   goalLinks?: Array<{ goal: { importanceScore: number | null } }> | null;
 }): TaskForRanking {
   return {
@@ -55,6 +57,8 @@ export function toTaskForRanking(r: {
     skipCount: r.skipCount,
     lastSkippedAt: r.lastSkippedAt,
     createdAt: r.createdAt,
+    postponedUntil: r.postponedUntil ?? null,
+    parentTaskId: r.parentTaskId ?? null,
     // Erwin v3: a task can serve several goals — it surfaces on its most
     // important one (see rank-stage1 computeStage1Scores).
     goalImportanceScore:
@@ -71,6 +75,9 @@ export type FocusQueueTaskRow = Prisma.TaskGetPayload<{
     tags: true;
     project: true;
     goalLinks: { include: { goal: true } };
+    subtasks: {
+      select: { id: true; title: true; status: true; order: true };
+    };
   };
 }>;
 
@@ -97,11 +104,17 @@ export async function buildFocusQueueCore(
     where: {
       userId,
       status: { not: "completed" },
+      parentTaskId: null,
+      OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }],
     },
     include: {
       tags: true,
       project: true,
       goalLinks: { include: { goal: true } },
+      subtasks: {
+        orderBy: { order: "asc" },
+        select: { id: true, title: true, status: true, order: true },
+      },
     },
   });
 

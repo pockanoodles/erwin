@@ -131,7 +131,7 @@ export function DailyBriefing({
       <div className="mx-auto mt-8 w-full max-w-lg shrink-0 px-1">
         <Button
           type="button"
-          className="h-12 w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
+          className="h-9 w-full"
           onClick={() => void onContinue()}
         >
           Let&apos;s go

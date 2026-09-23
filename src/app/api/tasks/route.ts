@@ -106,7 +106,44 @@ export async function POST(request: NextRequest) {
     const json = await request.json();
     // `goalId` is a convenience alias: it becomes a TaskGoalLink row (tasks
     // link to goals many-to-many; /api/erwin/task-links manages further links).
-    const { tagIds, recurrenceRule, goalId, ...taskData } = json;
+    const {
+      tagIds,
+      recurrenceRule,
+      goalId,
+      parentTaskId,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      parentTask,
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      subtasks,
+      ...taskData
+    } = json;
+
+    // One-level subtasks: inherit the parent's project, never auto-schedule,
+    // never sync outward (Canvas/Outlook stay a single assignment).
+    if (parentTaskId) {
+      const parent = await prisma.task.findFirst({
+        where: { id: parentTaskId, userId },
+      });
+      if (!parent) {
+        return new NextResponse("Parent task not found", { status: 400 });
+      }
+      if (parent.parentTaskId) {
+        return new NextResponse("Subtasks cannot have children", {
+          status: 400,
+        });
+      }
+      const maxOrder = await prisma.task.aggregate({
+        where: { parentTaskId, userId },
+        _max: { order: true },
+      });
+      taskData.parentTaskId = parentTaskId;
+      taskData.order = (maxOrder._max.order ?? 0) + 1;
+      taskData.isAutoScheduled = false;
+      taskData.skipSync = true;
+      if (!taskData.projectId) {
+        taskData.projectId = parent.projectId;
+      }
+    }
 
     // Normalize and validate recurrence rule if provided
     const standardizedRecurrenceRule = recurrenceRule
@@ -162,8 +199,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Track the creation for sync purposes if the task is in a mapped project
-    if (mappingId) {
+    // Track the creation for sync purposes if the task is in a mapped project.
+    // skipSync children (subtasks) stay local — do not push them to Outlook.
+    if (mappingId && !task.skipSync) {
       const changeTracker = new TaskChangeTracker();
       await changeTracker.trackChange(
         task.id,

@@ -109,6 +109,7 @@ export function TaskModal({
   const [status, setStatus] = useState<TaskStatus>(TaskStatus.TODO);
   const [dueDate, setDueDate] = useState<string>("");
   const [startDate, setStartDate] = useState<string>("");
+  const [postponedUntil, setPostponedUntil] = useState<string>("");
   const [duration, setDuration] = useState<string>("");
   const [energyLevel, setEnergyLevel] = useState<EnergyLevel | "">("");
   const [preferredTime, setPreferredTime] = useState<TimePreference | "">("");
@@ -143,6 +144,7 @@ export function TaskModal({
     setStatus(TaskStatus.TODO);
     setDueDate("");
     setStartDate("");
+    setPostponedUntil("");
     setDuration("");
     setEnergyLevel("");
     setPreferredTime("");
@@ -201,6 +203,7 @@ export function TaskModal({
       } else {
         setStartDate("");
       }
+      setPostponedUntil(toDateTimeInput(task.postponedUntil));
       setDuration(task.duration?.toString() || "");
       setEnergyLevel(task.energyLevel || "");
       setPreferredTime(task.preferredTime || "");
@@ -248,6 +251,7 @@ export function TaskModal({
         status,
         dueDate: dueDate ? newDate(dueDate) : null,
         startDate: startDate ? newDate(startDate) : null,
+        postponedUntil: postponedUntil ? newDate(postponedUntil) : null,
         duration: duration ? parseInt(duration, 10) : undefined,
         energyLevel: energyLevel || undefined,
         preferredTime: preferredTime || undefined,
@@ -355,6 +359,19 @@ export function TaskModal({
               />
               <p className="text-xs text-muted-foreground">
                 Optional: Task won&apos;t be scheduled before this date
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="postponedUntil">Defer until</Label>
+              <Input
+                type="datetime-local"
+                id="postponedUntil"
+                value={postponedUntil}
+                onChange={(e) => setPostponedUntil(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Hidden from Focus and Tasks until this time
               </p>
             </div>
 

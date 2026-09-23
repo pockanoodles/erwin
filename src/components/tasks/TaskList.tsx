@@ -15,25 +15,34 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 
-import { useIsMobile } from "@/hooks/use-media-query";
 import { newDate } from "@/lib/date-utils";
+import { cn } from "@/lib/utils";
+
+import { useIsMobile } from "@/hooks/use-media-query";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
 import {
   TaskColumnId,
   useTaskListViewSettings,
 } from "@/store/taskListViewSettings";
+import { useTaskPageSettings } from "@/store/taskPageSettings";
 
 import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 
-import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
+import { TaskListModeSwitch } from "./TaskListModeSwitch";
+import { TaskRow } from "./TaskRow";
+import { TaskRowExpansionProvider } from "./TaskRow/TaskRowExpansionContext";
 import { TaskSheet } from "./datasheet/TaskSheet";
-import { TaskCards } from "./TaskCards";
+import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
 import {
   compareTaskEnergyLevel,
   compareTaskPriority,
+  emptyListModeMessage,
   formatEnumValue,
-  taskMatchesListFilters,
+  groupTasksByParent,
+  groupTasksForListMode,
+  parentMatchesListFilters,
+  taskMatchesListMode,
 } from "./utils/task-list-utils";
 
 interface TaskListProps {
@@ -42,6 +51,7 @@ interface TaskListProps {
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onInlineEdit: (task: TaskPatch) => void;
+  onCreateSubtask: (parentId: string, title: string) => Promise<void>;
 }
 
 type SortKey = ReturnType<typeof useTaskListViewSettings.getState>["sortBy"];
@@ -52,6 +62,7 @@ export function TaskList({
   onDelete,
   onStatusChange,
   onInlineEdit,
+  onCreateSubtask,
 }: TaskListProps) {
   const isMobile = useIsMobile();
   const {
@@ -63,12 +74,15 @@ export function TaskList({
     tagIds,
     search,
     hideUpcomingTasks,
+    showDeferred,
+    listMode,
     visibleColumns,
     setSortBy,
     setSortDirection,
     setFilters,
     toggleColumn,
   } = useTaskListViewSettings();
+  const { listStyle, setListStyle } = useTaskPageSettings();
   const { lords, activeLordId } = useLordStore();
 
   const visible = useMemo(
@@ -92,36 +106,54 @@ export function TaskList({
       task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
     )?.title;
 
-  // First, scope to the selected Lord's section (its whole path in the DAG)
-  const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
+  // Split children out of the inventory: only parents sort/filter as rows.
+  // Children nest under their parent and inherit its Lord filter.
+  const { parents, childrenOf } = useMemo(
+    () => groupTasksByParent(tasks),
+    [tasks]
+  );
+
+  const lordParents = useMemo(
+    () => filterTasksByLord(parents, lords, activeLordId),
+    [parents, lords, activeLordId]
+  );
 
   // Then apply other filters (single source of truth in task-list-utils, so
   // the "Hide upcoming tasks" filter and the sheet's row tint agree on what
-  // "upcoming" means — the old per-row "Upcoming" badge is gone).
+  // "upcoming" means — the old per-row "Upcoming" badge is gone). Search
+  // still surfaces a parent when a child title matches.
   const filteredTasks = useMemo(() => {
-    return lordFilteredTasks.filter((task) =>
-      taskMatchesListFilters(task, {
+    return lordParents.filter((task) =>
+      parentMatchesListFilters(task, childrenOf[task.id] ?? [], {
         status,
         energyLevel,
         timePreference,
         tagIds,
         search,
         hideUpcomingTasks,
+        showDeferred,
       })
     );
   }, [
-    lordFilteredTasks,
+    lordParents,
+    childrenOf,
     status,
     energyLevel,
     timePreference,
     tagIds,
     search,
     hideUpcomingTasks,
+    showDeferred,
   ]);
+
+  const modeFilteredTasks = useMemo(() => {
+    if (listMode === "all") return filteredTasks;
+    return filteredTasks.filter((task) => taskMatchesListMode(task, listMode));
+  }, [filteredTasks, listMode]);
 
   // Apply sorting
   const sortedTasks = useMemo(() => {
-    return [...filteredTasks].sort((a, b) => {
+    return [...modeFilteredTasks].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
       switch (sortBy) {
         case "title":
@@ -194,9 +226,17 @@ export function TaskList({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredTasks, sortBy, sortDirection, lords]);
+  }, [modeFilteredTasks, sortBy, sortDirection, lords]);
 
-  const toggleValue = <T,>(current: T[] | undefined, value: T): T[] | undefined => {
+  const groupedTasks = useMemo(
+    () => groupTasksForListMode(sortedTasks, listMode),
+    [sortedTasks, listMode]
+  );
+
+  const toggleValue = <T,>(
+    current: T[] | undefined,
+    value: T
+  ): T[] | undefined => {
     const next = current?.includes(value)
       ? current.filter((v) => v !== value)
       : [...(current ?? []), value];
@@ -226,6 +266,7 @@ export function TaskList({
           of this sheet. Sized to match the bar's controls so the two rows read
           as one stack. */}
       <div className="flex flex-none flex-wrap items-center gap-2 border-b border-border px-2 py-1.5">
+        <TaskListModeSwitch />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="flex h-8 flex-none items-center gap-1.5 border border-dashed border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:border-foreground/30 hover:text-foreground">
@@ -301,14 +342,20 @@ export function TaskList({
             >
               Hide upcoming tasks
             </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={showDeferred ?? false}
+              onCheckedChange={(checked) =>
+                setFilters({ showDeferred: checked as boolean })
+              }
+            >
+              Show deferred
+            </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
         {status?.length
-          ? filterChip(
-              "Status",
-              status.map(formatEnumValue).join(", "),
-              () => setFilters({ status: undefined })
+          ? filterChip("Status", status.map(formatEnumValue).join(", "), () =>
+              setFilters({ status: undefined })
             )
           : null}
         {energyLevel?.length
@@ -330,6 +377,11 @@ export function TaskList({
               setFilters({ hideUpcomingTasks: false })
             )
           : null}
+        {showDeferred
+          ? filterChip("Showing", "Deferred", () =>
+              setFilters({ showDeferred: false })
+            )
+          : null}
 
         <span className="px-1 font-mono text-xs text-muted-foreground">
           {sortedTasks.length} task{sortedTasks.length === 1 ? "" : "s"}
@@ -347,37 +399,96 @@ export function TaskList({
               className="h-8 w-full pl-8 md:w-56"
             />
           </div>
-          {/* Card view has no columns to pick. */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="hidden h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground md:flex">
-                <HiOutlineViewBoards className="h-3.5 w-3.5" />
-                Columns
+          {!isMobile && (
+            <div className="flex h-8 border border-border">
+              <button
+                type="button"
+                onClick={() => setListStyle("rows")}
+                className={cn(
+                  "px-2 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
+                  listStyle === "rows"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Rows
               </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-44">
-              {TASK_COLUMNS.map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.id}
-                  checked={visible.has(col.id)}
-                  disabled={col.id === "title"}
-                  onCheckedChange={() => toggleColumn(col.id)}
-                >
-                  {col.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+              <button
+                type="button"
+                onClick={() => setListStyle("sheet")}
+                className={cn(
+                  "px-2 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
+                  listStyle === "sheet"
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Sheet
+              </button>
+            </div>
+          )}
+          {!isMobile && listStyle === "sheet" && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground">
+                  <HiOutlineViewBoards className="h-3.5 w-3.5" />
+                  Columns
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                {TASK_COLUMNS.map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.id}
+                    checked={visible.has(col.id)}
+                    disabled={col.id === "title"}
+                    onCheckedChange={() => toggleColumn(col.id)}
+                  >
+                    {col.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
-      {isMobile ? (
-        <TaskCards
-          tasks={sortedTasks}
-          onEdit={onEdit}
-          onDelete={onDelete}
-          onStatusChange={onStatusChange}
-        />
+      {isMobile || listStyle === "rows" ? (
+        sortedTasks.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center p-8">
+            <p className="text-sm text-muted-foreground">
+              {emptyListModeMessage(listMode)}
+            </p>
+          </div>
+        ) : (
+          <TaskRowExpansionProvider>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {groupedTasks.map((group) => (
+                <section key={group.key}>
+                  {group.label ? (
+                    <h2 className="sticky top-0 z-10 flex items-center gap-2 border-b border-border bg-background px-3 py-1.5 font-mono text-[11px] uppercase tracking-[0.0875em] text-muted-foreground">
+                      {group.label}
+                      <span>{group.tasks.length}</span>
+                    </h2>
+                  ) : null}
+                  <ul>
+                    {group.tasks.map((task) => (
+                      <TaskRow
+                        key={task.id}
+                        task={task}
+                        subtasks={childrenOf[task.id] ?? []}
+                        onPatch={onInlineEdit}
+                        onOpenModal={onEdit}
+                        onDelete={onDelete}
+                        onStatusChange={onStatusChange}
+                        onCreateSubtask={onCreateSubtask}
+                      />
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </TaskRowExpansionProvider>
+        )
       ) : (
         <TaskSheet
           tasks={sortedTasks}

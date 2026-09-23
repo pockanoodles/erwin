@@ -40,6 +40,17 @@ const nextConfig = {
     return config;
   },
 
+  // `npm run dev` is Turbopack, which does not run the webpack plugin above.
+  // The `browser` condition is required: a blanket alias also replaces the
+  // module on the server, and the stub then throws during SSR.
+  turbopack: {
+    resolveAlias: {
+      "@/lib/logger/server": {
+        browser: "./src/lib/logger/server.browser.ts",
+      },
+    },
+  },
+
   // Determine which file extensions to use based on SAAS enablement
   pageExtensions: (() => {
     const isSaasEnabled =

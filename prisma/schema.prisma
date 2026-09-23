@@ -281,6 +281,13 @@ model Task {
   syncHash          String? // Hash of task data for detecting changes
   skipSync          Boolean   @default(false) // Flag to skip syncing this task
 
+  // One-level subtasks. Children are checklist items, not Focus/scheduler
+  // candidates. Deleting the parent cascades. Canvas sync never writes these.
+  parentTaskId String?
+  parentTask   Task?   @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks     Task[]  @relation("TaskSubtasks")
+  order        Int?
+
   // Change tracking relation
   changes TaskChange[]
 
@@ -317,6 +324,7 @@ model Task {
   @@index([externalListId])
   @@index([taskProviderId])
   @@index([urgencyTier])
+  @@index([parentTaskId, order])
 }
 
 /** Erwin v2.2: a two-month planning block. One active at a time per user; mirrors how Kaito already plans the year. */

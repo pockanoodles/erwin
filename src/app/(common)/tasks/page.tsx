@@ -29,6 +29,8 @@ export default function TasksPage() {
     fetchTags,
     createTask,
     updateTask,
+    patchTask,
+    createSubtask,
     deleteTask,
     createTag,
   } = useTaskStore();
@@ -71,9 +73,11 @@ export default function TasksPage() {
   };
 
   const handleStatusChange = async (taskId: string, status: TaskStatus) => {
-    await updateTask(taskId, { status });
-    await fetchTasks();
-    await fetchProjects();
+    try {
+      await patchTask(taskId, { status });
+    } catch {
+      toast.error("Failed to update task");
+    }
   };
 
   const handleCreateTag = async (name: string, color?: string) => {
@@ -94,31 +98,35 @@ export default function TasksPage() {
     const { id, tags, createdAt, updatedAt, project, goalLinks, ...updates } =
       task;
     try {
-      await updateTask(id, updates);
-      await fetchTasks();
-    } catch (error) {
-      console.error("Error updating task:", error);
+      await patchTask(id, updates);
+    } catch {
       toast.error("Failed to update task", {
         description: "Please try again later.",
       });
     }
   };
 
+  const handleCreateSubtask = async (parentId: string, title: string) => {
+    try {
+      await createSubtask(parentId, title);
+    } catch {
+      toast.error("Failed to add subtask");
+      throw new Error("Failed to add subtask");
+    }
+  };
+
   return (
-    // Column on a phone (the Lord filter is a chip strip there), row on a
-    // laptop (it's a 224px sidebar). `md` matches useIsMobile's 767px ceiling.
-    <div className="flex h-full flex-col md:flex-row">
-      <LordSidebar />
-      <div className="flex min-w-0 flex-1 flex-col" data-task-page>
+    // The Lord filter is a bottom sheet-tab strip at every width — see
+    // LordSidebar for why that replaced the side column.
+    <div className="flex h-full flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden" data-task-page>
         {error && (
           <Alert variant="destructive" className="m-4 mb-0">
             <AlertDescription>{error.message}</AlertDescription>
           </Alert>
         )}
 
-        {/* The list view is a datasheet and runs edge to edge like one — it
-            brings its own chrome and needs the full width for columns. The
-            board is a padded canvas. */}
+        {/* List is TaskRow by default (Sheet is an optional datasheet). */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {viewMode === "list" ? (
             <TaskList
@@ -127,17 +135,16 @@ export default function TasksPage() {
               onDelete={handleDeleteTask}
               onStatusChange={handleStatusChange}
               onInlineEdit={handleInlineEdit}
+              onCreateSubtask={handleCreateSubtask}
             />
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
-              <BoardView
-                tasks={tasks}
-                onEdit={openEdit}
-                onDelete={handleDeleteTask}
-                onStatusChange={handleStatusChange}
-                onInlineEdit={handleInlineEdit}
-              />
-            </div>
+            <BoardView
+              tasks={tasks}
+              onEdit={openEdit}
+              onDelete={handleDeleteTask}
+              onStatusChange={handleStatusChange}
+              onInlineEdit={handleInlineEdit}
+            />
           )}
         </div>
 
@@ -159,6 +166,8 @@ export default function TasksPage() {
           </div>
         )}
       </div>
+
+      <LordSidebar />
     </div>
   );
 }

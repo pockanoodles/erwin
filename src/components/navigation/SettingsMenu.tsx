@@ -54,7 +54,7 @@ export function SettingsMenu({ labelClassName }: SettingsMenuProps) {
       <DropdownMenuTrigger asChild>
         <button
           title="Settings"
-          className="flex h-10 w-full items-center gap-3 whitespace-nowrap px-[18px] text-sm font-medium text-muted-foreground transition-colors duration-150 hover:text-foreground"
+          className="mx-2 flex h-8 w-[calc(100%-1rem)] items-center gap-2 whitespace-nowrap rounded-md px-2 text-[13px] font-normal tracking-tight text-muted-foreground transition-colors duration-150 hover:bg-background/80 hover:text-foreground dark:hover:bg-secondary"
         >
           <HiOutlineCog className="h-4 w-4 flex-none" />
           <span className={labelClassName}>Settings</span>

@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
-import { EnergyLevel, TaskStatus, TimePreference } from "@/types/task";
+import { EnergyLevel, TaskListMode, TaskStatus, TimePreference } from "@/types/task";
 
 export type TaskColumnId =
   | "status"
@@ -52,6 +52,12 @@ interface TaskListViewSettings {
   tagIds?: string[];
   search?: string;
   hideUpcomingTasks?: boolean;
+  showDeferred?: boolean;
+  /**
+   * Inventory query: All / Today / Upcoming / Someday. Not Focus. Default
+   * All so existing `/tasks` behavior is unchanged.
+   */
+  listMode: TaskListMode;
 
   // Column visibility ("title" is always visible and not stored)
   visibleColumns: TaskColumnId[];
@@ -76,10 +82,13 @@ interface TaskListViewSettings {
         | "setFilters"
         | "resetFilters"
         | "toggleColumn"
+        | "setListMode"
+        | "listMode"
       >
     >
   ) => void;
   resetFilters: () => void;
+  setListMode: (mode: TaskListMode) => void;
   toggleColumn: (column: TaskColumnId) => void;
   setColumnWidth: (column: TaskColumnId, width: number) => void;
   /** Back to the registry default — the double-click on a header edge. */
@@ -107,6 +116,8 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       tagIds: undefined,
       search: undefined,
       hideUpcomingTasks: false,
+      showDeferred: false,
+      listMode: "all",
 
       visibleColumns: DEFAULT_VISIBLE_COLUMNS,
       columnWidths: {},
@@ -123,7 +134,9 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
           tagIds: undefined,
           search: undefined,
           hideUpcomingTasks: false,
+          showDeferred: false,
         }),
+      setListMode: (listMode) => set({ listMode }),
       toggleColumn: (column) =>
         set((state) => ({
           visibleColumns: state.visibleColumns.includes(column)

@@ -9,6 +9,8 @@ import { useTaskListViewSettings } from "@/store/taskListViewSettings";
 
 import { Task, TaskStatus } from "@/types/task";
 
+import { TaskListModeSwitch } from "../TaskListModeSwitch";
+import { isDeferredTask, taskMatchesListMode } from "../utils/task-list-utils";
 import { Column } from "./Column";
 
 interface BoardViewProps {
@@ -27,7 +29,7 @@ export function BoardView({
   onInlineEdit,
 }: BoardViewProps) {
   const { lords, activeLordId } = useLordStore();
-  const { energyLevel, timePreference, tagIds, search } =
+  const { energyLevel, timePreference, tagIds, search, showDeferred, listMode } =
     useTaskListViewSettings();
 
   // First, scope to the selected Lord's section (its whole path in the DAG)
@@ -36,6 +38,12 @@ export function BoardView({
   // Then apply other filters
   const filteredTasks = useMemo(() => {
     return lordFilteredTasks.filter((task) => {
+      if (task.parentTaskId) {
+        return false;
+      }
+      if (isDeferredTask(task) && !showDeferred && !search) {
+        return false;
+      }
       // Energy level filter
       if (
         energyLevel?.length &&
@@ -63,16 +71,28 @@ export function BoardView({
       // Search
       if (search) {
         const searchLower = search.toLowerCase();
-        return (
+        const matchesSearch =
           task.title.toLowerCase().includes(searchLower) ||
           task.description?.toLowerCase().includes(searchLower) ||
-          task.tags.some((tag) => tag.name.toLowerCase().includes(searchLower))
-        );
+          task.tags.some((tag) => tag.name.toLowerCase().includes(searchLower));
+        if (!matchesSearch) return false;
+      }
+
+      if (!taskMatchesListMode(task, listMode)) {
+        return false;
       }
 
       return true;
     });
-  }, [lordFilteredTasks, energyLevel, timePreference, tagIds, search]);
+  }, [
+    lordFilteredTasks,
+    energyLevel,
+    timePreference,
+    tagIds,
+    search,
+    showDeferred,
+    listMode,
+  ]);
 
   // Group tasks by status
   const columns = useMemo(() => {
@@ -101,7 +121,10 @@ export function BoardView({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex flex-1 gap-6 overflow-auto">
+      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-border px-2 py-1.5">
+        <TaskListModeSwitch />
+      </div>
+      <div className="flex flex-1 gap-6 overflow-auto p-6">
         <DndContext onDragEnd={handleDragEnd}>
           {Object.values(TaskStatus).map((status) => (
             <Column

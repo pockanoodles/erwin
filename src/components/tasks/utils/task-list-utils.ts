@@ -1,4 +1,5 @@
 import {
+  addDays,
   format,
   isFutureDate,
   isThisWeek,
@@ -7,12 +8,14 @@ import {
   isTomorrow,
   newDate,
   newDateFromYMD,
+  startOfDay,
 } from "@/lib/date-utils";
 
 import {
   EnergyLevel,
   Priority,
   Task,
+  TaskListMode,
   TaskStatus,
   TimePreference,
 } from "@/types/task";
@@ -29,6 +32,32 @@ export const isUpcomingTask = (task: Pick<Task, "startDate">): boolean => {
   return Boolean(task.startDate) && isFutureDate(task.startDate ?? null);
 };
 
+/**
+ * A task is deferred when `postponedUntil` is still in the future. Instant
+ * comparison, not day-granularity: Focus skip-style "in 3 hours" and a
+ * calendar-day defer both hide until that moment. `startDate` is the
+ * scheduler's earliest-work field (Outlook/Google sync) and is not a hide
+ * signal — TaskRow Defer writes `postponedUntil`.
+ */
+export const isDeferredTask = (
+  task: Pick<Task, "postponedUntil">,
+  now: Date = newDate()
+): boolean => {
+  if (!task.postponedUntil) return false;
+  return newDate(task.postponedUntil).getTime() > now.getTime();
+};
+
+/**
+ * Short label for a defer stamp: "Later today", "Tomorrow", or the same
+ * contextual date the due column uses.
+ */
+export const formatDeferLabel = (value: Date | string): string => {
+  const d = newDate(value);
+  if (isToday(d)) return "Later today";
+  if (isTomorrow(d)) return "Tomorrow";
+  return formatContextualDate(d).text;
+};
+
 // Filter settings consumed by the Tasks list view (subset of
 // useTaskListViewSettings relevant to per-task filtering).
 export interface TaskListFilterSettings {
@@ -38,6 +67,8 @@ export interface TaskListFilterSettings {
   tagIds?: string[];
   search?: string;
   hideUpcomingTasks?: boolean;
+  /** When false/undefined, tasks with a future postponedUntil are hidden. */
+  showDeferred?: boolean;
 }
 
 /**
@@ -57,6 +88,11 @@ export const taskMatchesListFilters = (
 
   // Hide upcoming (future-day) tasks
   if (filters.hideUpcomingTasks && isUpcomingTask(task)) {
+    return false;
+  }
+
+  // Hide deferred tasks unless the user asked to see them or searched.
+  if (isDeferredTask(task) && !filters.showDeferred && !filters.search) {
     return false;
   }
 
@@ -95,6 +131,174 @@ export const taskMatchesListFilters = (
   }
 
   return true;
+};
+
+/**
+ * Split a flat task list into top-level parents and children keyed by parent.
+ * Children sort by `order`, then createdAt. Orphan children (parent missing
+ * from the list) are dropped so they cannot render as top-level rows.
+ */
+export const groupTasksByParent = (
+  tasks: Task[]
+): { parents: Task[]; childrenOf: Record<string, Task[]> } => {
+  const childrenOf: Record<string, Task[]> = {};
+  const parents: Task[] = [];
+  for (const task of tasks) {
+    if (task.parentTaskId) {
+      const list = childrenOf[task.parentTaskId] ?? [];
+      list.push(task);
+      childrenOf[task.parentTaskId] = list;
+    } else {
+      parents.push(task);
+    }
+  }
+  for (const list of Object.values(childrenOf)) {
+    list.sort((a, b) => {
+      const orderA = a.order ?? 0;
+      const orderB = b.order ?? 0;
+      if (orderA !== orderB) return orderA - orderB;
+      return newDate(a.createdAt).getTime() - newDate(b.createdAt).getTime();
+    });
+  }
+  return { parents, childrenOf };
+};
+
+/**
+ * A parent row is visible if it matches the list filters, or if the user is
+ * searching and one of its children matches the query (so a hidden parent
+ * still surfaces when you search for a subtask title).
+ */
+export const parentMatchesListFilters = (
+  parent: Task,
+  children: Task[],
+  filters: TaskListFilterSettings
+): boolean => {
+  if (taskMatchesListFilters(parent, filters)) return true;
+  if (!filters.search) return false;
+  const searchLower = filters.search.toLowerCase();
+  return children.some(
+    (child) =>
+      child.title.toLowerCase().includes(searchLower) ||
+      (child.description?.toLowerCase().includes(searchLower) ?? false)
+  );
+};
+
+/**
+ * Query modes on `/tasks`. These slice the inventory by due date. They are
+ * not Focus — no ranking, no suggested lane. `dueDate` is stored at UTC
+ * midnight; rebuild locally from the UTC calendar day so US zones don't
+ * shift the bucket.
+ */
+export type { TaskListMode } from "@/types/task";
+
+export const TASK_LIST_MODES: readonly TaskListMode[] = [
+  "all",
+  "today",
+  "upcoming",
+  "someday",
+];
+
+export function parseTaskListMode(value: string | null): TaskListMode | null {
+  if (value && (TASK_LIST_MODES as readonly string[]).includes(value)) {
+    return value as TaskListMode;
+  }
+  return null;
+}
+
+/**
+ * Local midnight for a task due stamp (UTC Y/M/D rebuilt in local time).
+ */
+export const dueDateAsLocalDay = (due: Date | string): Date => {
+  const d = newDate(due);
+  return newDateFromYMD(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+};
+
+/**
+ * Whether a parent row belongs in the current list mode. Completed status
+ * is a separate filter. Subtasks are grouped under their parent, not sliced
+ * here.
+ */
+export const taskMatchesListMode = (
+  task: Pick<Task, "dueDate">,
+  mode: TaskListMode,
+  now: Date = newDate()
+): boolean => {
+  if (mode === "all") return true;
+  const today = startOfDay(now);
+  if (!task.dueDate) return mode === "someday";
+  if (mode === "someday") return false;
+  const due = dueDateAsLocalDay(task.dueDate);
+  if (mode === "today") {
+    return due.getTime() <= today.getTime();
+  }
+  const start = addDays(today, 1);
+  const end = addDays(today, 7);
+  return due.getTime() >= start.getTime() && due.getTime() <= end.getTime();
+};
+
+export interface TaskListGroup {
+  key: string;
+  label: string | null;
+  tasks: Task[];
+}
+
+/**
+ * Band the already-filtered/sorted parents. Today splits Overdue / Today.
+ * Upcoming is one band per day for the next 7 days (empty days omitted).
+ * All and Someday stay a single unlabeled list.
+ */
+export const groupTasksForListMode = (
+  tasks: Task[],
+  mode: TaskListMode,
+  now: Date = newDate()
+): TaskListGroup[] => {
+  if (mode === "today") {
+    const today = startOfDay(now);
+    const overdue: Task[] = [];
+    const dueToday: Task[] = [];
+    for (const task of tasks) {
+      if (!task.dueDate) continue;
+      const due = dueDateAsLocalDay(task.dueDate);
+      if (due.getTime() < today.getTime()) overdue.push(task);
+      else dueToday.push(task);
+    }
+    const groups: TaskListGroup[] = [];
+    if (overdue.length > 0) {
+      groups.push({ key: "overdue", label: "Overdue", tasks: overdue });
+    }
+    if (dueToday.length > 0) {
+      groups.push({ key: "today", label: "Today", tasks: dueToday });
+    }
+    return groups;
+  }
+
+  if (mode === "upcoming") {
+    const today = startOfDay(now);
+    const groups: TaskListGroup[] = [];
+    for (let offset = 1; offset <= 7; offset += 1) {
+      const day = addDays(today, offset);
+      const dayTasks = tasks.filter((task) => {
+        if (!task.dueDate) return false;
+        return dueDateAsLocalDay(task.dueDate).getTime() === day.getTime();
+      });
+      if (dayTasks.length === 0) continue;
+      groups.push({
+        key: format(day, "yyyy-MM-dd"),
+        label: offset === 1 ? "Tomorrow" : format(day, "EEEE"),
+        tasks: dayTasks,
+      });
+    }
+    return groups;
+  }
+
+  return [{ key: mode, label: null, tasks }];
+};
+
+export const emptyListModeMessage = (mode: TaskListMode): string => {
+  if (mode === "today") return "Nothing due today.";
+  if (mode === "upcoming") return "Nothing due in the next 7 days.";
+  if (mode === "someday") return "No undated tasks.";
+  return "No tasks match.";
 };
 
 // Helper function to format enum values for display
