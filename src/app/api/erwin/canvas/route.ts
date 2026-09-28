@@ -176,7 +176,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const result = await syncCanvasTasksForUser(userId);
+    // A hand-pressed sync refreshes materials too, skipping the 6h cadence
+    // (unchanged files still aren't re-downloaded).
+    const result = await syncCanvasTasksForUser(userId, { forceMaterials: true });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     logger.error(

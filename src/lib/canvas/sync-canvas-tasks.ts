@@ -12,6 +12,11 @@ import {
   hasLiveAssignment,
   isTermNamedCourse,
 } from "@/lib/canvas/course-term-filter";
+import {
+  type MaterialsSyncStats,
+  syncCanvasMaterials,
+} from "@/lib/canvas/sync-canvas-materials";
+import { Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -139,10 +144,15 @@ function shouldSkipAssignment(
 /**
  * Pulls active courses and assignments from Canvas and upserts rows in `Task` for the user.
  */
-export async function syncCanvasTasksForUser(userId: string): Promise<{
+export async function syncCanvasTasksForUser(
+  userId: string,
+  options: { forceMaterials?: boolean } = {}
+): Promise<{
   upserted: number;
   courseCount: number;
   purged: number;
+  /** null when the materials mirror threw; task sync still succeeded. */
+  materials: MaterialsSyncStats | null;
 }> {
   const provider = await prisma.taskProvider.findFirst({
     where: { userId, type: "CANVAS" },
@@ -190,6 +200,7 @@ export async function syncCanvasTasksForUser(userId: string): Promise<{
     const assignments =
       assignmentsByCourse.get(course.id) ??
       (await client.listAssignments(course.id));
+    assignmentsByCourse.set(course.id, assignments);
 
     for (const a of assignments) {
       const extId = String(a.id);
@@ -256,6 +267,9 @@ export async function syncCanvasTasksForUser(userId: string): Promise<{
         category: "SCHOOL",
         externalUrl: a.html_url ?? null,
         urgencyTier: "NONE",
+        rubric: a.rubric?.length
+          ? (JSON.parse(JSON.stringify(a.rubric)) as object)
+          : Prisma.DbNull,
       };
 
       if (existing) {
@@ -310,7 +324,28 @@ export async function syncCanvasTasksForUser(userId: string): Promise<{
     LOG_SOURCE
   );
 
-  return { upserted, courseCount: liveCourses.length, purged };
+  // Materials ride along, but never at the task sync's expense: tasks are
+  // already committed, so a materials failure is logged, not thrown.
+  let materials: MaterialsSyncStats | null = null;
+  try {
+    materials = await syncCanvasMaterials(
+      client,
+      userId,
+      provider.id,
+      liveCourses,
+      assignmentsByCourse,
+      now,
+      { force: options.forceMaterials }
+    );
+  } catch (error) {
+    logger.error(
+      "Canvas materials sync failed",
+      { userId, error: error instanceof Error ? error.message : String(error) },
+      LOG_SOURCE
+    );
+  }
+
+  return { upserted, courseCount: liveCourses.length, purged, materials };
 }
 
 /**

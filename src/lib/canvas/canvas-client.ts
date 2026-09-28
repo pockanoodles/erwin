@@ -6,6 +6,10 @@ import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
   CanvasCourse,
+  CanvasFile,
+  CanvasModule,
+  CanvasModuleItem,
+  CanvasPage,
 } from "@/lib/canvas/types";
 
 export interface CanvasClientConfig {
@@ -95,6 +99,70 @@ export function createCanvasClient(config: CanvasClientConfig) {
         config,
         `/api/v1/courses/${courseId}/assignments?include[]=submission`
       );
+    },
+
+    /** One course with its syllabus body and term name. */
+    async getCourse(courseId: number): Promise<CanvasCourse> {
+      return canvasFetch<CanvasCourse>(
+        config,
+        `/api/v1/courses/${courseId}?include[]=syllabus_body&include[]=term`
+      );
+    },
+
+    /**
+     * Modules in Canvas order, each with its items. Canvas leaves `items` off
+     * large modules even when asked, so those are fetched separately.
+     */
+    async listModules(courseId: number): Promise<CanvasModule[]> {
+      const modules = await canvasFetchAll<CanvasModule>(
+        config,
+        `/api/v1/courses/${courseId}/modules?include[]=items&include[]=content_details`
+      );
+      for (const m of modules) {
+        if (!m.items) {
+          m.items = await canvasFetchAll<CanvasModuleItem>(
+            config,
+            `/api/v1/courses/${courseId}/modules/${m.id}/items?include[]=content_details`
+          );
+        }
+      }
+      return modules;
+    },
+
+    async getPage(courseId: number, pageSlug: string): Promise<CanvasPage> {
+      return canvasFetch<CanvasPage>(
+        config,
+        `/api/v1/courses/${courseId}/pages/${encodeURIComponent(pageSlug)}`
+      );
+    },
+
+    /**
+     * File metadata. Students can't list a course's files (403), but a file
+     * reached from a module or an assignment is readable by id.
+     */
+    async getFile(courseId: number, fileId: number): Promise<CanvasFile> {
+      return canvasFetch<CanvasFile>(
+        config,
+        `/api/v1/courses/${courseId}/files/${fileId}`
+      );
+    },
+
+    /**
+     * Download a file's bytes from its signed `url`. Streamed, so a large
+     * slide deck never sits whole in memory.
+     */
+    async downloadFile(file: CanvasFile): Promise<ReadableStream<Uint8Array>> {
+      if (!file.url) {
+        throw new Error(`Canvas file ${file.id} has no download URL`);
+      }
+      const res = await fetch(file.url, {
+        headers: { Authorization: `Bearer ${config.accessToken}` },
+        cache: "no-store",
+      });
+      if (!res.ok || !res.body) {
+        throw new Error(`Canvas file download ${res.status}`);
+      }
+      return res.body;
     },
 
     /** Smoke test token + base URL. */

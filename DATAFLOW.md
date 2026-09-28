@@ -17,7 +17,7 @@ Last verified against the code on **2026-09-09**.
 
 | Service | What Erwin sends it | Can it change anything there? | Why |
 | --- | --- | --- | --- |
-| **Canvas** (your university's LMS) | Nothing but your access token | **No — read only** | Import assignments and grade weights |
+| **Canvas** (your university's LMS) | Nothing but your access token | **No — read only** | Import assignments, grade weights, and course materials |
 | **Google** (Calendar + Tasks) | Event and task titles, notes, times | **Yes** | Two-way calendar and task sync |
 | **Microsoft** (Outlook + To Do) | Event and task titles, notes, times | **Yes** | Two-way calendar and task sync |
 | **A CalDAV server** (e.g. Fastmail, iCloud) | Event titles, descriptions, locations, times | **Yes** | Two-way calendar sync |
@@ -45,6 +45,16 @@ assignment complete in Erwin, that stays in Erwin.
 The Canvas address is whatever you enter in settings (for this install,
 Northeastern's). Assignments come back and are written into the local database
 as tasks.
+
+Erwin also copies each current course's **materials**: the syllabus, the
+module list, the text of course pages, and the files those modules and
+assignments point to (slides, PDFs, documents). Page text goes into the local
+database; files are saved on this computer's disk, in `~/.erwin/materials`
+unless configured otherwise. This moves course content *toward* you: nothing
+from it is sent anywhere else, and Erwin still sends Canvas nothing but the
+token. Files bigger than 100 MB are listed but not downloaded. When a course
+stops being current, its database rows are removed; its files stay on disk
+until you delete them.
 
 ## Google and Microsoft — genuine two-way sync
 
