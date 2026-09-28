@@ -4,9 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { HiChevronDown, HiChevronUp, HiPencil, HiTrash } from "react-icons/hi";
 
+import { TaskPacketPane } from "@/components/packet/TaskPacket";
+
 import { cn } from "@/lib/utils";
 
 import { useLordStore } from "@/store/lord";
+import { useMaterialCountsStore } from "@/store/materialCounts";
 import {
   useTaskListViewSettings,
   type TaskColumnId,
@@ -16,7 +19,12 @@ import { Task, TaskStatus } from "@/types/task";
 
 import { useDraggableTask } from "../../dnd/useDragAndDrop";
 import { isUpcomingTask } from "../utils/task-list-utils";
-import { TASK_COLUMNS, type SortKey, type TaskPatch } from "./columns";
+import {
+  TASK_COLUMNS,
+  type ColumnContext,
+  type SortKey,
+  type TaskPatch,
+} from "./columns";
 import { useColumnResize } from "./useColumnResize";
 import { ValueBar } from "./ValueBar";
 
@@ -60,7 +68,12 @@ interface TaskSheetProps {
   onDelete: (taskId: string) => void;
   onStatusChange: (taskId: string, status: TaskStatus) => void;
   onInlineEdit: (task: TaskPatch) => void;
+  /** Show the selected task's Canvas packet in a pane beside the grid. */
+  packetOpen: boolean;
 }
+
+/** Wide enough for a rubric table and a material title; the grid keeps the rest. */
+const PACKET_WIDTH = 380;
 
 interface CellRef {
   row: number;
@@ -77,9 +90,11 @@ export function TaskSheet({
   onDelete,
   onStatusChange,
   onInlineEdit,
+  packetOpen,
 }: TaskSheetProps) {
   const lords = useLordStore((s) => s.lords);
-  const ctx = useMemo(() => ({ lords }), [lords]);
+  const materialCounts = useMaterialCountsStore((s) => s.counts);
+  const ctx = useMemo(() => ({ lords, materialCounts }), [lords, materialCounts]);
 
   const columnWidths = useTaskListViewSettings((s) => s.columnWidths);
   const setColumnWidth = useTaskListViewSettings((s) => s.setColumnWidth);
@@ -254,12 +269,13 @@ export function TaskSheet({
         }}
       />
 
+      <div className="flex min-h-0 flex-1">
       <div
         ref={scrollRef}
         tabIndex={0}
         onKeyDown={onKeyDown}
         aria-label="Task sheet"
-        className="flex min-h-0 flex-1 flex-col overflow-auto outline-none"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-auto outline-none"
       >
         {/* border-separate, not collapse: a sticky header with collapsed
             borders drops its bottom rule in WebKit as soon as it detaches. */}
@@ -437,6 +453,19 @@ export function TaskSheet({
           </tbody>
         </table>
       </div>
+
+      {/* Excel's task pane: follows the selected row, so arrowing down the
+          sheet reads each assignment's packet without opening anything. */}
+      {packetOpen ? (
+        <aside
+          aria-label="Task packet"
+          style={{ width: PACKET_WIDTH }}
+          className="flex-none overflow-y-auto border-l border-border"
+        >
+          <TaskPacketPane taskId={activeTask?.id ?? null} source={activeTask?.source} />
+        </aside>
+      ) : null}
+      </div>
     </div>
   );
 }
@@ -459,7 +488,7 @@ function SheetRow({
   isActiveRow: boolean;
   activeCol: number;
   columns: typeof TASK_COLUMNS;
-  ctx: { lords: ReturnType<typeof useLordStore.getState>["lords"] };
+  ctx: ColumnContext;
   onSelect: (col: number) => void;
   onOpenValueBar: () => void;
   onEdit: (task: Task) => void;

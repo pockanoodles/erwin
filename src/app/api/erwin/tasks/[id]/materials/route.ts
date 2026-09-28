@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -12,10 +13,10 @@ const REASON_ORDER: Record<string, number> = { DESCRIPTION: 0, MODULE: 1 };
 /**
  * GET /api/erwin/tasks/[id]/materials
  *
- * A task's packet: its instructions (description HTML — sanitize before
- * rendering), rubric, Canvas link, and linked materials with why each is
- * linked. The one read both the Focus Context column and the Tasks detail
- * pane use.
+ * A task's packet: its instructions (Canvas description, sanitized and with
+ * links re-pointed at the local mirror), rubric, Canvas link, and linked
+ * materials with why each is linked. The one read both Focus and the Tasks
+ * packet pane use.
  */
 export async function GET(
   request: NextRequest,
@@ -35,6 +36,12 @@ export async function GET(
         description: true,
         rubric: true,
         externalUrl: true,
+        source: true,
+        dueDate: true,
+        pointsPossible: true,
+        gradeWeightPercent: true,
+        submissionStatus: true,
+        courseId: true,
         courseName: true,
         materialLinks: {
           select: {
@@ -63,7 +70,7 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const { materialLinks, ...rest } = task;
+    const { materialLinks, description, ...rest } = task;
     const materials = materialLinks
       .map(({ reason, material: { localPath, ...m } }) => ({ ...m, reason, cached: Boolean(localPath) }))
       .sort(
@@ -73,7 +80,12 @@ export async function GET(
           (a.position ?? 0) - (b.position ?? 0)
       );
 
-    return NextResponse.json({ ...rest, materials });
+    // Only Canvas descriptions are HTML; a hand-made task's notes are text
+    // and the packet doesn't show them.
+    const instructionsHtml =
+      task.source === "CANVAS" ? await cleanCourseHtml(auth.userId, task.courseId, description) : null;
+
+    return NextResponse.json({ ...rest, instructionsHtml, materials });
   } catch (error) {
     logger.error(
       "Erwin task materials failed",

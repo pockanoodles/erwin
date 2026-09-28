@@ -420,3 +420,68 @@
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Instructor-authored Canvas HTML (already sanitized server-side by
+   lib/canvas/clean-html.ts). Only structural tags survive the cleaner, so
+   this styles them into the app's type scale instead of the browser's. */
+.canvas-html {
+  @apply text-[14px] leading-relaxed text-foreground;
+  overflow-wrap: anywhere;
+}
+.canvas-html > * + * {
+  @apply mt-3;
+}
+.canvas-html :is(h2, h3, h4, h5, h6) {
+  @apply mt-5 text-[14px] font-medium tracking-tight text-foreground;
+}
+.canvas-html :is(h2, h3, h4, h5, h6):first-child {
+  @apply mt-0;
+}
+.canvas-html :is(ul, ol) {
+  @apply space-y-1 pl-5;
+}
+.canvas-html ul {
+  @apply list-disc;
+}
+.canvas-html ol {
+  @apply list-decimal;
+}
+/* Canvas indents a list by wrapping it in an <li style="list-style-type:
+   none">; the cleaner drops inline styles, so drop the wrapper's bullet here. */
+.canvas-html li:has(> :is(ul, ol):only-child) {
+  @apply list-none;
+}
+.canvas-html a {
+  @apply text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-cobalt;
+}
+.canvas-html a[href^="/"] {
+  @apply decoration-cobalt/50;
+}
+.canvas-html strong,
+.canvas-html b {
+  @apply font-medium;
+}
+.canvas-html blockquote {
+  @apply border-l border-border pl-3 text-muted-foreground;
+}
+.canvas-html :is(pre, code) {
+  @apply font-mono text-[13px];
+}
+.canvas-html pre {
+  @apply overflow-x-auto bg-muted p-3;
+}
+.canvas-html hr {
+  @apply border-border;
+}
+.canvas-html img {
+  @apply max-w-full;
+}
+.canvas-html table {
+  @apply block w-full overflow-x-auto border-collapse text-[13px];
+}
+.canvas-html :is(th, td) {
+  @apply border border-border px-2 py-1 text-left align-top;
+}
+.canvas-html th {
+  @apply bg-muted font-medium;
+}

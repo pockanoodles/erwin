@@ -4,6 +4,7 @@ import {
   HiOutlineCalendar,
   HiOutlineClipboardList,
   HiOutlineCog,
+  HiOutlineCollection,
   HiOutlineFlag,
   HiOutlineLightningBolt,
   HiOutlineMenu,
@@ -38,6 +39,17 @@ export function useNavigationCommands(): Command[] {
       shortcut: "gt",
       perform: (router?: AppRouterInstance) => {
         if (router) router.push("/tasks");
+      },
+    },
+    {
+      id: "navigation.courses",
+      title: "Go to Courses",
+      keywords: ["navigation", "canvas", "materials", "library", "syllabus", "slides"],
+      icon: HiOutlineCollection,
+      section: "navigation",
+      shortcut: "gl",
+      perform: (router?: AppRouterInstance) => {
+        if (router) router.push("/courses");
       },
     },
     {

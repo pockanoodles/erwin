@@ -2,6 +2,13 @@
 
 import type { ReactNode } from "react";
 
+import {
+  PacketInstructions,
+  PacketMaterials,
+  PacketRubric,
+  PacketStatus,
+  useTaskPacket,
+} from "@/components/packet/TaskPacket";
 import { Button } from "@/components/ui/button";
 
 import { format } from "@/lib/date-utils";
@@ -91,6 +98,10 @@ export function FocusDesk({
   onToggleSubtask,
 }: FocusDeskProps) {
   const goal = primaryLadderGoal(task);
+  // Canvas tasks carry a packet: sanitized instructions, rubric, materials.
+  // Their description is raw Canvas HTML, so it's never printed as text.
+  const isCanvas = task.source === "CANVAS";
+  const packet = useTaskPacket(task.id, task.source);
   const projection = task.erwin?.gradeProjection;
   const weight = task.gradeWeightPercent ?? task.erwin?.gradeImpactPercent;
   const due = task.dueDate
@@ -151,6 +162,12 @@ export function FocusDesk({
                 </>
               ) : null
             )}
+            {/* Loading and errors are reported once, in the work column. */}
+            {packet.data ? (
+              <div className="border-t border-border py-3">
+                <PacketMaterials materials={packet.data.materials} />
+              </div>
+            ) : null}
             {fact("Because", goal?.whyItMatters)}
             {fact(
               "Calendar",
@@ -183,7 +200,18 @@ export function FocusDesk({
           <h1 className="mt-2 text-[28px] font-medium leading-[1.15] tracking-[-0.02em] text-foreground md:text-[32px]">
             {task.title}
           </h1>
-          {task.description ? (
+          {isCanvas ? (
+            packet.data ? (
+              <>
+                <PacketInstructions html={packet.data.instructionsHtml} className="mt-4" />
+                <PacketRubric rubric={packet.data.rubric} className="mt-6 max-w-[68ch]" />
+              </>
+            ) : (
+              <div className="mt-4">
+                <PacketStatus loading={packet.loading} error={packet.error} />
+              </div>
+            )
+          ) : task.description ? (
             <p className="mt-4 max-w-[62ch] whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {linkify(task.description)}
             </p>

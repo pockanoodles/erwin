@@ -10,6 +10,7 @@ import {
   parseISO as fnParseISO,
   startOfDay as fnStartOfDay,
   format,
+  formatDistanceToNow,
   getDay,
   isBefore,
   isSameDay,
@@ -269,4 +270,5 @@ export {
   toZonedTime,
   areIntervalsOverlapping,
   isBefore,
+  formatDistanceToNow,
 };

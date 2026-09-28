@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -8,8 +9,8 @@ const LOG_SOURCE = "ErwinMaterialAPI";
 
 /**
  * GET /api/erwin/materials/[id]
- * One material in full, page body included (raw Canvas HTML — sanitize before
- * rendering). A cached file is served by ./file.
+ * One material in full, page body included (sanitized, links re-pointed at
+ * the local mirror). A cached file is served by ./file.
  */
 export async function GET(
   request: NextRequest,
@@ -25,14 +26,18 @@ export async function GET(
       where: { id, course: { userId: auth.userId } },
       include: {
         module: { select: { id: true, name: true } },
-        course: { select: { id: true, name: true, code: true } },
+        course: { select: { id: true, name: true, code: true, canvasId: true } },
       },
     });
     if (!material) {
       return NextResponse.json({ error: "Material not found" }, { status: 404 });
     }
-    const { localPath, ...rest } = material;
-    return NextResponse.json({ ...rest, cached: Boolean(localPath) });
+    const { localPath, bodyHtml, ...rest } = material;
+    return NextResponse.json({
+      ...rest,
+      bodyHtml: bodyHtml ? await cleanCourseHtml(auth.userId, material.course.canvasId, bodyHtml) : null,
+      cached: Boolean(localPath),
+    });
   } catch (error) {
     logger.error(
       "Erwin material failed",

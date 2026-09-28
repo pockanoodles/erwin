@@ -13,6 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import type { Lord } from "@/store/lord";
+import type { MaterialCount } from "@/store/materialCounts";
 import type { TaskColumnId } from "@/store/taskListViewSettings";
 
 import {
@@ -54,10 +55,13 @@ export type SortKey =
   | "preferredTime"
   | "duration"
   | "lord"
-  | "schedule";
+  | "schedule"
+  | "materials";
 
 export interface ColumnContext {
   lords: Lord[];
+  /** Canvas materials linked to each task, by task id. */
+  materialCounts: Record<string, MaterialCount>;
 }
 
 /** A patch as `onInlineEdit` wants it: a whole task plus the API's goal setter. */
@@ -161,6 +165,15 @@ function lordOf(task: Task, { lords }: ColumnContext): Lord | undefined {
   return lords.find((lord) =>
     task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
   );
+}
+
+function materialsText(task: Task, { materialCounts }: ColumnContext): string {
+  const count = materialCounts[task.id];
+  if (!count) return "";
+  const noun = count.total === 1 ? "material" : "materials";
+  return count.cited
+    ? `${count.total} ${noun} · ${count.cited} cited in the instructions`
+    : `${count.total} ${noun} from the same module`;
 }
 
 function scheduleText(task: Task): string {
@@ -291,6 +304,27 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
     editor: { kind: "date" },
     formValue: (t) => toDateInput(t.dueDate),
     commit: (raw, t) => ({ ...t, dueDate: fromDateInput(raw) }),
+  },
+  {
+    id: "materials",
+    label: "Mat",
+    sortKey: "materials",
+    width: 56,
+    align: "right",
+    // Cited materials are the instructor saying "read this", so a count with
+    // any cited gets the accent; a module-only count stays quiet.
+    render: (t, ctx) => {
+      const count = ctx.materialCounts[t.id];
+      if (!count) return EMPTY;
+      return (
+        <span className={cn("tabular-nums", count.cited ? "text-cobalt" : "text-muted-foreground")}>
+          {count.total}
+        </span>
+      );
+    },
+    text: materialsText,
+    editor: { kind: "readonly" },
+    formValue: materialsText,
   },
   {
     id: "duration",

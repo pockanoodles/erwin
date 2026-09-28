@@ -15,7 +15,8 @@ export type TaskColumnId =
   | "duration"
   | "lord"
   | "schedule"
-  | "startDate";
+  | "startDate"
+  | "materials";
 
 /** Daily-scan columns. Energy/Time/Start date are auto-scheduler inputs and
  *  live behind the Columns picker by default. */
@@ -24,6 +25,7 @@ export const DEFAULT_VISIBLE_COLUMNS: TaskColumnId[] = [
   "title",
   "priority",
   "dueDate",
+  "materials",
   "duration",
   "lord",
   "schedule",
@@ -42,7 +44,8 @@ interface TaskListViewSettings {
     | "priority"
     | "energyLevel"
     | "preferredTime"
-    | "duration";
+    | "duration"
+    | "materials";
   sortDirection: "asc" | "desc";
 
   // Filter settings
@@ -70,6 +73,9 @@ interface TaskListViewSettings {
    */
   columnWidths: Partial<Record<TaskColumnId, number>>;
 
+  /** The sheet's right-hand pane showing the selected Canvas task's packet. */
+  packetOpen: boolean;
+
   // Actions
   setSortBy: (sortBy: TaskListViewSettings["sortBy"]) => void;
   setSortDirection: (direction: TaskListViewSettings["sortDirection"]) => void;
@@ -93,6 +99,7 @@ interface TaskListViewSettings {
   setColumnWidth: (column: TaskColumnId, width: number) => void;
   /** Back to the registry default — the double-click on a header edge. */
   resetColumnWidth: (column: TaskColumnId) => void;
+  setPacketOpen: (open: boolean) => void;
 }
 
 /** Narrow enough to park a column you rarely read, wide enough to still be
@@ -121,6 +128,7 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
 
       visibleColumns: DEFAULT_VISIBLE_COLUMNS,
       columnWidths: {},
+      packetOpen: true,
 
       // Actions
       setSortBy: (sortBy) => set({ sortBy }),
@@ -160,13 +168,27 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
           delete next[column];
           return { columnWidths: next };
         }),
+      setPacketOpen: (packetOpen) => set({ packetOpen }),
     }),
     {
       name: "task-list-view-settings",
       storage: ssrSafeJsonStorage,
-      // No migration needed for `columnWidths`: persist's default merge is
-      // `{...initial, ...persisted}`, so a blob written before this key
-      // existed simply leaves the initial `{}` in place.
+      // No migration needed for `columnWidths` or `packetOpen`: persist's
+      // default merge is `{...initial, ...persisted}`, so a blob written
+      // before a key existed simply leaves its initial value in place.
+      // `visibleColumns` is different — a saved list replaces the default
+      // wholesale, so a new default column has to be added to it explicitly.
+      version: 1,
+      migrate: (persisted, version) => {
+        const state = persisted as Partial<TaskListViewSettings>;
+        if (version < 1 && state.visibleColumns && !state.visibleColumns.includes("materials")) {
+          const at = state.visibleColumns.indexOf("dueDate");
+          const next = [...state.visibleColumns];
+          next.splice(at === -1 ? next.length : at + 1, 0, "materials");
+          state.visibleColumns = next;
+        }
+        return state as TaskListViewSettings;
+      },
     }
   )
 );

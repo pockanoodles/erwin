@@ -1,6 +1,12 @@
 import { useMemo } from "react";
 
-import { HiOutlineViewBoards, HiPlus, HiSearch, HiX } from "react-icons/hi";
+import {
+  HiOutlineDocumentText,
+  HiOutlineViewBoards,
+  HiPlus,
+  HiSearch,
+  HiX,
+} from "react-icons/hi";
 
 import {
   DropdownMenu,
@@ -21,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-media-query";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
+import { useMaterialCountsStore } from "@/store/materialCounts";
 import {
   TaskColumnId,
   useTaskListViewSettings,
@@ -81,9 +88,12 @@ export function TaskList({
     setSortDirection,
     setFilters,
     toggleColumn,
+    packetOpen,
+    setPacketOpen,
   } = useTaskListViewSettings();
   const { listStyle, setListStyle } = useTaskPageSettings();
   const { lords, activeLordId } = useLordStore();
+  const materialCounts = useMaterialCountsStore((s) => s.counts);
 
   const visible = useMemo(
     () => new Set<TaskColumnId>([...visibleColumns, "title"]),
@@ -198,6 +208,13 @@ export function TaskList({
           if (!a.duration) return 1;
           if (!b.duration) return -1;
           return direction * (a.duration - b.duration);
+        case "materials": {
+          const aCount = materialCounts[a.id]?.total ?? 0;
+          const bCount = materialCounts[b.id]?.total ?? 0;
+          if (!aCount) return 1;
+          if (!bCount) return -1;
+          return direction * (aCount - bCount);
+        }
         case "schedule":
           // First sort by auto-scheduled vs manual
           if (a.isAutoScheduled !== b.isAutoScheduled) {
@@ -226,7 +243,7 @@ export function TaskList({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modeFilteredTasks, sortBy, sortDirection, lords]);
+  }, [modeFilteredTasks, sortBy, sortDirection, lords, materialCounts]);
 
   const groupedTasks = useMemo(
     () => groupTasksForListMode(sortedTasks, listMode),
@@ -449,6 +466,23 @@ export function TaskList({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
+          {!isMobile && listStyle === "sheet" && (
+            <button
+              type="button"
+              aria-pressed={packetOpen}
+              onClick={() => setPacketOpen(!packetOpen)}
+              title="Show the selected Canvas task's instructions, rubric and materials"
+              className={cn(
+                "flex h-8 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide transition-colors duration-150",
+                packetOpen
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <HiOutlineDocumentText className="h-3.5 w-3.5" />
+              Packet
+            </button>
+          )}
         </div>
       </div>
 
@@ -501,6 +535,7 @@ export function TaskList({
           onDelete={onDelete}
           onStatusChange={onStatusChange}
           onInlineEdit={onInlineEdit}
+          packetOpen={packetOpen}
         />
       )}
     </div>

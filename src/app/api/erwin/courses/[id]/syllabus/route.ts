@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +9,7 @@ const LOG_SOURCE = "ErwinCourseSyllabusAPI";
 
 /**
  * GET /api/erwin/courses/[id]/syllabus
- * The course's syllabus as Canvas returns it (raw HTML — sanitize before rendering).
+ * The course's syllabus, sanitized, with links re-pointed at the local mirror.
  */
 export async function GET(
   request: NextRequest,
@@ -22,12 +23,16 @@ export async function GET(
     const { id } = await params;
     const course = await prisma.course.findUnique({
       where: { id, userId: auth.userId },
-      select: { id: true, name: true, syllabusHtml: true },
+      select: { id: true, name: true, canvasId: true, syllabusHtml: true },
     });
     if (!course) {
       return NextResponse.json({ error: "Course not found" }, { status: 404 });
     }
-    return NextResponse.json(course);
+    return NextResponse.json({
+      id: course.id,
+      name: course.name,
+      syllabusHtml: await cleanCourseHtml(auth.userId, course.canvasId, course.syllabusHtml),
+    });
   } catch (error) {
     logger.error(
       "Erwin course syllabus failed",

@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 import { useLordStore } from "@/store/lord";
+import { useMaterialCountsStore } from "@/store/materialCounts";
 import { useProjectStore } from "@/store/project";
 import { useTaskStore } from "@/store/task";
 import { useTaskModalStore } from "@/store/taskModal";
@@ -36,6 +37,7 @@ export default function TasksPage() {
   } = useTaskStore();
   const { fetchProjects } = useProjectStore();
   const { fetchLords } = useLordStore();
+  const fetchMaterialCounts = useMaterialCountsStore((s) => s.fetchCounts);
   const { viewMode } = useTaskPageSettings();
   // View switching and Create Task live in the app top bar
   // (components/tasks/TasksTopBar.tsx); the page only owns the modal itself.
@@ -48,7 +50,8 @@ export default function TasksPage() {
     fetchTags();
     fetchProjects();
     fetchLords();
-  }, [fetchTasks, fetchTags, fetchProjects, fetchLords]);
+    fetchMaterialCounts();
+  }, [fetchTasks, fetchTags, fetchProjects, fetchLords, fetchMaterialCounts]);
 
   const handleCreateTask = async (task: NewTask) => {
     await createTask(task);
