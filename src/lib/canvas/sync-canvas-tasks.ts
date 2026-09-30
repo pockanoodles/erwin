@@ -241,7 +241,9 @@ export async function syncCanvasTasksForUser(
       const payload = {
         title: a.name,
         description: a.description ?? null,
-        status: taskStatus,
+        // A hand-marked completion stands: group and external submissions
+        // never show up in Canvas, so "unsubmitted" can't reopen the task.
+        status: existing?.status === "completed" ? "completed" : taskStatus,
         dueDate: a.due_at ? new Date(a.due_at) : null,
         lockAt: a.lock_at ? new Date(a.lock_at) : null,
         unlockAt: a.unlock_at ? new Date(a.unlock_at) : null,
