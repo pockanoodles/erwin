@@ -17,6 +17,7 @@ import {
   syncCanvasMaterials,
 } from "@/lib/canvas/sync-canvas-materials";
 import { Prisma } from "@prisma/client";
+import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -311,6 +312,10 @@ export async function syncCanvasTasksForUser(
   });
 
   await normalizeGradeImpactScoresForUser(userId);
+
+  // File new assignments under School (the vault's `sources: [CANVAS]`) and
+  // refresh bound bosses' dates now, not at the next morning's projection.
+  await applyGoalRules(prisma, userId);
 
   logger.info(
     "Canvas sync completed",

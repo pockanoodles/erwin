@@ -39,6 +39,8 @@ function toOverviewGoal(json: GoalResponse): OverviewGoal {
     develops: json.develops ?? [],
     isBoss: json.isBoss ?? false,
     targetDate: json.targetDate ?? null,
+    // Hand-made goals (the only ones this client writes) never bind.
+    boundTaskId: null,
     parentGoalIds: (json.parentLinks ?? []).map((link) => link.parentId),
     tasks: [],
   };

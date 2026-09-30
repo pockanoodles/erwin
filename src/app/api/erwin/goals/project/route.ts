@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { applyGoalRules, calendarDay, type BossBinding } from "@/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "@/lib/erwin/hex";
 import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
@@ -28,13 +29,47 @@ interface ProjectedGoal {
   sortOrder?: number;
   /** externalId of the parent (a Lord) this goal (a boss) links under, if any. */
   parentExternalId?: string | null;
+  /** Lord: task sources it claims (the vault's `sources:`). */
+  taskSources?: string[];
+  /** Boss: the Canvas assignment it is (the vault's `canvas: <id>`). */
+  canvasAssignmentId?: string | null;
+}
+
+/**
+ * What pump 7 should say out loud about the boss bindings: a named assignment
+ * Erwin doesn't have, a vault date Canvas disagrees with, and a boss Canvas
+ * says is felled while the vault heading still lacks its ✅ (the rune ledger).
+ */
+function bindingReport(goals: ProjectedGoal[], bindings: BossBinding[]) {
+  const sent = new Map(goals.map((g) => [g.externalId, g]));
+  const unresolvedBindings: { externalId: string; canvasAssignmentId: string }[] = [];
+  const dateMismatches: { externalId: string; vaultDate: string; canvasDate: string }[] = [];
+  const awaitingKillMark: string[] = [];
+  for (const b of bindings) {
+    const vault = sent.get(b.externalId);
+    if (!b.task) {
+      unresolvedBindings.push({ externalId: b.externalId, canvasAssignmentId: b.canvasAssignmentId });
+      continue;
+    }
+    if (vault?.targetDate && b.task.dueDate) {
+      const vaultDate = vault.targetDate.slice(0, 10);
+      const canvasDate = calendarDay(b.task.dueDate);
+      if (vaultDate !== canvasDate) {
+        dateMismatches.push({ externalId: b.externalId, vaultDate, canvasDate });
+      }
+    }
+    if (b.task.completed && vault?.status !== "done") awaitingKillMark.push(b.externalId);
+  }
+  return { unresolvedBindings, dateMismatches, awaitingKillMark };
 }
 
 /**
  * POST /api/erwin/goals/project
  * Body: { cycleId?: string, goals: ProjectedGoal[] }
  * Idempotently reconciles the set of projected goals for the target cycle
- * (defaults to the active hex). Returns { cycleId, created, updated, deleted, linked }.
+ * (defaults to the active hex), then files tasks under them (lib/erwin/goal-rules).
+ * Returns { cycleId, created, updated, deleted, linked, linkedTasks, unlinkedTasks,
+ * unresolvedBindings, dateMismatches, awaitingKillMark }.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -77,6 +112,19 @@ export async function POST(request: NextRequest) {
           );
         }
         cleanedDevelops.set(g.externalId, cleaned);
+      }
+      if (
+        g.taskSources !== undefined &&
+        (!Array.isArray(g.taskSources) || g.taskSources.some((s) => typeof s !== "string" || !s))
+      ) {
+        return new NextResponse(`taskSources for ${g.externalId} must be a list of source names`, {
+          status: 400,
+        });
+      }
+      if (g.canvasAssignmentId != null && !/^\d+$/.test(String(g.canvasAssignmentId))) {
+        return new NextResponse(`canvasAssignmentId for ${g.externalId} must be a Canvas id`, {
+          status: 400,
+        });
       }
     }
 
@@ -131,6 +179,9 @@ export async function POST(request: NextRequest) {
           ...(g.isBoss !== undefined && { isBoss: Boolean(g.isBoss) }),
           ...(targetDate !== undefined && { targetDate }),
           ...(g.sortOrder !== undefined && { sortOrder: g.sortOrder }),
+          // Absent means "none": a vault that drops the line unbinds the boss.
+          taskSources: g.taskSources ?? [],
+          canvasAssignmentId: g.canvasAssignmentId != null ? String(g.canvasAssignmentId) : null,
         };
         await tx.goal.upsert({
           where: { userId_externalId: { userId, externalId: g.externalId } },
@@ -174,30 +225,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Link every venture-tagged task to its projected Lord (task.source ===
-      // the Lord's externalId). Idempotent — keeps the task↔goal ladder in sync
-      // as decompose adds tasks over time. Bosses carry no task source.
-      let linkedTasks = 0;
-      const lords = after.filter(
-        (g) =>
-          g.externalId &&
-          !g.externalId.includes("#boss:") &&
-          desired.has(g.externalId)
-      );
-      for (const lord of lords) {
-        const tasks = await tx.task.findMany({
-          where: { userId, source: lord.externalId },
-          select: { id: true },
-        });
-        for (const t of tasks) {
-          await tx.taskGoalLink.upsert({
-            where: { taskId_goalId: { taskId: t.id, goalId: lord.id } },
-            create: { taskId: t.id, goalId: lord.id },
-            update: {},
-          });
-          linkedTasks += 1;
-        }
-      }
+      // File tasks under the goals just projected (Lord sources, boss
+      // bindings). Bound bosses take their Canvas task's date and status here,
+      // after the upsert wrote the vault's, so Canvas wins.
+      const rules = await applyGoalRules(tx, userId);
 
       const created = goals.filter((g) => !existingExt.has(g.externalId)).length;
       return {
@@ -205,7 +236,9 @@ export async function POST(request: NextRequest) {
         updated: goals.length - created,
         deleted: orphanIds.length,
         linked,
-        linkedTasks,
+        linkedTasks: rules.linked,
+        unlinkedTasks: rules.unlinked,
+        ...bindingReport(goals, rules.bindings),
       };
     });
 

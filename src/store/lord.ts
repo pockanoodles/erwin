@@ -19,10 +19,28 @@ export interface Lord {
   goalIds: string[];
 }
 
+/**
+ * A boss as the Tasks sheet shows it: a milestone row under its Lord. One
+ * bound to a Canvas assignment is that task's row, not a second one.
+ */
+export interface Boss {
+  id: string;
+  title: string;
+  targetDate: string | null;
+  /** Killed in the vault (✅), or its bound assignment is submitted. */
+  felled: boolean;
+  /** The Lord whose path it sits on; null if the DAG never reaches a root. */
+  lordId: string | null;
+  boundTaskId: string | null;
+}
+
 interface OverviewGoal {
   id: string;
   title: string;
   isBoss: boolean;
+  status: string;
+  targetDate: string | null;
+  boundTaskId: string | null;
   parentGoalIds: string[];
 }
 
@@ -60,6 +78,25 @@ export function lordsFromGoals(goals: OverviewGoal[]): Lord[] {
     }));
 }
 
+/** Every boss of the hex, nearest first (undated last), placed under a Lord. */
+export function bossesFromGoals(goals: OverviewGoal[], lords: Lord[]): Boss[] {
+  return goals
+    .filter((goal) => goal.isBoss && goal.parentGoalIds.length > 0)
+    .map((goal) => ({
+      id: goal.id,
+      title: goal.title,
+      targetDate: goal.targetDate,
+      felled: goal.status === "done",
+      lordId: lords.find((lord) => lord.goalIds.includes(goal.id))?.id ?? null,
+      boundTaskId: goal.boundTaskId,
+    }))
+    .sort((a, b) => {
+      if (!a.targetDate) return b.targetDate ? 1 : 0;
+      if (!b.targetDate) return -1;
+      return a.targetDate.localeCompare(b.targetDate);
+    });
+}
+
 /** The tasks-page section filter: null = all tasks, UNASSIGNED_LORD_ID =
  *  tasks serving no goal, otherwise tasks linked anywhere in the Lord's path. */
 export function filterTasksByLord<
@@ -79,6 +116,7 @@ export function filterTasksByLord<
 
 interface LordStore {
   lords: Lord[];
+  bosses: Boss[];
   activeLordId: string | null;
   fetchLords: () => Promise<void>;
   setActiveLordId: (id: string | null) => void;
@@ -88,6 +126,7 @@ export const useLordStore = create<LordStore>()(
   persist(
     (set) => ({
       lords: [],
+      bosses: [],
       activeLordId: null,
 
       fetchLords: async () => {
@@ -98,6 +137,7 @@ export const useLordStore = create<LordStore>()(
           const lords = lordsFromGoals(json.goals);
           set((state) => ({
             lords,
+            bosses: bossesFromGoals(json.goals, lords),
             // A persisted selection pointing at a deleted Lord silently
             // filters everything out — drop it.
             activeLordId:

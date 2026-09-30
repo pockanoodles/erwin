@@ -11,7 +11,7 @@ export const getTitleFromPathname = (pathname: string) => {
     case "/courses":
       return "Courses | Erwin";
     case "/goals":
-      return "Bosses | Erwin";
+      return "Ladder | Erwin";
     case "/settings":
       return "Settings | Erwin";
     case "/setup":

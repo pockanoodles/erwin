@@ -5,6 +5,7 @@ import { RRule } from "rrule";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
+import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import {
@@ -105,6 +106,9 @@ export async function PUT(
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       userId: _,
       goalId,
+      // Echoed back with every whole-task save, so it only means something
+      // when it differs from the row: false = back to Auto, true = pin.
+      goalsPinned,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       goalLinks,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -282,14 +286,30 @@ export async function PUT(
     });
 
     // Legacy single-goal setter: `goalId` in the payload replaces the task's
-    // goal links wholesale (null clears them). Multi-link callers use
-    // /api/erwin/task-links instead.
-    if (goalId !== undefined) {
+    // goal links wholesale (null clears them) and pins the task, so the vault's
+    // goal rules stop refiling it. Multi-link callers use /api/erwin/task-links.
+    // The task modal echoes the goal it showed on every save, so a goalId the
+    // task already has is not a choice — unless the caller also asks to pin
+    // (the Lord column choosing the Lord the rules already gave it).
+    const goalChosen =
+      goalId !== undefined &&
+      ((goalsPinned === true && !task.goalsPinned) ||
+        (goalId === null
+          ? task.goalLinks.length > 0
+          : !task.goalLinks.some((link) => link.goalId === goalId)));
+    if (goalsPinned === false && task.goalsPinned) {
+      // Back to automatic: the rules decide the links again.
+      await prisma.$transaction(async (tx) => {
+        await tx.task.update({ where: { id }, data: { goalsPinned: false } });
+        await applyGoalRules(tx, userId, { taskIds: [id] });
+      });
+    } else if (goalChosen) {
       await prisma.$transaction(async (tx) => {
         await tx.taskGoalLink.deleteMany({ where: { taskId: id } });
         if (goalId !== null) {
           await tx.taskGoalLink.create({ data: { taskId: id, goalId } });
         }
+        await tx.task.update({ where: { id }, data: { goalsPinned: true } });
       });
     }
 
@@ -321,7 +341,14 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json(updatedTask);
+    // The store swaps this in for its copy, so it carries the links as they
+    // stand after the goal write — without them every edit blanked the Lord.
+    const goalLinksNow = await prisma.taskGoalLink.findMany({
+      where: { taskId: id },
+      select: { goalId: true },
+    });
+    const goalsPinnedNow = goalChosen || (task.goalsPinned && goalsPinned !== false);
+    return NextResponse.json({ ...updatedTask, goalLinks: goalLinksNow, goalsPinned: goalsPinnedNow });
   } catch (error) {
     logger.error(
       "Error updating task:",

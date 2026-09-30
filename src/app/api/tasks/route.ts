@@ -4,6 +4,7 @@ import { RRule } from "rrule";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
+import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import {
@@ -186,7 +187,10 @@ export async function POST(request: NextRequest) {
         userId,
         isRecurring: !!recurrenceRule,
         recurrenceRule: standardizedRecurrenceRule,
+        // A goal picked at creation (the Lord tab's pre-link) is a choice, so
+        // the goal rules leave the task alone from here on.
         ...(goalId && { goalLinks: { create: [{ goalId }] } }),
+        goalsPinned: Boolean(goalId),
         ...(tagIds && {
           tags: {
             connect: tagIds.map((id: string) => ({ id })),
@@ -198,6 +202,12 @@ export async function POST(request: NextRequest) {
         project: true,
       },
     });
+
+    // No goal picked: file it by the vault's rules now (a pump 2 task under
+    // its Lord), instead of waiting for the next projection.
+    if (!goalId && task.source) {
+      await applyGoalRules(prisma, userId, { taskIds: [task.id] });
+    }
 
     // Track the creation for sync purposes if the task is in a mapped project.
     // skipSync children (subtasks) stay local — do not push them to Outlook.
@@ -222,7 +232,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(task);
+    const goalLinks = await prisma.taskGoalLink.findMany({
+      where: { taskId: task.id },
+      select: { goalId: true },
+    });
+    return NextResponse.json({ ...task, goalLinks });
   } catch (error) {
     logger.error(
       "Error creating task:",

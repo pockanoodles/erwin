@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
           develops: true,
           isBoss: true,
           targetDate: true,
+          canvasAssignmentId: true,
           parentLinks: { select: { parentId: true } },
           taskLinks: {
             where: {
@@ -91,8 +92,20 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    const flatGoals = goals.map(({ parentLinks, taskLinks, ...goal }) => ({
+    // A boss bound to a Canvas assignment is that task: the Tasks sheet shows
+    // them as one row, so it needs the task's id.
+    const assignmentIds = goals.flatMap((g) => (g.canvasAssignmentId ? [g.canvasAssignmentId] : []));
+    const boundTasks = assignmentIds.length
+      ? await prisma.task.findMany({
+          where: { userId, source: "CANVAS", externalTaskId: { in: assignmentIds } },
+          select: { id: true, externalTaskId: true },
+        })
+      : [];
+    const taskIdByAssignment = new Map(boundTasks.map((t) => [t.externalTaskId, t.id]));
+
+    const flatGoals = goals.map(({ parentLinks, taskLinks, canvasAssignmentId, ...goal }) => ({
       ...goal,
+      boundTaskId: canvasAssignmentId ? (taskIdByAssignment.get(canvasAssignmentId) ?? null) : null,
       parentGoalIds: parentLinks.map((link) => link.parentId),
       tasks: taskLinks
         .map((link) => link.task)

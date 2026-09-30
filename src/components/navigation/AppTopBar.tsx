@@ -16,7 +16,6 @@ import {
   CalendarTopBarViews,
 } from "@/components/calendar/CalendarTopBar";
 import { CoursesTopBarActions } from "@/components/courses/CoursesTopBar";
-import { GoalsTopBarViews } from "@/components/goals/GoalsTopBar";
 import { ErwinStatus } from "@/components/navigation/ErwinStatus";
 import { BarDivider } from "@/components/navigation/top-bar-parts";
 import {
@@ -73,8 +72,7 @@ const ROUTES: readonly RouteChrome[] = [
   },
   {
     match: (p) => p.startsWith("/goals"),
-    title: "Bosses",
-    Views: GoalsTopBarViews,
+    title: "Ladder",
   },
   { match: (p) => p.startsWith("/progress"), title: "Progress" },
   { match: (p) => p.startsWith("/settings"), title: "Settings" },

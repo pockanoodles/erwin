@@ -98,6 +98,9 @@ export interface TaskColumn {
   commit?: (raw: string, task: Task, ctx: ColumnContext) => TaskPatch | null;
 }
 
+/** The Lord editor's "let the vault's rules decide" choice. */
+const AUTO_GOALS = "__auto__";
+
 const EMPTY = <span className="text-muted-foreground/40">—</span>;
 
 /** `<input type="date">` speaks yyyy-MM-dd, and task dates are UTC midnight. */
@@ -117,7 +120,7 @@ function fromDateInput(raw: string): Date | null {
 }
 
 /** The short label a cell shows: "Tomorrow", "Mar 10", "Overdue: Aug 31". */
-function dateLabel(value: Date | string | null | undefined): string {
+export function dateLabel(value: Date | string | null | undefined): string {
   if (!value) return "";
   return formatContextualDate(newDate(value)).text;
 }
@@ -127,7 +130,7 @@ function dateLabel(value: Date | string | null | undefined): string {
  * "Tomorrow" because that's what's useful while scanning; this is where you
  * find out that tomorrow means Sep 15 at 11:59 PM.
  */
-function dateText(value: Date | string | null | undefined): string {
+export function dateText(value: Date | string | null | undefined): string {
   if (!value) return "";
   const d = newDate(value);
   const local = newDateFromYMD(
@@ -377,14 +380,21 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
     editor: {
       kind: "enum",
       options: ({ lords }) => [
+        { value: AUTO_GOALS, label: "Auto (vault rules)" },
         { value: "", label: "Unassigned" },
         ...lords.map((l) => ({ value: l.id, label: l.title })),
       ],
     },
-    formValue: (t, ctx) => lordOf(t, ctx)?.id ?? "",
+    // An unpinned task's Lord comes from the vault (School claims Canvas), and
+    // the bar says so; picking any Lord, even the same one, pins it by hand.
+    formValue: (t, ctx) => (t.goalsPinned ? (lordOf(t, ctx)?.id ?? "") : AUTO_GOALS),
     // The API's single-goal setter replaces the task's links with one to the
-    // chosen Lord; empty clears them.
-    commit: (raw, t) => ({ ...t, goalId: raw || null }),
+    // chosen Lord (empty clears them); `goalsPinned: true` makes choosing the
+    // Lord the rules already gave it count as a choice.
+    commit: (raw, t) =>
+      raw === AUTO_GOALS
+        ? { ...t, goalsPinned: false }
+        : { ...t, goalId: raw || null, goalsPinned: true },
   },
   {
     id: "schedule",

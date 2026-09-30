@@ -1,4 +1,4 @@
-/** Shared shapes for the Goals page views (list + map), mirroring
+/** Shared shapes for the Ladder (goals map) and its header, mirroring
  *  GET /api/erwin/goals/overview. */
 
 import { format } from "@/lib/date-utils";
@@ -52,6 +52,8 @@ export interface OverviewGoal {
   develops: string[];
   isBoss: boolean;
   targetDate: string | null;
+  /** A boss that is a Canvas assignment: that task's id (it and the boss are one row in Tasks). */
+  boundTaskId: string | null;
   /** DAG: a goal can feed several parents; empty = root of the hex. */
   parentGoalIds: string[];
   tasks: GoalTask[];

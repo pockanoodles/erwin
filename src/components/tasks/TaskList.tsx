@@ -39,6 +39,7 @@ import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 import { TaskListModeSwitch } from "./TaskListModeSwitch";
 import { TaskRow } from "./TaskRow";
 import { TaskRowExpansionProvider } from "./TaskRow/TaskRowExpansionContext";
+import { buildSheetRows } from "./datasheet/sheet-rows";
 import { TaskSheet } from "./datasheet/TaskSheet";
 import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
 import {
@@ -92,7 +93,7 @@ export function TaskList({
     setPacketOpen,
   } = useTaskListViewSettings();
   const { listStyle, setListStyle } = useTaskPageSettings();
-  const { lords, activeLordId } = useLordStore();
+  const { lords, bosses, activeLordId } = useLordStore();
   const materialCounts = useMaterialCountsStore((s) => s.counts);
 
   const visible = useMemo(
@@ -244,6 +245,18 @@ export function TaskList({
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modeFilteredTasks, sortBy, sortDirection, lords, materialCounts]);
+
+  // The sheet's rows: the boss band on top of the sorted tasks. It follows the
+  // Lord tab and search; felled bosses show only when completed work does.
+  const sheetRows = useMemo(
+    () =>
+      buildSheetRows(sortedTasks, bosses, {
+        activeLordId,
+        search,
+        showFelled: !status?.length || status.includes(TaskStatus.COMPLETED),
+      }),
+    [sortedTasks, bosses, activeLordId, search, status]
+  );
 
   const groupedTasks = useMemo(
     () => groupTasksForListMode(sortedTasks, listMode),
@@ -525,7 +538,7 @@ export function TaskList({
         )
       ) : (
         <TaskSheet
-          tasks={sortedTasks}
+          rows={sheetRows}
           visibleColumns={visible}
           // "project" is the legacy persisted name for the Lord sort key.
           sortBy={sortBy === "project" ? "lord" : sortBy}

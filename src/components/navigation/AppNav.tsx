@@ -22,7 +22,7 @@ const LINKS = [
   { href: "/calendar", label: "Calendar" },
   { href: "/tasks", label: "Tasks" },
   { href: "/courses", label: "Courses" },
-  { href: "/goals", label: "Bosses" },
+  { href: "/goals", label: "Ladder" },
 ];
 
 /** Left nav rail — links only. Collapsing animates the rail's width against a

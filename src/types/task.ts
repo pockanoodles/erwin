@@ -85,6 +85,8 @@ export interface Task {
   category?: string | null;
   /** Erwin v3: goal links (many-to-many); a task can serve several goals */
   goalLinks?: { goalId: string }[];
+  /** Goal picked by hand; false = filed by the vault's goal rules. */
+  goalsPinned?: boolean;
   /**
    * One-level parent. Null/undefined = top-level inventory item. Children
    * stay out of Focus and auto-schedule.

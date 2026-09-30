@@ -37,11 +37,15 @@ export async function POST(request: NextRequest) {
       return new NextResponse("Goal not found", { status: 404 });
     }
 
-    const link = await prisma.taskGoalLink.upsert({
-      where: { taskId_goalId: { taskId, goalId } },
-      create: { taskId, goalId },
-      update: {},
-    });
+    // A hand-made link pins the task: the vault's goal rules leave it alone.
+    const [link] = await prisma.$transaction([
+      prisma.taskGoalLink.upsert({
+        where: { taskId_goalId: { taskId, goalId } },
+        create: { taskId, goalId },
+        update: {},
+      }),
+      prisma.task.update({ where: { id: taskId }, data: { goalsPinned: true } }),
+    ]);
 
     return NextResponse.json(link);
   } catch (error) {
@@ -74,9 +78,12 @@ export async function DELETE(request: NextRequest) {
       });
     }
 
-    await prisma.taskGoalLink.deleteMany({
+    const { count } = await prisma.taskGoalLink.deleteMany({
       where: { taskId, goalId, task: { userId: auth.userId } },
     });
+    if (count > 0) {
+      await prisma.task.update({ where: { id: taskId }, data: { goalsPinned: true } });
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

@@ -311,6 +311,10 @@ model Task {
 
   // Erwin v3: tasks link to any number of goals/subgoals through TaskGoalLink
   goalLinks TaskGoalLink[]
+  /**
+   * Set once a person picks this task's goal by hand; the goal rules (src/lib/erwin/goal-rules.ts) then leave its links alone.
+   */
+  goalsPinned Boolean @default(false)
 
   /**
    * Canvas rubric criteria as Canvas returns them (`assignment.rubric`); null when the assignment has none.
@@ -402,6 +406,15 @@ model Goal {
    * for a vault boss. NULL = hand-made in erwin; the pump only ever touches non-NULL (venture:) rows.
    */
   externalId String?
+
+  /**
+   * Lord: task sources it claims (the vault goal's `sources:` frontmatter, e.g. ["CANVAS"]) — every task with one of these sources links to it.
+   */
+  taskSources        String[] @default([])
+  /**
+   * Boss: the Canvas assignment id the vault boss names (`canvas: <id>`). The bound task's due date and submission win over the vault's.
+   */
+  canvasAssignmentId String?
 
   cycleId String
   cycle   GoalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)

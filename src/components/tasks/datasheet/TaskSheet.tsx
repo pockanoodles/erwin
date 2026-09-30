@@ -8,7 +8,7 @@ import { TaskPacketPane } from "@/components/packet/TaskPacket";
 
 import { cn } from "@/lib/utils";
 
-import { useLordStore } from "@/store/lord";
+import { useLordStore, type Boss } from "@/store/lord";
 import { useMaterialCountsStore } from "@/store/materialCounts";
 import {
   useTaskListViewSettings,
@@ -19,12 +19,15 @@ import { Task, TaskStatus } from "@/types/task";
 
 import { useDraggableTask } from "../../dnd/useDragAndDrop";
 import { isUpcomingTask } from "../utils/task-list-utils";
+import { bossCell, bossCellText } from "./boss-cells";
+import { BossPane, BossStrip } from "./BossPane";
 import {
   TASK_COLUMNS,
   type ColumnContext,
   type SortKey,
   type TaskPatch,
 } from "./columns";
+import { bandSize, rowKey, type SheetRow } from "./sheet-rows";
 import { useColumnResize } from "./useColumnResize";
 import { ValueBar } from "./ValueBar";
 
@@ -41,6 +44,11 @@ import { ValueBar } from "./ValueBar";
  * Density is deliberate and desktop-only: 26px rows are below the 44px touch
  * target floor, which is the correct trade for a sheet you drive with a
  * pointer and arrow keys. Every other surface in the app keeps the floor.
+ *
+ * The hex's bosses sit above the tasks as a frozen band (see sheet-rows): a
+ * milestone row per boss, or the assignment's own row when the boss is one.
+ * The gutter marks them ⚔ instead of a number, and a full-strength rule under
+ * the band is Excel's freeze-pane line.
  */
 
 /** Uniform row height. The one property that makes a sheet scannable. */
@@ -58,8 +66,8 @@ const DONE_WIDTH = 32;
 const ACTIONS_WIDTH = 60;
 
 interface TaskSheetProps {
-  /** Already filtered and sorted by TaskList. */
-  tasks: Task[];
+  /** Already filtered and sorted by TaskList: the boss band, then tasks. */
+  rows: SheetRow[];
   visibleColumns: Set<TaskColumnId>;
   sortBy: SortKey;
   sortDirection: "asc" | "desc";
@@ -81,7 +89,7 @@ interface CellRef {
 }
 
 export function TaskSheet({
-  tasks,
+  rows,
   visibleColumns,
   sortBy,
   sortDirection,
@@ -143,10 +151,16 @@ export function TaskSheet({
 
   // Filtering or sorting can pull the selected cell out from under the
   // selection; clamp rather than clear, so the cursor stays roughly put.
-  const row = Math.min(active.row, Math.max(0, tasks.length - 1));
+  const row = Math.min(active.row, Math.max(0, rows.length - 1));
   const col = Math.min(active.col, Math.max(0, columns.length - 1));
-  const activeTask: Task | null = tasks[row] ?? null;
+  const activeRow: SheetRow | null = rows[row] ?? null;
+  const activeTask: Task | null = activeRow?.kind === "task" ? activeRow.task : null;
+  const activeBoss: Boss | null = activeRow ? (activeRow.kind === "boss" ? activeRow.boss : activeRow.boss) : null;
   const activeColumn = columns[col] ?? null;
+
+  // Band rows are marked ⚔; tasks are numbered from 1 below them.
+  const band = bandSize(rows);
+  const rowNumberOf = (r: number) => (r < band ? null : r - band + 1);
 
   const move = useCallback(
     (dRow: number, dCol: number) => {
@@ -163,12 +177,12 @@ export function TaskSheet({
           r += 1;
         }
         return {
-          row: Math.max(0, Math.min(tasks.length - 1, r)),
+          row: Math.max(0, Math.min(rows.length - 1, r)),
           col: Math.max(0, Math.min(columns.length - 1, c)),
         };
       });
     },
-    [row, col, columns.length, tasks.length]
+    [row, col, columns.length, rows.length]
   );
 
   // Keep the selection on screen when it's driven from the keyboard.
@@ -222,7 +236,7 @@ export function TaskSheet({
       case "End":
         e.preventDefault();
         setActive({
-          row: e.metaKey || e.ctrlKey ? tasks.length - 1 : row,
+          row: e.metaKey || e.ctrlKey ? rows.length - 1 : row,
           col: columns.length - 1,
         });
         break;
@@ -236,7 +250,7 @@ export function TaskSheet({
     }
   };
 
-  if (tasks.length === 0) {
+  if (rows.length === 0) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <ValueBar
@@ -257,7 +271,13 @@ export function TaskSheet({
     <div className="flex h-full min-h-0 flex-col">
       <ValueBar
         task={activeTask}
-        rowNumber={activeTask ? row + 1 : null}
+        rowNumber={activeRow ? rowNumberOf(row) : null}
+        rowLabel={activeBoss ? "⚔" : undefined}
+        readonlyText={
+          activeRow?.kind === "boss" && activeColumn
+            ? bossCellText(activeRow.boss, activeColumn.id, ctx)
+            : undefined
+        }
         column={activeColumn}
         ctx={ctx}
         onCommit={onInlineEdit}
@@ -397,22 +417,37 @@ export function TaskSheet({
           </thead>
 
           <tbody>
-            {tasks.map((task, r) => (
-              <SheetRow
-                key={task.id}
-                task={task}
-                rowNumber={r + 1}
-                isActiveRow={r === row}
-                activeCol={r === row ? col : -1}
-                columns={columns}
-                ctx={ctx}
-                onSelect={(c) => setActive({ row: r, col: c })}
-                onOpenValueBar={focusValueBar}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onStatusChange={onStatusChange}
-              />
-            ))}
+            {rows.map((sheetRow, r) =>
+              sheetRow.kind === "boss" ? (
+                <BossRow
+                  key={rowKey(sheetRow)}
+                  boss={sheetRow.boss}
+                  bandEnd={r === band - 1}
+                  isActiveRow={r === row}
+                  activeCol={r === row ? col : -1}
+                  columns={columns}
+                  ctx={ctx}
+                  onSelect={(c) => setActive({ row: r, col: c })}
+                />
+              ) : (
+                <TaskSheetRow
+                  key={rowKey(sheetRow)}
+                  task={sheetRow.task}
+                  boss={sheetRow.boss}
+                  rowNumber={rowNumberOf(r)}
+                  bandEnd={r === band - 1}
+                  isActiveRow={r === row}
+                  activeCol={r === row ? col : -1}
+                  columns={columns}
+                  ctx={ctx}
+                  onSelect={(c) => setActive({ row: r, col: c })}
+                  onOpenValueBar={focusValueBar}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onStatusChange={onStatusChange}
+                />
+              )
+            )}
           </tbody>
         </table>
 
@@ -462,7 +497,17 @@ export function TaskSheet({
           style={{ width: PACKET_WIDTH }}
           className="flex-none overflow-y-auto border-l border-border"
         >
-          <TaskPacketPane taskId={activeTask?.id ?? null} source={activeTask?.source} />
+          {activeRow?.kind === "boss" ? (
+            <BossPane
+              boss={activeRow.boss}
+              lordTitle={lords.find((l) => l.id === activeRow.boss.lordId)?.title ?? null}
+            />
+          ) : (
+            <>
+              {activeBoss ? <BossStrip boss={activeBoss} /> : null}
+              <TaskPacketPane taskId={activeTask?.id ?? null} source={activeTask?.source} />
+            </>
+          )}
         </aside>
       ) : null}
       </div>
@@ -470,9 +515,11 @@ export function TaskSheet({
   );
 }
 
-function SheetRow({
+function TaskSheetRow({
   task,
+  boss,
   rowNumber,
+  bandEnd,
   isActiveRow,
   activeCol,
   columns,
@@ -484,7 +531,11 @@ function SheetRow({
   onStatusChange,
 }: {
   task: Task;
-  rowNumber: number;
+  /** Set when this task is a boss (bound to its Canvas assignment). */
+  boss: Boss | null;
+  /** Null for a band row, which the gutter marks ⚔ instead. */
+  rowNumber: number | null;
+  bandEnd: boolean;
   isActiveRow: boolean;
   activeCol: number;
   columns: typeof TASK_COLUMNS;
@@ -501,13 +552,15 @@ function SheetRow({
 
   const cellBase = cn(
     ROW,
-    "relative max-w-0 truncate border-b border-r border-border/60 px-2 align-middle"
+    "relative max-w-0 truncate border-b border-r px-2 align-middle",
+    bandEnd ? "border-b-border border-r-border/60" : "border-border/60"
   );
 
   return (
     <tr
       className={cn(
         "group",
+        boss && "font-medium",
         isDragging && "opacity-50",
         isUpcoming && "text-muted-foreground",
         isCompleted && "text-muted-foreground line-through decoration-1"
@@ -529,15 +582,20 @@ function SheetRow({
             ? "bg-accent text-accent-foreground"
             : "bg-muted text-muted-foreground"
         )}
-        title="Drag onto the calendar to schedule"
+        title={
+          boss
+            ? `Boss: ${boss.title}. Drag onto the calendar to schedule`
+            : "Drag onto the calendar to schedule"
+        }
       >
-        {rowNumber}
+        {rowNumber ?? "⚔"}
       </td>
 
       <td
         className={cn(
           ROW,
           "border-b border-r border-border/60 text-center align-middle",
+          bandEnd && "border-b-border",
           isActiveRow && "bg-cobalt/5"
         )}
       >
@@ -586,6 +644,7 @@ function SheetRow({
         className={cn(
           ROW,
           "border-b border-r border-border/60 px-1",
+          bandEnd && "border-b-border",
           isActiveRow && "bg-cobalt/5"
         )}
       >
@@ -615,9 +674,76 @@ function SheetRow({
         className={cn(
           ROW,
           "border-b border-border/60",
+          bandEnd && "border-b-border",
           isActiveRow ? "bg-cobalt/5" : "group-hover:bg-muted/40"
         )}
       />
+    </tr>
+  );
+}
+
+/**
+ * An unbound boss: a milestone, not a task. Same grid and selection as a task
+ * row so arrowing through the band just works, but nothing to tick, drag or
+ * delete — it's written in the vault, and killed there.
+ */
+function BossRow({
+  boss,
+  bandEnd,
+  isActiveRow,
+  activeCol,
+  columns,
+  ctx,
+  onSelect,
+}: {
+  boss: Boss;
+  bandEnd: boolean;
+  isActiveRow: boolean;
+  activeCol: number;
+  columns: typeof TASK_COLUMNS;
+  ctx: ColumnContext;
+  onSelect: (col: number) => void;
+}) {
+  const rule = bandEnd ? "border-b-border" : "border-b-border/60";
+  return (
+    <tr className={cn("group", boss.felled && "text-muted-foreground line-through decoration-1")}>
+      <td
+        className={cn(
+          ROW,
+          "sticky left-0 z-10 border-b border-r border-border px-2 text-right font-mono text-[11px]",
+          isActiveRow ? "bg-accent text-accent-foreground" : "bg-muted text-foreground"
+        )}
+        title={`Boss: ${boss.title}`}
+      >
+        ⚔
+      </td>
+      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-cobalt/5")} />
+      {columns.map((c, i) => {
+        const isActive = i === activeCol;
+        return (
+          <td
+            key={c.id}
+            data-active-cell={isActive || undefined}
+            onClick={() => onSelect(i)}
+            title={bossCellText(boss, c.id, ctx) || undefined}
+            className={cn(
+              ROW,
+              "relative max-w-0 truncate border-b border-r border-r-border/60 px-2 align-middle",
+              rule,
+              c.align === "right" && "text-right",
+              isActive
+                ? "z-20 outline outline-2 -outline-offset-2 outline-cobalt"
+                : "cursor-cell",
+              isActiveRow && !isActive && "bg-cobalt/5",
+              !isActiveRow && "group-hover:bg-muted/40"
+            )}
+          >
+            {bossCell(boss, c.id, ctx)}
+          </td>
+        );
+      })}
+      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-cobalt/5")} />
+      <td className={cn(ROW, "border-b", rule, isActiveRow ? "bg-cobalt/5" : "group-hover:bg-muted/40")} />
     </tr>
   );
 }

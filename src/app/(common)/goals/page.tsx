@@ -2,19 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-import { GoalsListView } from "@/components/goals/GoalsListView";
 import { GoalsMapView } from "@/components/goals/GoalsMapView";
 import { HexHeader } from "@/components/goals/HexHeader";
 import { ApplyOverview, GoalsOverview } from "@/components/goals/types";
 
-import { useGoalsPageSettings } from "@/store/goalsPageSettings";
-
 export default function GoalsPage() {
   const [data, setData] = useState<GoalsOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // The List/Map switcher lives in the app top bar
-  // (components/goals/GoalsTopBar.tsx).
-  const view = useGoalsPageSettings((s) => s.viewMode);
+  // The Ladder is the map alone. Bosses as a list live in the Tasks sheet, as
+  // milestone rows beside the work that fights them; what only this page can
+  // show is the shape — Lord → boss → task.
   // Goals are vault-canonical — the ops project-goals pump mirrors them in from
   // ~/Brain, so edits made here are overwritten on the next sync. The page is a
   // read-only projection viewer; author goals in the vault (Obsidian).
@@ -68,21 +65,12 @@ export default function GoalsPage() {
       ) : null}
 
       {data ? (
-        view === "list" ? (
-          <GoalsListView
-            overview={data}
-            apply={apply}
-            refetch={loadOverview}
-            readOnly={readOnly}
-          />
-        ) : (
-          <GoalsMapView
-            overview={data}
-            apply={apply}
-            refetch={loadOverview}
-            readOnly={readOnly}
-          />
-        )
+        <GoalsMapView
+          overview={data}
+          apply={apply}
+          refetch={loadOverview}
+          readOnly={readOnly}
+        />
       ) : !error ? (
         <p className="text-sm text-muted-foreground">Loading…</p>
       ) : null}
