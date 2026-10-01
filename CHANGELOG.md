@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Courses sheet Kind column:** module bands and subheaders no longer span into Kind — titles stay under Title when Kind is empty, so the column lines up with PAGE/TASK/QUIZ rows.
+
 ### Added
 
 - **Linear surface:** light and dark tokens sampled from Linear's brand page, `linear.app` CSS, and the March 2026 theme editor (`#5e6ad2` accent, Mercury White / Nordic Gray, dimmer rail). Inter, 6px controls, flat buttons. Focus is a three-column desk (context, work, grade book) with the next two tasks as a tape. Done / Skip stay; Later defers until end of day; subtasks on the focused task can be checked off. `D` / `S` / `L` when focus is open.
