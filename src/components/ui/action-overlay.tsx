@@ -81,9 +81,9 @@ export function ActionOverlay({
   }, [type, message, onComplete, autoHideDuration]);
 
   return (
-    <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[10000] flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm">
       {type === "loading" && (
-        <div className="mb-4 h-12 w-12 animate-spin text-blue-600">
+        <div className="mb-4 h-12 w-12 animate-spin text-rust-text">
           <svg
             viewBox="0 0 24 24"
             fill="none"
@@ -108,7 +108,9 @@ export function ActionOverlay({
 
       {type === "celebration" && <div className="mb-4 text-5xl">🎉</div>}
 
-      {type === "error" && <div className="mb-4 text-5xl text-red-500">❌</div>}
+      {type === "error" && (
+        <div className="mb-4 text-5xl text-destructive">❌</div>
+      )}
 
       {message && (
         <p className="px-4 text-center text-lg font-medium">{message}</p>

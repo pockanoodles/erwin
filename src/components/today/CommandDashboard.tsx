@@ -18,10 +18,10 @@ import { useErwinStatusStore } from "@/store/erwinStatus";
 function tierRowAccent(task: FocusQueueTask): string {
   const tier = task.erwin?.urgencyTier;
   if (task.erwin?.danger || tier === "DANGER") {
-    return "border-l-2 border-l-red-600 bg-red-50/60 dark:bg-red-950/20";
+    return "border-l-2 border-l-destructive bg-destructive/10";
   }
   if (tier === "HIGH") {
-    return "border-l-2 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/15";
+    return "border-l-2 border-l-warning bg-warning/10";
   }
   return "border-l-2 border-l-transparent";
 }
@@ -37,10 +37,10 @@ function tierBadge(
 ): { label: string; className: string } | null {
   const tier = task.erwin?.urgencyTier;
   if (task.erwin?.danger || tier === "DANGER") {
-    return { label: "DANGER", className: "text-red-700 dark:text-red-400" };
+    return { label: "DANGER", className: "text-destructive" };
   }
   if (tier === "HIGH" && task.dueDate && isToday(task.dueDate)) {
-    return { label: "DUE TODAY", className: "text-amber-700 dark:text-amber-400" };
+    return { label: "DUE TODAY", className: "text-warning" };
   }
   return null;
 }
@@ -102,14 +102,34 @@ export function CommandDashboard() {
             <p className="p-6 text-sm text-muted-foreground">Loading today…</p>
           )}
           {status === "error" && (
-            <p className="p-6 text-sm text-red-700 dark:text-red-400">
-              Couldn&apos;t load the queue. Is erwin&apos;s data layer up?
+            <p className="p-6 text-sm text-destructive">
+              Today couldn&apos;t load. Try again in a moment, and if it keeps
+              failing, Settings has the logs.
             </p>
           )}
           {status === "ready" && tasks.length === 0 && (
-            <p className="p-6 text-sm text-muted-foreground">
-              Nothing ranked — inbox zero for now.
-            </p>
+            // The first screen a new install shows, so it says what Erwin
+            // needs and offers the three ways to give it that. Connecting
+            // Canvas is the main action because coursework is what Erwin
+            // ranks best.
+            <div className="max-w-xl space-y-5 p-6 md:p-10">
+              <p className="er-label">Nothing to rank yet</p>
+              <p className="text-lg leading-relaxed text-foreground">
+                Erwin ranks what you have to do, so give it something to rank.
+                Connect your courses or a calendar, or add a task by hand.
+              </p>
+              <div className="flex flex-wrap items-center gap-3">
+                <Button asChild>
+                  <Link href="/settings#task-sync">Connect Canvas</Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/settings#accounts">Add a calendar</Link>
+                </Button>
+                <Button asChild variant="quiet">
+                  <Link href="/tasks">Add a task</Link>
+                </Button>
+              </div>
+            </div>
           )}
           <ol>
             {tasks.map((task, i) => {
@@ -240,13 +260,13 @@ function LadderPanel({
           <div className="mt-3">
             <div className="flex items-baseline gap-2">
               {goal.isBoss && (
-                <span className="font-mono text-sm text-cobalt">⚔</span>
+                <span className="font-mono text-sm text-rust-text">⚔</span>
               )}
               <h3 className="text-lg font-medium">{goal.title}</h3>
             </div>
             {goal.targetDate && (
               <p className="mt-1 text-sm">
-                <span className="text-cobalt">
+                <span className="text-rust-text">
                   {goal.isBoss ? "Boss" : "Target"} — {formatDay(goal.targetDate)}
                 </span>
               </p>
@@ -271,7 +291,8 @@ function LadderPanel({
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            Not linked to a goal yet — tag it in the vault to see the climb.
+            Not linked to a goal yet. Give it a Lord from the task&apos;s menu
+            to see the climb.
           </p>
         )}
       </div>

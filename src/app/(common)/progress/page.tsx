@@ -41,7 +41,7 @@ export default function ProgressPage() {
   return (
     <div className="mx-auto max-w-6xl space-y-8 p-6 md:p-10">
       <div>
-        <h1 className="text-3xl font-light tracking-tight md:text-4xl">
+        <h1 className="er-display text-[24px] tracking-[0.04em] md:text-[30px]">
           Progress
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -61,7 +61,7 @@ export default function ProgressPage() {
             <CardTitle className="text-base">Completed today</CardTitle>
             <CardDescription>Tasks marked done (any source)</CardDescription>
           </CardHeader>
-          <CardContent className="text-4xl font-light tabular-nums">
+          <CardContent className="er-display text-[34px] tabular-nums">
             {data?.completedToday ?? "—"}
           </CardContent>
         </Card>
@@ -70,7 +70,7 @@ export default function ProgressPage() {
             <CardTitle className="text-base">Last 7 days</CardTitle>
             <CardDescription>Tasks completed this week</CardDescription>
           </CardHeader>
-          <CardContent className="text-4xl font-light tabular-nums">
+          <CardContent className="er-display text-[34px] tabular-nums">
             {data?.completedLast7Days ?? "—"}
           </CardContent>
         </Card>
@@ -79,7 +79,7 @@ export default function ProgressPage() {
             <CardTitle className="text-base">Open tasks</CardTitle>
             <CardDescription>Still on your plate</CardDescription>
           </CardHeader>
-          <CardContent className="text-4xl font-light tabular-nums">
+          <CardContent className="er-display text-[34px] tabular-nums">
             {data?.pendingOpen ?? "—"}
           </CardContent>
         </Card>
@@ -88,7 +88,7 @@ export default function ProgressPage() {
             <CardTitle className="text-base">Focus actions</CardTitle>
             <CardDescription>Done / Skip logged in the last 7 days</CardDescription>
           </CardHeader>
-          <CardContent className="text-4xl font-light tabular-nums">
+          <CardContent className="er-display text-[34px] tabular-nums">
             {data?.interactionsLast7Days ?? "—"}
           </CardContent>
         </Card>

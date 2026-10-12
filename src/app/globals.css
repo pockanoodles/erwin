@@ -1,92 +1,8 @@
+@import "../../brand/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@layer base {
-  /* Linear surface. Hexes are sampled, then stored as HSL for the shadcn tokens.
-     Light: Mercury White #F4F5F8 and Nordic Gray #222326 (linear.app/brand).
-     Rail #E2E4E7 and muted #62666D from linear.app CSS — the rail is a step
-     dimmer than the content, which is the 2026 refresh rule.
-     Dark: theme-editor bgBase #0e1012, bgSub #060708, bgBaseHover #141517.
-     Accent #5e6ad2 is lch(47.918% 59.303 288.421) from that same editor.
-     Status #89D196 / #FFC47C / #F34E52 are from linear.app CSS.
-     Elevated light panels are pure white so they lift off Mercury White. */
-  :root {
-    color-scheme: light;
-    --background: 225 22.2% 96.5%;
-    --foreground: 225 5.6% 14.1%;
-    --sidebar: 216 9.4% 89.6%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 225 5.6% 14.1%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 225 5.6% 14.1%;
-
-    --primary: 225 5.6% 14.1%;
-    --primary-foreground: 225 22.2% 96.5%;
-
-    --secondary: 216 9.4% 89.6%;
-    --secondary-foreground: 225 5.6% 14.1%;
-
-    --muted: 216 9.4% 89.6%;
-    --muted-foreground: 218.2 5.3% 40.6%;
-
-    --accent: 216 9.4% 89.6%;
-    --accent-foreground: 225 5.6% 14.1%;
-
-    --destructive: 358.5 87.3% 62.9%;
-    --destructive-foreground: 0 0% 100%;
-
-    --warning: 33 100% 74.3%;
-    --warning-foreground: 225 5.6% 14.1%;
-
-    --border: 216 9.4% 89.6%;
-    --input: 216 9.4% 89.6%;
-    --ring: 233.8 56.3% 59.6%;
-
-    --radius: 8px;
-
-    --cobalt: 233.8 56.3% 59.6%;
-  }
-
-  .dark {
-    color-scheme: dark;
-    --background: 210 12.5% 6.3%;
-    --foreground: 180 6.7% 97.1%;
-    --sidebar: 210 14.3% 2.7%;
-
-    --card: 220 7% 8.4%;
-    --card-foreground: 180 6.7% 97.1%;
-
-    --popover: 220 7% 8.4%;
-    --popover-foreground: 180 6.7% 97.1%;
-
-    --primary: 216 9.4% 89.6%;
-    --primary-foreground: 210 12.5% 6.3%;
-
-    --secondary: 220 7% 8.4%;
-    --secondary-foreground: 180 6.7% 97.1%;
-
-    --muted: 220 7% 8.4%;
-    --muted-foreground: 228 2.6% 62.2%;
-
-    --accent: 220 7% 8.4%;
-    --accent-foreground: 180 6.7% 97.1%;
-
-    --destructive: 358.5 87.3% 62.9%;
-    --destructive-foreground: 0 0% 100%;
-
-    --warning: 33 100% 74.3%;
-    --warning-foreground: 210 12.5% 6.3%;
-
-    --border: 240 4.2% 18.8%;
-    --input: 240 4.2% 18.8%;
-    --ring: 233.8 56.3% 59.6%;
-
-    --cobalt: 233.8 56.3% 59.6%;
-  }
-}
 
 @layer base {
   * {
@@ -124,14 +40,19 @@
     }
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
+    font-feature-settings: "ss01" 0;
+  }
+  /* Figures line up wherever they are counted or timed. */
+  :is(time, kbd, .tabular) {
+    font-variant-numeric: tabular-nums;
   }
 }
 
-/* Linear product controls are 6px. Panels use --radius (8px) via rounded-lg.
-   Identity/floating circles opt out with data-round. */
+/* Machined plate: controls and panels are square-cornered (2px, from
+   brand/tokens.css). Identity and dial circles opt out with data-round. */
 .app-sharp :is(button, input, textarea, select, kbd):not([data-round]) {
-  border-radius: 6px;
+  border-radius: var(--er-radius-control);
 }
 
 /* ── Calendar (FullCalendar) ───────────────────────────────────────────────
@@ -146,28 +67,28 @@
   @apply h-full;
 
   --fc-small-font-size: 0.6875rem;
-  --fc-page-bg-color: hsl(var(--background));
+  --fc-page-bg-color: var(--er-bg);
   --fc-neutral-bg-color: transparent;
-  --fc-neutral-text-color: hsl(var(--muted-foreground));
-  --fc-border-color: hsl(var(--border));
+  --fc-neutral-text-color: var(--er-faint);
+  --fc-border-color: var(--er-line);
 
-  --fc-event-bg-color: hsl(var(--cobalt));
-  --fc-event-border-color: hsl(var(--cobalt));
+  --fc-event-bg-color: var(--er-ink);
+  --fc-event-border-color: var(--er-ink);
   /* Time-grid blocks are still filled with the calendar's full-strength colour,
      so their label needs to contrast with that fill, not with the page. Only
      the month chips are tinted, and they override this below. */
-  --fc-event-text-color: hsl(var(--primary-foreground));
-  --fc-event-selected-overlay-color: hsl(var(--foreground) / 0.08);
+  --fc-event-text-color: var(--er-bg);
+  --fc-event-selected-overlay-color: color-mix(in srgb, var(--er-ink) 8%, transparent);
 
   --fc-more-link-bg-color: transparent;
-  --fc-more-link-text-color: hsl(var(--muted-foreground));
+  --fc-more-link-text-color: var(--er-faint);
 
-  --fc-non-business-color: hsl(var(--muted) / 0.3);
-  --fc-bg-event-color: hsl(var(--cobalt));
+  --fc-non-business-color: color-mix(in srgb, var(--er-surface) 60%, transparent);
+  --fc-bg-event-color: var(--er-ink);
   --fc-bg-event-opacity: 0.15;
-  --fc-highlight-color: hsl(var(--cobalt) / 0.14);
+  --fc-highlight-color: color-mix(in srgb, var(--er-accent) 14%, transparent);
   --fc-today-bg-color: transparent;
-  --fc-now-indicator-color: hsl(var(--destructive));
+  --fc-now-indicator-color: var(--er-accent);
 }
 
 /* The window edge already frames the grid; FullCalendar's outer border only
@@ -181,7 +102,7 @@
   border-top: 0;
 }
 .fc .fc-scrollgrid-section-sticky > * {
-  background: hsl(var(--background));
+  background: var(--er-bg);
 }
 
 /* Weekday header: small, muted, right-aligned over its column. */
@@ -189,7 +110,7 @@
   background: transparent;
 }
 .fc .fc-col-header-cell-cushion {
-  @apply block w-full px-2 py-2 text-right text-[11px] font-medium text-muted-foreground;
+  @apply block w-full px-2 py-2 text-right font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground;
 }
 
 /* Day cells. Dropping the 150px floor is what lets `expandRows` size six equal
@@ -212,7 +133,7 @@
    number is right-aligned without any help — don't add `justify-*` here, it
    flips against the reversed axis and drags the number to the left.) */
 .fc .fc-daygrid-day-number {
-  @apply px-2 py-1 text-[12px] font-medium tabular-nums text-foreground;
+  @apply px-2 py-1 font-mono text-[12px] font-medium tabular-nums text-foreground;
 }
 .fc .fc-day-other .fc-daygrid-day-number {
   @apply font-normal text-muted-foreground;
@@ -221,7 +142,7 @@
 /* Today is the one accent mark on the grid: a badge on the number, not a wash
    across the whole cell. Sharp, per Design 02. */
 .fc .fc-day-today .fc-daygrid-day-number {
-  @apply mr-1 mt-1 flex h-5 min-w-[1.25rem] items-center justify-center bg-cobalt px-1 py-0 font-semibold text-background;
+  @apply mr-1 mt-1 flex h-5 min-w-[1.25rem] items-center justify-center bg-rust px-1 py-0 font-semibold text-rust-foreground;
 }
 
 /* Event chips: sharp, single-line, quiet. Colour identity comes from the feed
@@ -239,7 +160,7 @@
 }
 /* Month chips sit on a tint of the page, so their label is page foreground. */
 .fc .fc-daygrid-event .fc-event-main {
-  color: hsl(var(--foreground));
+  color: var(--er-ink);
 }
 .fc .fc-daygrid-block-event {
   /* longhands, so FullCalendar's inline `border-color` still supplies the hue */
@@ -253,7 +174,7 @@
   @apply bg-transparent;
 }
 .fc .fc-daygrid-dot-event:hover {
-  background: hsl(var(--muted) / 0.6);
+  background: var(--er-hover);
 }
 .fc .fc-event-title {
   @apply font-medium;
@@ -277,24 +198,24 @@
 }
 .fc .fc-timegrid-slot-label-cushion,
 .fc .fc-timegrid-axis-cushion {
-  @apply text-[11px] text-muted-foreground;
+  @apply font-mono text-[11px] tabular-nums text-muted-foreground;
 }
 .fc .fc-timegrid-slot-label,
 .fc .fc-timegrid-axis-frame {
-  background-color: hsl(var(--background));
+  background-color: var(--er-bg);
 }
 .fc .fc-timegrid-now-indicator-line,
 .fc .fc-timegrid-now-indicator-arrow {
-  border-color: hsl(var(--destructive));
+  border-color: var(--er-accent);
 }
 
 /* Command Palette Styles */
 [cmdk-root] {
   max-width: 640px;
   width: 100%;
-  background-color: hsl(var(--background));
+  background-color: var(--er-bg);
   border-radius: 8px;
-  border: 1px solid hsl(var(--border));
+  border: 1px solid var(--er-line);
 }
 
 [cmdk-input] {
@@ -304,7 +225,7 @@
   padding: 12px;
   outline: none;
   background: transparent;
-  color: hsl(var(--foreground));
+  color: var(--er-ink);
   border: none;
   margin: 0;
   border-radius: 0;
@@ -316,7 +237,7 @@
 }
 
 [cmdk-input]::placeholder {
-  color: hsl(var(--muted-foreground));
+  color: var(--er-faint);
 }
 
 [cmdk-item] {
@@ -329,7 +250,7 @@
   align-items: center;
   gap: 8px;
   padding: 0 8px;
-  color: hsl(var(--foreground));
+  color: var(--er-ink);
   user-select: none;
   will-change: background, color;
   transition: all 150ms ease;
@@ -337,19 +258,19 @@
 }
 
 [cmdk-item][aria-selected="true"] {
-  background: hsl(var(--muted));
-  color: hsl(var(--foreground));
+  background: var(--er-hover);
+  color: var(--er-ink);
 }
 
 [cmdk-item][aria-disabled="true"] {
-  color: hsl(var(--muted-foreground));
+  color: var(--er-faint);
   cursor: not-allowed;
 }
 
 [cmdk-group-heading] {
   user-select: none;
   font-size: 12px;
-  color: hsl(var(--muted-foreground));
+  color: var(--er-faint);
   padding: 0 8px;
   display: flex;
   align-items: center;
@@ -393,7 +314,7 @@
 
 /* Override toast description styles for better readability */
 .notification-toast [data-description] {
-  color: var(--foreground) !important;
+  color: var(--er-ink) !important;
   font-weight: 500 !important;
   opacity: 1 !important;
 }
@@ -402,7 +323,7 @@
    scroll affordance never competes with the content. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--border)) transparent;
+  scrollbar-color: var(--er-line) transparent;
 }
 ::-webkit-scrollbar {
   width: 6px;
@@ -412,10 +333,10 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: var(--er-line);
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: var(--er-line-strong);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
@@ -452,10 +373,10 @@
   @apply list-none;
 }
 .canvas-html a {
-  @apply text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-cobalt;
+  @apply text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-rust-text;
 }
 .canvas-html a[href^="/"] {
-  @apply decoration-cobalt/50;
+  @apply decoration-rust/50;
 }
 .canvas-html strong,
 .canvas-html b {
@@ -484,4 +405,129 @@
 }
 .canvas-html th {
   @apply bg-muted font-medium;
+}
+
+/* ── Desktop window ───────────────────────────────────────────────────────
+   Inside the Electron shell (desktop/src/preload.ts sets data-desktop to the
+   platform) the top bar is the window's title bar. On macOS it makes room for
+   the inset traffic lights, which keeps every control in the bar at one fixed
+   x on every route, and the bar drags the window while its controls click. */
+:root[data-desktop="darwin"] .app-titlebar {
+  padding-left: 76px;
+}
+:root[data-desktop] .app-titlebar {
+  -webkit-app-region: drag;
+  user-select: none;
+}
+:root[data-desktop] .app-titlebar :is(button, a, input, select, kbd, [role="button"], [role="group"]) {
+  -webkit-app-region: no-drag;
+}
+
+/* ── Field kit ────────────────────────────────────────────────────────────
+   The component language (B2, crate stencil) and the type roles (F4,
+   equipment plate), as classes so every component composes the same parts.
+   brand/BRAND.md explains each. */
+@layer components {
+  /* A plate with two corners cut, the way supply-crate markings are
+     stenciled. Painted with gradients rather than clip-path, so a focus ring
+     or outline around it is never clipped away. Set --plate for its colour. */
+  .er-plate {
+    --cut: 5px;
+    --plate: var(--er-accent);
+    background:
+      linear-gradient(135deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) top left / 100% 51% no-repeat,
+      linear-gradient(-45deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) bottom right / 100% 51% no-repeat;
+  }
+  .er-plate-sm {
+    --cut: 3.5px;
+  }
+
+  /* Four corner brackets: the registration marks around a crate stencil.
+     The secondary control, and the frame for anything selectable. */
+  .er-brackets {
+    --bracket: var(--er-muted);
+    --arm: 7px;
+    --stroke: 1.5px;
+    background:
+      linear-gradient(var(--bracket) 0 0) top left / var(--arm) var(--stroke) no-repeat,
+      linear-gradient(var(--bracket) 0 0) top left / var(--stroke) var(--arm) no-repeat,
+      linear-gradient(var(--bracket) 0 0) top right / var(--arm) var(--stroke) no-repeat,
+      linear-gradient(var(--bracket) 0 0) top right / var(--stroke) var(--arm) no-repeat,
+      linear-gradient(var(--bracket) 0 0) bottom left / var(--arm) var(--stroke) no-repeat,
+      linear-gradient(var(--bracket) 0 0) bottom left / var(--stroke) var(--arm) no-repeat,
+      linear-gradient(var(--bracket) 0 0) bottom right / var(--arm) var(--stroke) no-repeat,
+      linear-gradient(var(--bracket) 0 0) bottom right / var(--stroke) var(--arm) no-repeat;
+  }
+  .er-brackets:hover,
+  .er-brackets[data-state="open"],
+  .er-brackets[aria-expanded="true"] {
+    --bracket: var(--er-ink);
+  }
+
+  /* The quiet action: a stencil slash and the word, no frame. */
+  .er-slash::before {
+    content: "/";
+    margin-right: 0.35em;
+    font-weight: 700;
+    color: var(--er-accent-text);
+  }
+
+  /* Status as stenciled caps in brackets: [ NEXT ]. Colour comes from the
+     element (text-rust-text, text-destructive, text-muted-foreground). */
+  .er-bracketed::before {
+    content: "[";
+    margin-right: 0.4em;
+    opacity: 0.7;
+  }
+  .er-bracketed::after {
+    content: "]";
+    margin-left: 0.4em;
+    opacity: 0.7;
+  }
+
+  /* The railroad: the dial's minute track, used as a rule. A short tick every
+     6px and a long one every 30px, sitting on a hairline. */
+  .er-track {
+    height: 9px;
+    color: var(--er-line-strong);
+    background:
+      repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 30px) left bottom / 100% 9px no-repeat,
+      repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 6px) left bottom / 100% 4px no-repeat;
+    border-bottom: 1px solid currentColor;
+  }
+
+  /* Type roles. Michroma is wide and has one weight, so it is set in caps,
+     small, and only for titles and readouts. Chivo Mono prints the labels. */
+  .er-display {
+    font-family: theme(fontFamily.display);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1.08;
+  }
+  .er-label {
+    font-family: theme(fontFamily.mono);
+    font-size: 11px;
+    line-height: 1.2;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--er-faint);
+  }
+
+  /* Bead-blasted grain for chrome surfaces (rail, top bar, boot screen).
+     Never on data cells: grain under text costs legibility. */
+  .er-grain {
+    position: relative;
+    isolation: isolate;
+  }
+  .er-grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image: var(--er-grain);
+    opacity: var(--er-grain-opacity);
+  }
 }

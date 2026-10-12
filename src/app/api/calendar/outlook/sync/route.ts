@@ -6,6 +6,7 @@ import { logger } from "@/lib/logger";
 import { getOutlookClient } from "@/lib/outlook-calendar";
 import { syncOutlookCalendar } from "@/lib/outlook-sync";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 
 const LOG_SOURCE = "OutlookCalendarSyncAPI";
 
@@ -72,7 +73,7 @@ export async function POST(req: NextRequest) {
         name,
         type: "OUTLOOK",
         url: calendarId,
-        color: color || "#3b82f6",
+        color: color || DEFAULT_FEED_COLOR,
         enabled: true,
         accountId: account.id,
         userId,

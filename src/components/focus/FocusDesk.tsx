@@ -45,7 +45,7 @@ function linkify(text: string): ReactNode[] {
           href={urls[i]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-cobalt hover:underline"
+          className="text-rust-text hover:underline"
         >
           {urls[i]}
         </a>
@@ -57,9 +57,7 @@ function linkify(text: string): ReactNode[] {
 
 function label(text: string) {
   return (
-    <div className="mb-1 text-[12px] font-medium tracking-tight text-muted-foreground">
-      {text}
-    </div>
+    <div className="er-label mb-1.5">{text}</div>
   );
 }
 
@@ -176,7 +174,7 @@ export function FocusDesk({
                   {windowLabel ? <p className="tabular-nums">{windowLabel}</p> : null}
                   {nextEvent ? (
                     <p className="mt-0.5 text-muted-foreground">
-                      {nextEvent.title} in {nextEvent.startsIn}
+                      {nextEvent.title} {nextEvent.startsIn}
                     </p>
                   ) : null}
                 </>
@@ -187,7 +185,7 @@ export function FocusDesk({
         </section>
 
         <section className="flex min-h-0 flex-col border-t border-border px-4 py-4 md:overflow-y-auto md:border-t-0 md:px-8 md:py-5">
-          <div className="text-[12px] font-medium tracking-tight text-muted-foreground">
+          <div className="er-label">
             {[
               task.submissionStatus?.replaceAll("_", " "),
               task.erwin?.urgencyTier && task.erwin.urgencyTier !== "NONE"
@@ -200,6 +198,7 @@ export function FocusDesk({
           <h1 className="mt-2 text-[28px] font-medium leading-[1.15] tracking-[-0.02em] text-foreground md:text-[32px]">
             {task.title}
           </h1>
+          <div className="er-track mt-4 max-w-[62ch]" aria-hidden />
           {isCanvas ? (
             packet.data ? (
               <>
@@ -221,7 +220,7 @@ export function FocusDesk({
               href={task.externalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-3 inline-block text-[14px] text-foreground underline decoration-border underline-offset-4 hover:text-cobalt"
+              className="mt-3 inline-block text-[14px] text-foreground underline decoration-border underline-offset-4 hover:text-rust-text"
             >
               Open in {task.source === "CANVAS" ? "Canvas" : "source"}
             </a>
@@ -229,7 +228,7 @@ export function FocusDesk({
 
           {subtasks.length > 0 ? (
             <div className="mt-6">
-              <div className="text-[12px] font-medium tracking-tight text-muted-foreground">
+              <div className="er-label">
                 Checklist · {doneCount} of {subtasks.length}
               </div>
               <ul className="mt-1">
@@ -290,7 +289,7 @@ export function FocusDesk({
           {label("Book")}
           {projection ? (
             <>
-              <p className="mt-2 text-[56px] font-medium leading-none tracking-[-0.03em] text-cobalt">
+              <p className="er-display mt-2 text-[52px] leading-none tracking-normal text-rust-text">
                 {projection.letterCurrent}
               </p>
               <p className="mt-2 text-[14px] text-muted-foreground">
@@ -298,7 +297,7 @@ export function FocusDesk({
               </p>
             </>
           ) : countdown ? (
-            <p className="mt-2 text-[40px] font-medium leading-none tracking-[-0.03em] text-cobalt tabular-nums">
+            <p className="er-display mt-2 text-[30px] leading-none tracking-normal text-rust-text tabular-nums">
               {countdown}
             </p>
           ) : (

@@ -12,6 +12,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 
 import { TaskModal } from "@/components/tasks/TaskModal";
 
+import { DEFAULT_FEED_COLOR, DEFAULT_TASK_COLOR } from "@/lib/calendar-colors";
 import { resolveEventChipColors } from "@/lib/calendar-event-display";
 import { useEventModalStore } from "@/lib/commands/groups/calendar";
 import { newDate } from "@/lib/date-utils";
@@ -81,8 +82,9 @@ export function DayView({ currentDate, onDateClick }: DayViewProps) {
         .map((item) => {
           const color =
             item.feedId === "tasks"
-              ? item.color || "#4f46e5"
-              : feeds.find((f) => f.id === item.feedId)?.color || "#3b82f6";
+              ? item.color || DEFAULT_TASK_COLOR
+              : feeds.find((f) => f.id === item.feedId)?.color ||
+                DEFAULT_FEED_COLOR;
 
           return {
             id: item.id,

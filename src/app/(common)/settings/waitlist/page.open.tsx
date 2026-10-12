@@ -8,11 +8,11 @@ export default function WaitlistPage() {
   return (
     <div className="rounded-lg bg-muted p-6">
       <h2 className="mb-4 text-2xl font-bold">Beta Waitlist Management</h2>
-      <div className="mb-6 border-l-4 border-yellow-400 bg-yellow-50 p-4">
+      <div className="mb-6 border-l-4 border-warning bg-warning/10 p-4">
         <div className="flex">
           <div className="flex-shrink-0">
             <svg
-              className="h-5 w-5 text-yellow-400"
+              className="h-5 w-5 text-warning"
               viewBox="0 0 20 20"
               fill="currentColor"
             >
@@ -24,7 +24,7 @@ export default function WaitlistPage() {
             </svg>
           </div>
           <div className="ml-3">
-            <p className="text-sm text-yellow-700">
+            <p className="text-sm text-warning">
               This page is not available in this build.
             </p>
           </div>

@@ -98,36 +98,42 @@ export function AccountManager() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* A provider that is not set up is a choice, not an error, so these
+              read as notes. Every install brings its own OAuth app. */}
           {!integrationStatus.google.configured && (
-            <Alert variant="destructive">
+            <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Missing Google Credentials</AlertTitle>
+              <AlertTitle>Google Calendar is not set up</AlertTitle>
               <AlertDescription>
-                Please contact your administrator to configure Google Calendar
-                integration.
+                Google needs an OAuth app first. Add its client ID and secret
+                under System to connect it here.
               </AlertDescription>
             </Alert>
           )}
 
           {!integrationStatus.outlook.configured && (
-            <Alert variant="destructive">
+            <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Missing Outlook Credentials</AlertTitle>
+              <AlertTitle>Outlook is not set up</AlertTitle>
               <AlertDescription>
-                Please contact your administrator to configure Outlook Calendar
-                integration.
+                Outlook needs an app registration first. Add its client ID and
+                secret under System to connect it here.
               </AlertDescription>
             </Alert>
           )}
 
           <div className="flex flex-wrap gap-2">
+            {/* Three equal choices, so none of them is the screen's one rust
+                plate: they are all secondary until one is picked. */}
             <Button
+              variant="secondary"
               onClick={() => handleConnect("GOOGLE")}
               disabled={!integrationStatus.google.configured || isLoading}
             >
               Connect Google Calendar
             </Button>
             <Button
+              variant="secondary"
               onClick={() => handleConnect("OUTLOOK")}
               disabled={!integrationStatus.outlook.configured || isLoading}
             >

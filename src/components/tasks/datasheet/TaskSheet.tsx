@@ -350,7 +350,7 @@ export function TaskSheet({
                       "sticky top-0 z-20 border-b border-r border-border p-0 text-left",
                       // The active cell's column header lights up, so a
                       // selection deep in the sheet still says what it is.
-                      i === col ? "bg-cobalt/20" : "bg-muted"
+                      i === col ? "bg-rust/20" : "bg-muted"
                     )}
                   >
                     <button
@@ -391,9 +391,9 @@ export function TaskSheet({
                         "absolute inset-y-0 right-0 z-10 w-1.5 translate-x-1/2 cursor-col-resize select-none",
                         "after:absolute after:inset-y-0 after:left-1/2 after:w-px after:-translate-x-1/2",
                         "after:transition-colors after:duration-150 after:content-['']",
-                        "focus:outline-none focus-visible:after:bg-cobalt hover:after:bg-cobalt",
+                        "focus:outline-none focus-visible:after:bg-rust hover:after:bg-rust",
                         resize.active?.column === c.id
-                          ? "after:bg-cobalt"
+                          ? "after:bg-rust"
                           : "after:bg-transparent"
                       )}
                     />
@@ -596,7 +596,7 @@ function TaskSheetRow({
           ROW,
           "border-b border-r border-border/60 text-center align-middle",
           bandEnd && "border-b-border",
-          isActiveRow && "bg-cobalt/5"
+          isActiveRow && "bg-rust/5"
         )}
       >
         <input
@@ -609,7 +609,7 @@ function TaskSheetRow({
             )
           }
           aria-label={isCompleted ? "Mark as todo" : "Mark as completed"}
-          className="h-3.5 w-3.5 cursor-pointer border-border bg-transparent text-cobalt focus:ring-0 focus:ring-offset-0"
+          className="h-3.5 w-3.5 cursor-pointer border-border bg-transparent text-foreground focus:ring-0 focus:ring-offset-0"
         />
       </td>
 
@@ -629,9 +629,9 @@ function TaskSheetRow({
               cellBase,
               c.align === "right" && "text-right",
               isActive
-                ? "z-20 outline outline-2 -outline-offset-2 outline-cobalt"
+                ? "z-20 outline outline-2 -outline-offset-2 outline-rust"
                 : "cursor-cell",
-              isActiveRow && !isActive && "bg-cobalt/5",
+              isActiveRow && !isActive && "bg-rust/5",
               !isActiveRow && "group-hover:bg-muted/40"
             )}
           >
@@ -645,7 +645,7 @@ function TaskSheetRow({
           ROW,
           "border-b border-r border-border/60 px-1",
           bandEnd && "border-b-border",
-          isActiveRow && "bg-cobalt/5"
+          isActiveRow && "bg-rust/5"
         )}
       >
         <div className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover:opacity-100">
@@ -675,7 +675,7 @@ function TaskSheetRow({
           ROW,
           "border-b border-border/60",
           bandEnd && "border-b-border",
-          isActiveRow ? "bg-cobalt/5" : "group-hover:bg-muted/40"
+          isActiveRow ? "bg-rust/5" : "group-hover:bg-muted/40"
         )}
       />
     </tr>
@@ -717,7 +717,7 @@ function BossRow({
       >
         ⚔
       </td>
-      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-cobalt/5")} />
+      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
       {columns.map((c, i) => {
         const isActive = i === activeCol;
         return (
@@ -732,9 +732,9 @@ function BossRow({
               rule,
               c.align === "right" && "text-right",
               isActive
-                ? "z-20 outline outline-2 -outline-offset-2 outline-cobalt"
+                ? "z-20 outline outline-2 -outline-offset-2 outline-rust"
                 : "cursor-cell",
-              isActiveRow && !isActive && "bg-cobalt/5",
+              isActiveRow && !isActive && "bg-rust/5",
               !isActiveRow && "group-hover:bg-muted/40"
             )}
           >
@@ -742,8 +742,8 @@ function BossRow({
           </td>
         );
       })}
-      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-cobalt/5")} />
-      <td className={cn(ROW, "border-b", rule, isActiveRow ? "bg-cobalt/5" : "group-hover:bg-muted/40")} />
+      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
+      <td className={cn(ROW, "border-b", rule, isActiveRow ? "bg-rust/5" : "group-hover:bg-muted/40")} />
     </tr>
   );
 }

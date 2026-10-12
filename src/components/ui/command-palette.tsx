@@ -60,7 +60,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-stage/60" />
         <Dialog.Content className="fixed left-1/2 top-[20%] z-50 w-full max-w-[640px] -translate-x-1/2">
           <Dialog.Title className="sr-only">Command Menu</Dialog.Title>
           <Dialog.Description className="sr-only">
@@ -69,7 +69,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
           <Command
             className={cn(
-              "overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-md",
+              "er-brackets overflow-hidden rounded-lg border border-line bg-popover text-popover-foreground [--arm:14px] [--bracket:var(--er-ink)] [--stroke:2px]",
               "transform transition-all",
               "data-[state=open]:animate-in data-[state=closed]:animate-out",
               "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
@@ -171,7 +171,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                   <div className="mt-4 flex justify-center">
                     <button
                       onClick={() => setShowAllCommands(true)}
-                      className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/10"
+                      className="flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium text-foreground hover:bg-hover"
                     >
                       <HiOutlineCollection className="h-4 w-4" />
                       Show all commands
@@ -198,7 +198,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                         return (
                           <Command.Item
                             key={command.id}
-                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm aria-selected:bg-blue-50 aria-selected:text-blue-700"
+                            className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm aria-selected:bg-hover aria-selected:text-foreground"
                             onSelect={() => {
                               executeCommand(command.id);
                               onOpenChange(false);

@@ -43,13 +43,13 @@ export default function Error({
           <div className="flex space-x-4">
             <button
               onClick={reset}
-              className="rounded bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+              className="rounded bg-rust px-4 py-2 text-rust-foreground transition-colors hover:bg-rust-text"
             >
               Try again
             </button>
             <Link
               href="/"
-              className="rounded bg-gray-500 px-4 py-2 text-white transition-colors hover:bg-gray-600"
+              className="rounded bg-secondary px-4 py-2 text-secondary-foreground transition-colors hover:bg-hover"
             >
               Return Home
             </Link>

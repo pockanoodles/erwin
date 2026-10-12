@@ -21,10 +21,10 @@ export default async function SetupPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 p-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="mb-8 text-center">
         <h1 className="mb-2 text-4xl font-bold">Erwin Setup</h1>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           Create your admin account to get started with the multi-user version
         </p>
       </div>

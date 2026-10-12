@@ -28,8 +28,8 @@ export function ShortcutsModal({ isOpen, onClose }: ShortcutsModalProps) {
   return (
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm" />
-        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-lg border bg-background p-6 shadow-lg">
+        <Dialog.Overlay className="fixed inset-0 z-50 bg-stage/80" />
+        <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 er-brackets rounded-lg border border-line bg-popover p-6 [--arm:14px] [--bracket:var(--er-ink)] [--stroke:2px]">
           <div className="mb-4 flex items-center justify-between">
             <Dialog.Title className="text-lg font-semibold text-foreground">
               Keyboard Shortcuts

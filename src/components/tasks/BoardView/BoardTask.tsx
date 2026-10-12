@@ -27,17 +27,15 @@ interface BoardTaskProps {
 }
 
 const energyLevelColors = {
-  high: "bg-red-500/20 text-red-700 dark:text-red-400",
-  medium: "bg-orange-500/20 text-orange-700 dark:text-orange-400",
-  low: "bg-green-500/20 text-green-700 dark:text-green-400",
+  high: "bg-muted text-muted-foreground",
+  medium: "bg-muted text-muted-foreground",
+  low: "bg-muted text-muted-foreground",
 };
 
 const timePreferenceColors = {
-  [TimePreference.MORNING]: "bg-sky-500/20 text-sky-700 dark:text-sky-400",
-  [TimePreference.AFTERNOON]:
-    "bg-amber-500/20 text-amber-700 dark:text-amber-400",
-  [TimePreference.EVENING]:
-    "bg-indigo-500/20 text-indigo-700 dark:text-indigo-400",
+  [TimePreference.MORNING]: "bg-muted text-muted-foreground",
+  [TimePreference.AFTERNOON]: "bg-muted text-muted-foreground",
+  [TimePreference.EVENING]: "bg-muted text-muted-foreground",
 };
 
 // Helper function to format enum values for display
@@ -117,8 +115,8 @@ export function BoardTask({
                   key={tag.id}
                   className="inline-flex items-center px-1.5 py-0.5 text-xs"
                   style={{
-                    backgroundColor: `${tag.color}20` || "var(--muted)",
-                    color: tag.color || "var(--muted-foreground)",
+                    backgroundColor: `${tag.color}20` || "var(--er-surface)",
+                    color: tag.color || "var(--er-faint)",
                   }}
                 >
                   {tag.name}

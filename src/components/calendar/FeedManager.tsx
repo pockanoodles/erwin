@@ -8,6 +8,7 @@ import { useCalendarStore } from "@/store/calendar";
 import { useViewStore } from "@/store/calendar";
 
 import { MiniCalendar } from "./MiniCalendar";
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 
 export function FeedManager() {
   const [syncingFeeds, setSyncingFeeds] = useState<Set<string>>(new Set());
@@ -52,7 +53,7 @@ export function FeedManager() {
           Calendars
         </h3>
         {feeds.map((feed) => {
-          const color = feed.color || "hsl(var(--primary))";
+          const color = feed.color || DEFAULT_FEED_COLOR;
           const isSyncing = syncingFeeds.has(feed.id);
 
           return (

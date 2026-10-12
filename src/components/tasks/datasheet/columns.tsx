@@ -320,7 +320,7 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
       const count = ctx.materialCounts[t.id];
       if (!count) return EMPTY;
       return (
-        <span className={cn("tabular-nums", count.cited ? "text-cobalt" : "text-muted-foreground")}>
+        <span className={cn("tabular-nums", count.cited ? "text-rust-text" : "text-muted-foreground")}>
           {count.total}
         </span>
       );
@@ -411,7 +411,7 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
               : "Auto-scheduled"
           }
         >
-          <HiClock className="h-3 w-3 flex-none text-cobalt" />
+          <HiClock className="h-3 w-3 flex-none text-rust-text" />
           <span className="truncate">{scheduleText(t)}</span>
         </span>
       ) : (

@@ -83,7 +83,7 @@ export async function POST(request: Request) {
           workingHoursEnd: "17:00",
           workingHoursDays: "[1,2,3,4,5]",
           defaultDuration: 60,
-          defaultColor: "#3b82f6",
+          defaultColor: "#7E513A",
           defaultReminder: 30,
           refreshInterval: 5,
         },

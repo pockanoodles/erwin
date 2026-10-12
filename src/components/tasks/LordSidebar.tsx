@@ -70,7 +70,7 @@ export function LordSidebar() {
           className={cn(
             "flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border-r border-border px-3 text-sm transition-colors duration-150",
             e.selected
-              ? "bg-cobalt font-medium text-background"
+              ? "bg-foreground font-medium text-background"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
           )}
         >

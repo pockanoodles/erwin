@@ -146,7 +146,7 @@ export function ValueBar({
 
       <div
         className={cn(
-          "flex min-w-0 flex-1 gap-2 border border-border px-2 py-1 focus-within:border-cobalt",
+          "flex min-w-0 flex-1 gap-2 border border-border px-2 py-1 focus-within:border-rust",
           expanded && isText ? "items-start" : "items-center"
         )}
       >

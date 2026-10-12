@@ -40,7 +40,7 @@ export default function NotFound() {
           </p>
           <Link
             href="/"
-            className="rounded bg-blue-500 px-4 py-2 text-white transition-colors hover:bg-blue-600"
+            className="rounded bg-rust px-4 py-2 text-rust-foreground transition-colors hover:bg-rust-text"
           >
             Return Home
           </Link>

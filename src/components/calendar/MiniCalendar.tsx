@@ -105,9 +105,9 @@ export function MiniCalendar({ currentDate, onDateClick }: MiniCalendarProps) {
             className={cn(
               "flex h-6 items-center justify-center text-[11px] tabular-nums transition-colors duration-150",
               isSameDay(day, currentDate)
-                ? "bg-cobalt font-semibold text-background"
+                ? "bg-rust font-semibold text-rust-foreground"
                 : isToday(day)
-                  ? "font-semibold text-cobalt hover:bg-muted/50"
+                  ? "font-semibold text-rust-text hover:bg-muted/50"
                   : isSameMonth(day, calendarDate)
                     ? "text-foreground hover:bg-muted/50"
                     : "text-muted-foreground/50 hover:bg-muted/50"

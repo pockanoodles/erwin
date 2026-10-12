@@ -14,17 +14,18 @@ import { cn } from "@/lib/utils";
  * any difference between them reads as a bug. Pages compose these; pages do
  * not style bar controls themselves.
  *
- * The accent stays out of here on purpose. Cobalt marks *where you are* — the
- * active nav link, a target date — and a view switcher isn't that. Active
- * segments invert instead, which is louder than hover and quieter than the
- * accent.
+ * The field kit (brand/BRAND.md) sets the parts: the page's one primary action
+ * is a rust plate with two corners cut, because rust means "now" and that
+ * button is what you do now. Everything else is quiet: secondary actions sit
+ * in corner brackets, and an active segment is an ink plate, which is louder
+ * than hover and quieter than the accent.
  */
 
 /** Every interactive control in the bar. 28px inside a 44px bar. */
 const CONTROL_HEIGHT = "h-7";
 
-/** Mono uppercase, the Design 02 label voice. 12px is the readability floor. */
-const LABEL = "font-mono text-xs uppercase tracking-wide";
+/** Chivo Mono caps, the label voice. 12px is the readability floor. */
+const LABEL = "font-mono text-xs font-semibold uppercase tracking-[0.08em]";
 
 /** Escape hatch for `data-*` test hooks and ARIA the wrappers don't name. */
 type BarPassthrough = Omit<
@@ -57,10 +58,10 @@ export function BarButton({
       className={cn(
         CONTROL_HEIGHT,
         LABEL,
-        "flex flex-none items-center px-2.5 transition-colors duration-150",
+        "flex flex-none items-center px-3 transition-colors duration-150",
         emphasis === "loud"
-          ? "bg-foreground text-background hover:bg-foreground/85"
-          : "border border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+          ? "er-plate text-rust-foreground hover:[--plate:var(--er-accent-text)]"
+          : "er-brackets text-muted-foreground hover:text-foreground"
       )}
       {...rest}
     >
@@ -124,7 +125,7 @@ export function BarSegmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="flex flex-none items-center border border-border"
+      className="flex flex-none items-center gap-1"
     >
       {segments.map(({ id, label: text, icon: Icon }) => (
         <button
@@ -135,10 +136,10 @@ export function BarSegmented<T extends string>({
           className={cn(
             CONTROL_HEIGHT,
             LABEL,
-            "flex items-center gap-1.5 px-2.5 transition-colors duration-150",
+            "er-plate er-plate-sm flex items-center gap-1.5 px-2.5 transition-colors duration-150",
             value === id
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:text-foreground"
+              ? "text-background [--plate:var(--er-ink)]"
+              : "text-muted-foreground [--plate:var(--er-surface)] hover:text-foreground hover:[--plate:var(--er-hover)]"
           )}
         >
           {Icon ? <Icon className="h-3.5 w-3.5" /> : null}

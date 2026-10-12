@@ -3,6 +3,7 @@ import { memo } from "react";
 import type { EventContentArg } from "@fullcalendar/core";
 import { IoCheckmarkCircle, IoRepeat } from "react-icons/io5";
 
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 import {
   getMonthEventDisplay,
   isDayGridView,
@@ -14,16 +15,14 @@ import { useSettingsStore } from "@/store/settings";
 
 import { Priority, TaskStatus } from "@/types/task";
 
-const DEFAULT_EVENT_COLOR = "#3b82f6";
-
 interface CalendarEventContentProps {
   eventInfo: EventContentArg;
 }
 
 const priorityColors = {
-  [Priority.HIGH]: "border-red-500",
-  [Priority.MEDIUM]: "border-orange-500",
-  [Priority.LOW]: "border-blue-500",
+  [Priority.HIGH]: "border-rust",
+  [Priority.MEDIUM]: "border-warning",
+  [Priority.LOW]: "border-muted-foreground",
   [Priority.NONE]: "border-muted-foreground",
 };
 
@@ -72,7 +71,7 @@ export const CalendarEventContent = memo(function CalendarEventContent({
   const eventColor =
     eventInfo.event.borderColor ||
     eventInfo.event.backgroundColor ||
-    DEFAULT_EVENT_COLOR;
+    DEFAULT_FEED_COLOR;
 
   return (
     <div
@@ -87,8 +86,8 @@ export const CalendarEventContent = memo(function CalendarEventContent({
         isTask && priority && priorityColors[priority as Priority],
         isTask &&
           !priority && {
-            "border-green-500": status === TaskStatus.COMPLETED,
-            "border-yellow-500": status === TaskStatus.IN_PROGRESS,
+            "border-ok": status === TaskStatus.COMPLETED,
+            "border-rust": status === TaskStatus.IN_PROGRESS,
             "border-muted-foreground": status === TaskStatus.TODO,
           },
         // Overdue reads from the priority bar and the weight, not from a red
@@ -96,7 +95,7 @@ export const CalendarEventContent = memo(function CalendarEventContent({
         // user picks — a light one (a near-white task colour, say) drops red
         // text to ~2.7:1 on dark. The bar is drawn over the page, so it stays
         // legible whatever the fill happens to be.
-        isOverdue && "border-red-600 font-medium dark:border-red-400",
+        isOverdue && "border-destructive font-medium",
         status === TaskStatus.COMPLETED && "text-muted-foreground line-through"
       )}
     >

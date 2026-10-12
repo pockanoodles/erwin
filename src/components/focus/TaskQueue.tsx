@@ -120,20 +120,20 @@ export function TaskQueue() {
           {/* Compact metadata display */}
           <div className="ml-1 flex shrink-0 items-center space-x-1">
             {task.status !== TaskStatus.COMPLETED && task.dueDate && (
-              <span className="rounded bg-red-200 px-1.5 py-0.5 text-xs font-medium text-red-900 dark:bg-red-900/50 dark:text-red-100">
+              <span className="rounded bg-destructive/10 px-1.5 py-0.5 text-xs font-medium text-destructive">
                 {format(task.dueDate, "MM/dd")}
               </span>
             )}
 
             {task.postponedUntil &&
               newDate(task.postponedUntil) > newDate() && (
-                <span className="rounded bg-amber-200 px-1.5 py-0.5 text-xs font-medium text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                <span className="rounded bg-warning/10 px-1.5 py-0.5 text-xs font-medium text-warning">
                   {format(task.postponedUntil, "MM/dd")}
                 </span>
               )}
 
             {task.status === TaskStatus.COMPLETED && task.completedAt && (
-              <span className="rounded bg-green-200 px-1.5 py-0.5 text-xs font-medium text-green-900 dark:bg-green-900/50 dark:text-green-100">
+              <span className="rounded bg-ok/10 px-1.5 py-0.5 text-xs font-medium text-ok">
                 ✓
               </span>
             )}
@@ -193,25 +193,25 @@ export function TaskQueue() {
           "Top Tasks",
           queuedTasks,
           "queued",
-          "bg-blue-500/10 text-blue-700 dark:text-blue-400"
+          "bg-muted text-foreground"
         )}
         {renderSection(
           "Past Due",
           pastDueTasks,
           "pastDue",
-          "bg-red-500/10 text-red-700 dark:text-red-400"
+          "bg-destructive/10 text-destructive"
         )}
         {renderSection(
           "Postponed",
           postponedTasks,
           "postponed",
-          "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+          "bg-warning/10 text-warning"
         )}
         {renderSection(
           "Recently Completed",
           recentlyCompletedTasks,
           "completed",
-          "bg-green-500/10 text-green-700 dark:text-green-400"
+          "bg-ok/10 text-ok"
         )}
 
         {queuedTasks.length === 0 &&

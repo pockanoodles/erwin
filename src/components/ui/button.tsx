@@ -5,26 +5,39 @@ import { type VariantProps, cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * The crate-stencil kit (brand/BRAND.md § Components). Plates are painted by
+ * `.er-plate` with two corners cut; set `--plate` for the colour, never a
+ * `bg-*` class, which would fill the cut corners back in.
+ *
+ *   default      the main action: a rust plate, because rust means "now"
+ *   secondary    a surface plate, for a second action beside the main one
+ *   outline      corner brackets, the quiet framed action
+ *   quiet        a stencil slash and the word: Skip, Cancel, Not now
+ *   ghost        toolbar icon buttons
+ *   destructive  a danger plate, only for actions that delete
+ */
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "relative inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-xs font-bold uppercase tracking-[0.12em] transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default:
-          "bg-primary text-primary-foreground hover:bg-primary/90",
+          "er-plate text-rust-foreground hover:[--plate:var(--er-accent-text)]",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-        outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "er-plate text-destructive-foreground [--plate:var(--er-danger)] hover:[--plate:color-mix(in_srgb,var(--er-danger)_85%,var(--er-ink))]",
+        outline: "er-brackets text-foreground hover:bg-hover",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+          "er-plate text-foreground [--plate:var(--er-surface)] hover:[--plate:var(--er-hover)]",
+        quiet: "er-slash px-1 text-muted-foreground hover:text-foreground",
+        ghost:
+          "text-muted-foreground normal-case tracking-normal hover:bg-hover hover:text-foreground",
+        link: "font-medium normal-case tracking-normal text-foreground underline decoration-line-strong underline-offset-4 hover:decoration-foreground",
       },
       size: {
         default: "h-9 px-4 py-2",
-        sm: "h-8 rounded-md px-3 text-xs",
-        lg: "h-10 rounded-md px-8",
+        sm: "h-8 px-3 text-[11px]",
+        lg: "h-11 px-6",
         icon: "h-9 w-9",
       },
     },

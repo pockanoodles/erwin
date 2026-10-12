@@ -24,7 +24,7 @@ export function NotificationSettings() {
                   dailyEmailEnabled: e.target.checked,
                 })
               }
-              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              className="h-4 w-4 rounded border-input bg-raised text-foreground focus:ring-ring focus:ring-offset-background"
             />
             <span className="ml-2 text-sm">Enable daily email updates</span>
           </label>

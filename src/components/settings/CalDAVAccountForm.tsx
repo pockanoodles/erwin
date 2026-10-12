@@ -219,7 +219,7 @@ export function CalDAVAccountForm({
     if (!testResults) return null;
 
     return (
-      <div className="mt-4 rounded-md border bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+      <div className="mt-4 rounded-md border bg-muted p-4">
         <h3 className="mb-2 font-medium">Connection Test Results</h3>
 
         {testResults.steps &&
@@ -229,10 +229,10 @@ export function CalDAVAccountForm({
                 <span
                   className={`mr-2 ${
                     step.status === "success"
-                      ? "text-green-500"
+                      ? "text-ok"
                       : step.status === "failed"
-                        ? "text-red-500"
-                        : "text-yellow-500"
+                        ? "text-destructive"
+                        : "text-rust-text"
                   }`}
                 >
                   {step.status === "success"
@@ -243,20 +243,20 @@ export function CalDAVAccountForm({
                 </span>
                 <span className="font-medium">{step.step}</span>
                 {step.status === "success" && step.calendars !== undefined && (
-                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                  <span className="ml-2 text-sm text-muted-foreground">
                     ({step.calendars} calendars found)
                   </span>
                 )}
               </div>
 
               {step.error && (
-                <div className="ml-6 mt-1 whitespace-pre-wrap text-sm text-red-600 dark:text-red-400">
+                <div className="ml-6 mt-1 whitespace-pre-wrap text-sm text-destructive">
                   Error: {step.error}
                 </div>
               )}
 
               {step.calendarNames && step.calendarNames.length > 0 && (
-                <div className="ml-6 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                <div className="ml-6 mt-1 text-sm text-muted-foreground">
                   Calendars: {step.calendarNames.join(", ")}
                 </div>
               )}
@@ -264,7 +264,7 @@ export function CalDAVAccountForm({
           ))}
 
         {testResults.error && !testResults.steps?.some((s) => s.error) && (
-          <div className="mt-2 text-red-600 dark:text-red-400">
+          <div className="mt-2 text-destructive">
             <div className="font-medium">Error:</div>
             <div className="whitespace-pre-wrap text-sm">
               {testResults.error}
@@ -273,7 +273,7 @@ export function CalDAVAccountForm({
         )}
 
         {testResults.success && (
-          <div className="mt-2 font-medium text-green-600 dark:text-green-400">
+          <div className="mt-2 font-medium text-ok">
             Connection successful! You can now connect your account.
           </div>
         )}
@@ -293,7 +293,7 @@ export function CalDAVAccountForm({
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           {errorMessage && (
-            <div className="mb-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300">
+            <div className="mb-3 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
               {errorMessage}
             </div>
           )}
@@ -303,7 +303,7 @@ export function CalDAVAccountForm({
               className="mb-2.5 text-[15px] leading-normal"
               htmlFor="serverUrl"
             >
-              Server URL <span className="text-red-500">*</span>
+              Server URL <span className="text-destructive">*</span>
             </Label>
             <Input
               id="serverUrl"
@@ -323,7 +323,7 @@ export function CalDAVAccountForm({
               className="mb-2.5 text-[15px] leading-normal"
               htmlFor="username"
             >
-              Username <span className="text-red-500">*</span>
+              Username <span className="text-destructive">*</span>
             </Label>
             <Input
               id="username"
@@ -343,7 +343,7 @@ export function CalDAVAccountForm({
               className="mb-2.5 text-[15px] leading-normal"
               htmlFor="password"
             >
-              Password <span className="text-red-500">*</span>
+              Password <span className="text-destructive">*</span>
             </Label>
             <Input
               id="password"

@@ -17,9 +17,9 @@ interface ColumnProps {
 }
 
 const statusDots = {
-  [TaskStatus.TODO]: "bg-amber-500",
-  [TaskStatus.IN_PROGRESS]: "bg-cobalt",
-  [TaskStatus.COMPLETED]: "bg-green-600",
+  [TaskStatus.TODO]: "bg-muted-foreground",
+  [TaskStatus.IN_PROGRESS]: "bg-rust",
+  [TaskStatus.COMPLETED]: "bg-ok",
 };
 
 // Helper function to format enum values for display
@@ -47,7 +47,7 @@ export function Column({
       ref={setNodeRef}
       className={cn(
         "flex min-w-72 flex-1 flex-col border border-border bg-background",
-        isOver && "ring-1 ring-cobalt"
+        isOver && "ring-1 ring-rust"
       )}
     >
       <div className="border-b border-border px-3 py-2.5">

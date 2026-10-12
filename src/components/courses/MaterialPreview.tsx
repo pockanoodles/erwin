@@ -47,7 +47,7 @@ function ActionLink({ href, children, newTab = true }: { href: string; children:
     <a
       href={href}
       {...(newTab ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-      className="text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-cobalt"
+      className="text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-rust-text"
     >
       {children}
     </a>

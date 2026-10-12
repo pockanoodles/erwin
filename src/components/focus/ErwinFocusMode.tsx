@@ -364,7 +364,8 @@ export function ErwinFocusMode() {
       );
     }
     if (briefingData.dangerZoneTasks.length > 0) {
-      parts.push(`${briefingData.dangerZoneTasks.length} danger zone task(s)`);
+      const n = briefingData.dangerZoneTasks.length;
+      parts.push(`${n} ${n === 1 ? "task" : "tasks"} in danger`);
     }
     return parts.join(" · ");
   }, [briefingData]);

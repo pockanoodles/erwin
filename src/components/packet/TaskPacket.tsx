@@ -26,7 +26,7 @@ export function useTaskPacket(taskId: string | null, source: string | null | und
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-1 text-[12px] font-medium tracking-tight text-muted-foreground">{children}</div>
+    <div className="er-label mb-1.5">{children}</div>
   );
 }
 
@@ -139,7 +139,7 @@ function MaterialRow({ m }: { m: PacketMaterial }) {
           {...(target.external || target.href.startsWith("/api/")
             ? { target: "_blank", rel: "noopener noreferrer" }
             : {})}
-          className={cn(rowClass, "transition-colors duration-150 hover:text-cobalt")}
+          className={cn(rowClass, "transition-colors duration-150 hover:text-rust-text")}
         >
           {body}
         </a>
@@ -171,7 +171,7 @@ export function PacketMaterials({ materials, className }: { materials: PacketMat
       {cited.length ? (
         <div>
           <SectionLabel>
-            <span className="text-cobalt">Cited in the instructions</span> · {cited.length}
+            <span className="text-rust-text">Cited in the instructions</span> · {cited.length}
           </SectionLabel>
           <ul>{cited.map((m) => <MaterialRow key={m.id} m={m} />)}</ul>
         </div>
@@ -238,7 +238,7 @@ export function TaskPacketPane({
             href={data.externalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-block text-[13px] text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-cobalt"
+            className="mt-2 inline-block text-[13px] text-foreground underline decoration-border underline-offset-4 transition-colors duration-150 hover:text-rust-text"
           >
             Open in Canvas
           </a>

@@ -45,7 +45,7 @@ export function ErwinStatus() {
   return (
     // Reserved width: the counts arrive after first paint, and without a floor
     // here they'd shove the search field sideways as they land.
-    <div className="hidden min-w-[15rem] items-center justify-end gap-x-1.5 truncate text-xs text-muted-foreground lg:flex">
+    <div className="hidden min-w-[15rem] items-center justify-end gap-x-1.5 truncate font-mono text-xs uppercase tracking-[0.04em] text-muted-foreground tabular lg:flex">
       {status === "error" ? (
         <span>Queue unavailable</span>
       ) : status === "ready" ? (
@@ -60,7 +60,7 @@ export function ErwinStatus() {
           {danger > 0 ? (
             <>
               <span aria-hidden>·</span>
-              <span className="font-medium text-red-700 dark:text-red-400">
+              <span className="font-semibold text-destructive">
                 {danger} in danger
               </span>
             </>

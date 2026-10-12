@@ -85,12 +85,14 @@ export function AppNav({ className }: AppNavProps) {
             title={link.label}
             tabIndex={isMobile ? (isDrawerOpen ? 0 : -1) : isNavOpen ? 0 : -1}
             className={cn(
-              "mx-2 flex items-center whitespace-nowrap rounded-md px-2 text-[13px] font-normal tracking-tight transition-colors duration-150",
+              "mx-2 flex items-center whitespace-nowrap px-2.5 text-[13px] font-normal transition-colors duration-150",
               // 40px is fine for a pointer and under the 44px touch floor.
               isMobile ? "h-11" : "h-8",
+              // Where you are is framed, crate-stencil style, in ink corner
+              // brackets. It is not "now", so it stays out of the rust.
               isActive
-                ? "bg-background text-foreground dark:bg-secondary"
-                : "text-muted-foreground hover:bg-background/80 hover:text-foreground dark:hover:bg-secondary"
+                ? "er-brackets font-medium text-foreground [--bracket:var(--er-ink)]"
+                : "text-muted-foreground hover:bg-hover hover:text-foreground"
             )}
           >
             <span className={isMobile ? undefined : label}>{link.label}</span>
@@ -142,7 +144,7 @@ export function AppNav({ className }: AppNavProps) {
       className={cn(
         // overflow-clip (not hidden): focusing the full-width Settings row must
         // never scroll the clipped rail and shove it offscreen.
-        "h-full flex-none overflow-clip bg-sidebar",
+        "er-grain h-full flex-none overflow-clip bg-sidebar",
         "transition-[width] duration-300 ease-out motion-reduce:transition-none",
         // The hairline is part of the rail, so it leaves with it — a border on
         // a zero-width element still paints a 1px line down the page.

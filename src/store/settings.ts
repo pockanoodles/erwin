@@ -5,6 +5,7 @@ import { logger } from "@/lib/logger";
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import { Settings } from "@/types/settings";
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 
 const LOG_SOURCE = "SettingsStore";
 
@@ -56,7 +57,7 @@ const defaultSettings: Settings & { accounts: ConnectedAccount[] } = {
     },
     eventDefaults: {
       defaultDuration: 60,
-      defaultColor: "#3b82f6",
+      defaultColor: DEFAULT_FEED_COLOR,
       defaultReminder: 30,
     },
     refreshInterval: 5,

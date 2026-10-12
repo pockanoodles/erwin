@@ -47,9 +47,9 @@ interface EventQuickViewProps {
 
 //TODO: move to utils
 const priorityColors = {
-  [Priority.HIGH]: "text-destructive dark:text-destructive",
-  [Priority.MEDIUM]: "text-warning dark:text-warning",
-  [Priority.LOW]: "text-primary dark:text-primary",
+  [Priority.HIGH]: "text-rust-text",
+  [Priority.MEDIUM]: "text-warning",
+  [Priority.LOW]: "text-muted-foreground",
   [Priority.NONE]: "text-muted-foreground",
 };
 
@@ -67,12 +67,12 @@ export function EventQuickView({
     switch (status?.toUpperCase()) {
       case "ACCEPTED":
       case TaskStatus.COMPLETED:
-        return "text-green-600 dark:text-green-400";
+        return "text-ok";
       case "TENTATIVE":
       case TaskStatus.IN_PROGRESS:
-        return "text-warning dark:text-warning";
+        return "text-warning";
       case "DECLINED":
-        return "text-destructive dark:text-destructive";
+        return "text-destructive";
       default:
         return "text-muted-foreground";
     }
@@ -147,8 +147,8 @@ export function EventQuickView({
                   className={cn(
                     "rounded-md p-1.5",
                     taskItem.status === TaskStatus.COMPLETED
-                      ? "bg-green-500/20 text-green-700 hover:bg-green-500/30 dark:text-green-400"
-                      : "text-muted-foreground hover:bg-muted hover:text-green-600"
+                      ? "bg-ok/10 text-ok hover:bg-ok/20"
+                      : "text-muted-foreground hover:bg-muted hover:text-ok"
                   )}
                   title={
                     taskItem.status === TaskStatus.COMPLETED
@@ -238,7 +238,7 @@ export function EventQuickView({
                     <span
                       className={cn(
                         isOverdue &&
-                        "text-destructive dark:text-destructive font-medium",
+                        "text-destructive font-medium",
                         isFutureDate(taskItem.dueDate) &&
                         "text-primary font-medium"
                       )}
@@ -253,9 +253,9 @@ export function EventQuickView({
                 </div>
                 <span
                   className={cn("rounded-full px-2 py-0.5 text-xs", {
-                    "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100":
+                    "bg-ok/10 text-ok":
                       taskItem.status === TaskStatus.COMPLETED,
-                    "bg-warning/10 text-warning":
+                    "bg-rust/10 text-rust-text":
                       taskItem.status === TaskStatus.IN_PROGRESS,
                     "bg-muted text-muted-foreground":
                       taskItem.status === TaskStatus.TODO,
@@ -323,10 +323,10 @@ export function EventQuickView({
                   <span
                     className="rounded px-2 py-0.5 text-xs"
                     style={{
-                      backgroundColor:
-                        (taskItem.project.color || "hsl(var(--primary))") +
-                        "20",
-                      color: taskItem.project.color || "hsl(var(--primary))",
+                      backgroundColor: taskItem.project.color
+                        ? taskItem.project.color + "20"
+                        : "var(--er-surface)",
+                      color: taskItem.project.color || "var(--er-ink)",
                     }}
                   >
                     {taskItem.project.name}
@@ -348,9 +348,10 @@ export function EventQuickView({
                       key={tag.id}
                       className="inline-flex items-center rounded-full px-2 py-0.5 text-xs"
                       style={{
-                        backgroundColor:
-                          (tag.color || "hsl(var(--primary))") + "20",
-                        color: tag.color || "hsl(var(--primary))",
+                        backgroundColor: tag.color
+                          ? tag.color + "20"
+                          : "var(--er-surface)",
+                        color: tag.color || "var(--er-ink)",
                       }}
                     >
                       {tag.name}

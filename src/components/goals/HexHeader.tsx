@@ -77,10 +77,8 @@ export function HexHeader({
   return (
     <section className="space-y-3">
       <div className="space-y-1">
-        <p className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          Current hex · {daysLeft}d left
-        </p>
-        <h1 className="text-4xl font-light leading-none tracking-tight md:text-5xl">
+        <p className="er-label">Current hex · {daysLeft}d left</p>
+        <h1 className="er-display text-[26px] leading-tight tracking-[0.04em] md:text-[34px]">
           {cycle.hex.label}
         </h1>
       </div>
@@ -173,7 +171,7 @@ export function HexHeader({
               <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
                 ⚔ Boss{" "}
               </span>
-              <span className="font-medium text-cobalt">{boss.title}</span>
+              <span className="font-medium text-rust-text">{boss.title}</span>
               {boss.targetDate ? (
                 <span className="text-muted-foreground">
                   {" "}

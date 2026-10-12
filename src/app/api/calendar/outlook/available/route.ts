@@ -4,6 +4,7 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
 import { OutlookCalendarService } from "@/lib/outlook-calendar";
 import { prisma } from "@/lib/prisma";
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 
 const LOG_SOURCE = "OutlookAvailableCalendarsAPI";
 
@@ -62,7 +63,7 @@ export async function GET(req: NextRequest) {
       .map((calendar) => ({
         id: calendar.id,
         name: calendar.name,
-        color: calendar.color || "#3b82f6",
+        color: calendar.color || DEFAULT_FEED_COLOR,
         canEdit: calendar.canEdit ?? true,
       }))
       .filter((cal) => {

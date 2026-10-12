@@ -34,7 +34,7 @@ interface TaskRowProps {
 }
 
 function priorityRule(priority?: Priority | null): string {
-  if (priority === Priority.HIGH) return "border-l-cobalt";
+  if (priority === Priority.HIGH) return "border-l-rust";
   if (priority === Priority.MEDIUM) return "border-l-foreground/30";
   return "border-l-transparent";
 }
@@ -137,7 +137,7 @@ export function TaskRow({
       className={cn(
         "group border-b border-border border-l-2 transition-colors duration-150",
         priorityRule(task.priority),
-        expanded && "bg-cobalt/5"
+        expanded && "bg-rust/5"
       )}
     >
       <div className="flex items-center">
@@ -192,7 +192,7 @@ export function TaskRow({
                   "text-sm leading-snug transition-colors duration-150",
                   isCompleted
                     ? "text-muted-foreground line-through"
-                    : "text-foreground group-hover:text-cobalt"
+                    : "text-foreground group-hover:text-rust-text"
                 )}
               >
                 {task.title}
@@ -222,9 +222,7 @@ export function TaskRow({
                   key={item.key}
                   className={cn(
                     "whitespace-nowrap",
-                    item.overdue
-                      ? "text-red-700 dark:text-red-400"
-                      : "text-muted-foreground"
+                    item.overdue ? "text-destructive" : "text-muted-foreground"
                   )}
                 >
                   {item.text}

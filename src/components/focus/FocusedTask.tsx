@@ -37,7 +37,7 @@ function linkifyText(text: string): React.ReactNode[] {
           href={urls[i]}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 hover:underline dark:text-blue-400"
+          className="text-foreground underline decoration-line-strong underline-offset-4 hover:decoration-foreground"
         >
           {urls[i]}
         </a>

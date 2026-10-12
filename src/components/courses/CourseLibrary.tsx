@@ -295,7 +295,7 @@ export function CourseLibrary() {
               className={cn(
                 "flex h-9 flex-none items-center gap-1.5 whitespace-nowrap border-r border-border px-3 text-sm transition-colors duration-150",
                 selectedTab
-                  ? "bg-cobalt font-medium text-background"
+                  ? "bg-foreground font-medium text-background"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
@@ -338,7 +338,7 @@ function LibrarySheetRow({
   const cell = cn(
     ROW,
     "max-w-0 truncate border-b border-r border-border/60 px-2 align-middle",
-    active && "bg-cobalt/5"
+    active && "bg-rust/5"
   );
 
   if (row.type === "module") {
@@ -382,7 +382,7 @@ function LibrarySheetRow({
       <tr data-active-row={active || undefined} onClick={onSelect} className="cursor-cell">
         <td className={gutter}>{number}</td>
         <td className={cn(cell, "font-mono text-[10px] uppercase tracking-wide text-muted-foreground")}>SYL</td>
-        <td className={cn(cell, "text-foreground", active && "outline outline-2 -outline-offset-2 outline-cobalt")}>
+        <td className={cn(cell, "text-foreground", active && "outline outline-2 -outline-offset-2 outline-rust")}>
           Syllabus
         </td>
         <td className={cell} />
@@ -413,7 +413,7 @@ function LibrarySheetRow({
       <td
         className={cn(
           cell,
-          active ? "outline outline-2 -outline-offset-2 outline-cobalt" : "group-hover:bg-muted/40",
+          active ? "outline outline-2 -outline-offset-2 outline-rust" : "group-hover:bg-muted/40",
           m.locked ? "text-muted-foreground" : "text-foreground"
         )}
         title={m.title}

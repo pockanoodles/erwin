@@ -59,7 +59,7 @@ export function TaskRowSubtasks({
       {total > 0 && (
         <div className="mb-1 mr-3 h-px bg-border">
           <div
-            className="h-px bg-cobalt transition-[width] duration-200"
+            className="h-px bg-rust transition-[width] duration-200"
             style={{ width: `${progress * 100}%` }}
           />
         </div>

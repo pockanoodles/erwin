@@ -19,7 +19,6 @@ import {
   type Node,
   type NodeProps,
 } from "@xyflow/react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
 import "@xyflow/react/dist/style.css";
@@ -29,6 +28,7 @@ import { Input } from "@/components/ui/input";
 
 import { STAT_ABBREV, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
+import { useResolvedTheme } from "@/hooks/use-resolved-theme";
 
 import {
   clearTaskGoals,
@@ -100,7 +100,7 @@ function GoalNode({ data, selected }: NodeProps<GoalNodeType>) {
         data.isLord
           ? "border-2 border-foreground bg-foreground text-background"
           : "border-border bg-background",
-        selected && "ring-2 ring-cobalt"
+        selected && "ring-2 ring-rust"
       )}
       style={{ width: size.width, minHeight: size.height }}
     >
@@ -159,14 +159,14 @@ function TaskNode({ data, selected }: NodeProps<TaskNodeType>) {
     <div
       className={cn(
         "flex items-center gap-2 border border-border/70 bg-background px-3 py-2",
-        selected && "ring-2 ring-cobalt"
+        selected && "ring-2 ring-rust"
       )}
       style={{ width: TASK_SIZE.width, minHeight: TASK_SIZE.height }}
     >
       {data.urgencyTier === "DANGER" && !done ? (
-        <span className="h-1.5 w-1.5 flex-none bg-red-600" />
+        <span className="h-1.5 w-1.5 flex-none bg-destructive" />
       ) : data.urgencyTier === "HIGH" && !done ? (
-        <span className="h-1.5 w-1.5 flex-none bg-amber-500" />
+        <span className="h-1.5 w-1.5 flex-none bg-warning" />
       ) : null}
       <p
         className={cn(
@@ -354,7 +354,7 @@ export function GoalsMapView({
   refetch,
   readOnly = false,
 }: GoalsMapViewProps) {
-  const { resolvedTheme } = useTheme();
+  const resolvedTheme = useResolvedTheme();
   const graph = useMemo(() => buildGraph(overview), [overview]);
   const [nodes, setNodes, onNodesChange] = useNodesState<FlowNode>(graph.nodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(graph.edges);

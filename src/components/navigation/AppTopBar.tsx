@@ -100,7 +100,7 @@ export function AppTopBar() {
     // `relative z-50` so the mobile drawer's scrim (fixed inset-0, z-40) paints
     // *under* the bar instead of dimming it and swallowing taps on the search
     // button. The drawer itself starts at `top-topbar`, so it never overlaps.
-    <header className="relative z-50 flex h-topbar flex-none items-center gap-2 border-b border-border bg-background pr-3">
+    <header className="app-titlebar er-grain relative z-50 flex h-topbar flex-none items-center gap-2 border-b border-border bg-background pr-3">
       {/* The one control that never moves. Its slot is the rail's own left
           gutter, so the icon sits at exactly the same x whether the rail is
           open, closed, or mid-animation — which is the whole reason the
@@ -129,7 +129,9 @@ export function AppTopBar() {
       {/* Scrolls rather than wraps: the bar is one 44px line on every route,
           and Calendar's D/W/M/Y plus prev/next genuinely doesn't fit 393px. */}
       <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
-        <span className="flex-none whitespace-nowrap text-[13px] font-medium tracking-tight text-foreground">
+        {/* Michroma caps: the page's name reads like the plate on a piece of
+            equipment, the same size on every route. */}
+        <span className="er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground">
           {route?.title ?? "Erwin"}
         </span>
 
@@ -159,7 +161,7 @@ export function AppTopBar() {
           onClick={() => openPalette(true)}
           aria-label="Search"
           className={cn(
-            "flex flex-none items-center gap-2 rounded-md border border-border bg-background",
+            "flex flex-none items-center gap-2 rounded-md border border-border bg-raised",
             "text-xs text-muted-foreground transition-colors duration-150",
             "hover:border-foreground/30 hover:text-foreground",
             // A 208px field would eat half a phone's bar to advertise a
