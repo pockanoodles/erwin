@@ -9,6 +9,10 @@ Erwin's own releases start at 1.0.0. The entries from [1.3.0] down are FluidCale
 
 ## [Unreleased]
 
+### Fixed
+
+- **Courses sheet Kind column:** module bands and subheaders no longer span into Kind — titles stay under Title when Kind is empty, so the column lines up with PAGE/TASK/QUIZ rows.
+
 ### Added
 
 - **Field kit:** a palette sampled from Hamilton's Khaki Field watches (`brand/tokens.css`), with one rust accent that marks what is happening now. Michroma sets titles and readouts, Chivo sets reading text, and Chivo Mono sets times and labels. Buttons are plates with two cut corners, and a selection gets ink corner brackets. `brand/BRAND.md` is the spec, and `scripts/brand-assets.mjs` renders every icon from `brand/`.

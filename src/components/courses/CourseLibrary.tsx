@@ -341,11 +341,16 @@ function LibrarySheetRow({
     active && "bg-rust/5"
   );
 
+  // Band / subheader titles stay in the Title column even when Kind is blank —
+  // spanning Kind made empty-kind rows look like they bled left under the header.
   if (row.type === "module") {
     return (
       <tr>
         <td className={gutter}>{number}</td>
-        <td colSpan={6} className={cn(ROW, "border-b border-border bg-muted/50 px-2 align-middle")}>
+        <td className={cn(cell, "bg-muted/50")} aria-hidden>
+          {"\u00a0"}
+        </td>
+        <td colSpan={5} className={cn(ROW, "border-b border-border bg-muted/50 px-2 align-middle")}>
           <span className="flex items-center gap-3 truncate">
             <span className="truncate text-[12px] font-medium text-foreground">{row.name}</span>
             <span className="font-mono text-[10px] tabular-nums text-muted-foreground">{row.count}</span>
@@ -364,7 +369,9 @@ function LibrarySheetRow({
     return (
       <tr>
         <td className={gutter}>{number}</td>
-        <td className={cell} />
+        <td className={cell} aria-hidden>
+          {"\u00a0"}
+        </td>
         <td colSpan={5} className={cn(ROW, "border-b border-border/60 px-2 align-middle")}>
           <span
             className="block truncate text-[12px] italic text-muted-foreground"
@@ -408,7 +415,7 @@ function LibrarySheetRow({
     <tr data-active-row={active || undefined} onClick={onSelect} className="group cursor-cell">
       <td className={gutter}>{number}</td>
       <td className={cn(cell, "font-mono text-[10px] uppercase tracking-wide text-muted-foreground")}>
-        {kindLabel(m)}
+        {kindLabel(m) || "\u00a0"}
       </td>
       <td
         className={cn(
