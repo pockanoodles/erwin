@@ -33,7 +33,10 @@ export async function GET(request: NextRequest) {
     const cycle = await ensureCurrentHex(prisma, userId);
     const hex = hexForDate(cycle.startDate);
 
-    const [openTasks, goals] = await Promise.all([
+    // Goals projected in from outside (an Obsidian vault, via the goals
+    // projection API) carry an externalId and are overwritten on the next
+    // sync, so the page shows them read-only. Hand-made goals stay editable.
+    const [openTasks, goals, projectedGoals] = await Promise.all([
       prisma.task.findMany({
         where: { userId, status: { not: "completed" } },
         select: {
@@ -90,7 +93,11 @@ export async function GET(request: NextRequest) {
           },
         },
       }),
+      prisma.goal.count({
+        where: { userId, cycleId: cycle.id, externalId: { not: null } },
+      }),
     ]);
+    const managedExternally = projectedGoals > 0;
 
     // A boss bound to a Canvas assignment is that task: the Tasks sheet shows
     // them as one row, so it needs the task's id.
@@ -144,6 +151,7 @@ export async function GET(request: NextRequest) {
           : null,
       },
       goals: flatGoals,
+      managedExternally,
       unassignedTasks: openTasks
         .filter((task) => task.goalLinks.length === 0)
         .map(({ id, title, dueDate, urgencyTier }) => ({

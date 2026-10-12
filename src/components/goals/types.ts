@@ -69,6 +69,8 @@ export interface UnassignedTask {
 export interface GoalsOverview {
   activeCycle: OverviewCycle;
   goals: OverviewGoal[];
+  /** The goals are projected in from an external source and must be edited there. */
+  managedExternally: boolean;
   unassignedTasks: UnassignedTask[];
 }
 

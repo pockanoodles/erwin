@@ -12,10 +12,10 @@ export default function GoalsPage() {
   // The Ladder is the map alone. Bosses as a list live in the Tasks sheet, as
   // milestone rows beside the work that fights them; what only this page can
   // show is the shape — Lord → boss → task.
-  // Goals are vault-canonical — the ops project-goals pump mirrors them in from
-  // ~/Brain, so edits made here are overwritten on the next sync. The page is a
-  // read-only projection viewer; author goals in the vault (Obsidian).
-  const readOnly = true;
+  // Goals projected in from a vault (the goals projection API, fed by an
+  // Obsidian pump) are overwritten on the next sync, so the page is a
+  // read-only viewer for them. Goals made here are edited here.
+  const readOnly = data?.managedExternally ?? false;
 
   const loadOverview = useCallback(async () => {
     try {
@@ -52,9 +52,9 @@ export default function GoalsPage() {
         />
       ) : null}
 
-      {readOnly ? (
+      {data?.managedExternally ? (
         <p className="border border-border bg-muted px-3 py-2 font-mono text-xs uppercase tracking-wide text-muted-foreground">
-          These goals mirror your vault (~/Brain) — edit them there
+          These goals are synced from your vault, so edit them there
         </p>
       ) : null}
 
