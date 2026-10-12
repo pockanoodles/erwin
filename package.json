@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:local": "node scripts/dev-local.mjs",
     "build": "next build && node scripts/check-client-bundle.mjs",
     "build:os": "NEXT_PUBLIC_ENABLE_SAAS_FEATURES=false npm run build",
     "build:desktop": "node scripts/desktop/stage.mjs",
@@ -108,6 +109,8 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.50.1",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",

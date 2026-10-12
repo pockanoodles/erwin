@@ -20,6 +20,9 @@
 /.next-dev/
 # `npm run build:desktop` builds here, so it never replaces the served build.
 /.next-desktop/
+# `npm run dev:local`: its build directory, and its database and keys.
+/.next-local/
+/.local/
 /out/
 
 # production

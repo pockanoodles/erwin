@@ -1,0 +1,207 @@
+/**
+ * Example data for a fresh local database: one student's week.
+ *
+ *   npm run dev:local -- --seed demo
+ *
+ * Used for trying Erwin without connecting anything, for UI review, and for
+ * the screenshots on the landing page and store listings, where it is
+ * labelled as example data. Every date is relative to now, so the week always
+ * looks current. The courses, people and places are made up.
+ *
+ * Refuses to run against anything but a loopback database (the local PGlite
+ * that `dev:local` and the desktop app serve), and against a database that
+ * already has tasks in it.
+ */
+
+import { ensureDesktopUser } from "../../src/lib/desktop/bootstrap";
+import { ensureCurrentHex } from "../../src/lib/erwin/hex";
+import { prisma } from "../../src/lib/prisma";
+
+const url = process.env.DATABASE_URL ?? "";
+if (!/@(127\.0\.0\.1|localhost)[:/]/.test(url) || /fluid_calendar/.test(url)) {
+  throw new Error(`Refusing to seed ${url.replace(/\/\/[^@]*@/, "//…@")}: not a local database`);
+}
+
+const DAY = 86_400_000;
+
+function at(dayOffset: number, hour: number, minute = 0): Date {
+  const d = new Date();
+  d.setHours(hour, minute, 0, 0);
+  return new Date(d.getTime() + dayOffset * DAY);
+}
+
+/** Offset from today to a weekday this week (0 = Sunday), so classes land on their real days. */
+function weekday(day: number, weekShift = 0): number {
+  return day - new Date().getDay() + weekShift * 7;
+}
+
+async function main() {
+  const user = await ensureDesktopUser();
+  if ((await prisma.task.count()) > 0) {
+    console.log("seed: database already has tasks, leaving it alone");
+    return;
+  }
+  await prisma.user.update({ where: { id: user.id }, data: { name: "Sam" } });
+  const userId = user.id;
+
+  // ── Courses ──────────────────────────────────────────────────────────
+  const courses = [
+    { canvasId: "demo-cs3500", code: "CS 3500", name: "CS 3500 · Object-Oriented Design" },
+    { canvasId: "demo-math2331", code: "MATH 2331", name: "MATH 2331 · Linear Algebra" },
+    { canvasId: "demo-engw3302", code: "ENGW 3302", name: "ENGW 3302 · Advanced Writing" },
+  ];
+  for (const c of courses) {
+    await prisma.course.create({ data: { ...c, termName: "Fall 2026", userId, lastSyncedAt: new Date() } });
+  }
+  const [cs, math, engw] = courses;
+
+  // ── Coursework, shaped like Canvas sync output ───────────────────────
+  const school = (
+    course: (typeof courses)[number],
+    title: string,
+    due: Date,
+    opts: { weight: number; points: number; group: string; minutes: number; status?: string; completedAt?: Date }
+  ) => ({
+    title,
+    status: opts.status ?? "todo",
+    completedAt: opts.completedAt ?? null,
+    dueDate: due,
+    duration: opts.minutes,
+    source: "CANVAS",
+    category: "SCHOOL",
+    courseId: course.canvasId,
+    courseName: course.name,
+    assignmentGroupName: opts.group,
+    pointsPossible: opts.points,
+    gradeWeightPercent: opts.weight,
+    gradeImpactScore: opts.weight / 100,
+    submissionTypes: ["online_upload"],
+    submissionStatus: opts.status === "completed" ? "submitted" : "unsubmitted",
+    urgencyTier: "NONE",
+    userId,
+  });
+
+  const coursework = [
+    school(cs, "Assignment 5: Model-View-Controller refactor", at(2, 23, 59), { weight: 8, points: 100, group: "Homework", minutes: 240 }),
+    school(cs, "Lab 7: Builder pattern", at(1, 21, 0), { weight: 2, points: 20, group: "Labs", minutes: 45 }),
+    school(cs, "Lab 6: Strategy pattern", at(-3, 21, 0), { weight: 2, points: 20, group: "Labs", minutes: 45, status: "completed", completedAt: at(-3, 19, 40) }),
+    school(math, "Homework 6: Eigenvalues and eigenvectors", at(3, 23, 59), { weight: 3, points: 30, group: "Homework", minutes: 120 }),
+    school(math, "Exam 2", at(9, 10, 0), { weight: 20, points: 100, group: "Exams", minutes: 90 }),
+    school(engw, "Reading response 4", at(-1, 23, 59), { weight: 1, points: 10, group: "Responses", minutes: 30 }),
+    school(engw, "Peer review: instruction set", at(1, 17, 0), { weight: 2, points: 10, group: "Peer review", minutes: 40 }),
+    school(engw, "Draft: technical description", at(5, 23, 59), { weight: 10, points: 100, group: "Projects", minutes: 180 }),
+  ];
+  for (const data of coursework) await prisma.task.create({ data });
+
+  // ── The current two-month cycle ("hex"), exactly as the app provisions it ──
+  const current = await ensureCurrentHex(prisma, userId);
+  const cycle = await prisma.goalCycle.update({
+    where: { id: current.id },
+    data: { theme: "Spring co-op", focusStats: ["intelligence", "endurance"] },
+  });
+  const coop = await prisma.goal.create({
+    data: {
+      title: "Land a spring co-op",
+      whyItMatters: "Six months of real engineering before senior year.",
+      definitionOfDone: "A signed offer for January.",
+      importanceScore: 90,
+      sortOrder: 0,
+      develops: ["intelligence", "faith"],
+      cycleId: cycle.id,
+      userId,
+    },
+  });
+  await prisma.goal.create({
+    data: {
+      title: "Send 15 co-op applications",
+      isBoss: true,
+      targetDate: at(18, 23, 59),
+      importanceScore: 85,
+      sortOrder: 1,
+      develops: ["endurance"],
+      cycleId: cycle.id,
+      userId,
+    },
+  });
+  const grades = await prisma.goal.create({
+    data: {
+      title: "Finish CS 3500 with an A",
+      importanceScore: 70,
+      sortOrder: 2,
+      develops: ["intelligence"],
+      taskSources: ["CANVAS"],
+      cycleId: cycle.id,
+      userId,
+    },
+  });
+  const run = await prisma.goal.create({
+    data: {
+      title: "Run three times a week",
+      importanceScore: 40,
+      sortOrder: 3,
+      develops: ["vigor", "endurance"],
+      cycleId: cycle.id,
+      userId,
+    },
+  });
+
+  // ── Personal work, some of it on those goals ─────────────────────────
+  const personal = [
+    { title: "Email the co-op coordinator about spring placements", minutes: 15, priority: "high", due: at(0, 17, 0), goal: coop.id },
+    { title: "Add the robotics project to my résumé", minutes: 60, priority: "medium", due: at(2, 20, 0), goal: coop.id },
+    { title: "Apply: software engineering co-op, Boston", minutes: 45, priority: "high", due: at(4, 23, 59), goal: coop.id },
+    { title: "Office hours: ask about the MVC grading rubric", minutes: 30, priority: "medium", due: at(1, 15, 0), goal: grades.id },
+    { title: "Long run, 8 km", minutes: 50, priority: "low", due: at(3, 8, 0), goal: run.id },
+    { title: "Renew library books", minutes: 10, priority: "low", due: at(2, 18, 0), goal: null },
+    { title: "Book a dentist appointment", minutes: 10, priority: "none", due: null, goal: null },
+  ];
+  for (const p of personal) {
+    const task = await prisma.task.create({
+      data: { title: p.title, status: "todo", duration: p.minutes, priority: p.priority, dueDate: p.due, category: "PERSONAL", userId },
+    });
+    if (p.goal) await prisma.taskGoalLink.create({ data: { taskId: task.id, goalId: p.goal } });
+  }
+
+  // ── Calendars: classes and a life ────────────────────────────────────
+  const classes = await prisma.calendarFeed.create({ data: { name: "Classes", type: "LOCAL", color: "#7E513AFF", userId } });
+  const life = await prisma.calendarFeed.create({ data: { name: "Personal", type: "LOCAL", color: "#4D6824FF", userId } });
+
+  const meetings: { feed: string; title: string; days: number[]; from: [number, number]; to: [number, number]; location?: string }[] = [
+    { feed: classes.id, title: "CS 3500 lecture", days: [1, 4], from: [9, 50], to: [11, 30], location: "West Village H 210" },
+    { feed: classes.id, title: "MATH 2331", days: [2, 5], from: [13, 35], to: [14, 40], location: "Ryder Hall 155" },
+    { feed: classes.id, title: "ENGW 3302", days: [3], from: [11, 45], to: [13, 25], location: "Holmes Hall 103" },
+    { feed: classes.id, title: "CS 3500 lab", days: [3], from: [15, 0], to: [16, 40], location: "Snell Library 033" },
+    { feed: life.id, title: "Gym", days: [2, 4], from: [7, 0], to: [8, 0] },
+  ];
+  for (let week = -1; week <= 1; week++) {
+    for (const m of meetings) {
+      for (const day of m.days) {
+        const offset = weekday(day, week);
+        await prisma.calendarEvent.create({
+          data: {
+            feedId: m.feed,
+            title: m.title,
+            start: at(offset, m.from[0], m.from[1]),
+            end: at(offset, m.to[0], m.to[1]),
+            location: m.location ?? null,
+            transparency: "OPAQUE",
+          },
+        });
+      }
+    }
+  }
+  const once = [
+    { feedId: life.id, title: "Co-op info session", start: at(1, 17, 0), end: at(1, 18, 0), location: "Curry Student Center" },
+    { feedId: life.id, title: "Dinner with Maya", start: at(5, 19, 0), end: at(5, 21, 0), location: null },
+  ];
+  for (const e of once) await prisma.calendarEvent.create({ data: { ...e, transparency: "OPAQUE" } });
+
+  console.log(`seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, 2 calendars for ${user.email}`);
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  })
+  .finally(() => void prisma.$disconnect());
