@@ -1,11 +1,24 @@
 /**
- * Runs once when the Next.js server starts (Node runtime).
+ * Runs once when the Next.js server starts.
  * Node can expose a broken experimental `globalThis.localStorage` (`getItem` not a function),
  * which breaks Zustand persist and any code touching `localStorage` during SSR.
  */
 
 export async function register(): Promise<void> {
   patchBrokenNodeLocalStorage();
+
+  // Installs without Redis (the desktop app, a single-container self-host)
+  // run background sync on a timer in this process instead of the BullMQ
+  // worker. Imported lazily so the edge build never sees Prisma.
+  if (
+    process.env.NEXT_RUNTIME === "nodejs" &&
+    process.env.ERWIN_SCHEDULER === "inprocess"
+  ) {
+    const { startInProcessScheduler } = await import(
+      "@/lib/erwin/inprocess-scheduler"
+    );
+    startInProcessScheduler();
+  }
 }
 
 const noopStorage: Storage = {

@@ -11,6 +11,7 @@ import { Queue, Worker } from "bullmq";
 import IORedis from "ioredis";
 
 import { runAllPeriodicErwinSyncs } from "@/lib/erwin/job-sync-runner";
+import { getBackgroundIntervalMs } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 
 const LOG_SOURCE = "ErwinBullWorker";
@@ -32,15 +33,6 @@ function redisPreview(url: string | undefined): string {
   } catch {
     return "(configured)";
   }
-}
-
-function getBackgroundIntervalMs(): number {
-  const raw = process.env.ERWIN_BACKGROUND_SYNC_INTERVAL_MS;
-  const v = raw ? Number.parseInt(raw, 10) : 900_000;
-  if (!Number.isFinite(v) || v < 60_000) {
-    return 900_000;
-  }
-  return v;
 }
 
 function createConnection(): IORedis {
