@@ -26,9 +26,14 @@ const globalForPrisma = globalThis as unknown as {
   prisma: ExtendedPrismaClient | undefined;
 };
 
+// Cached on globalThis in every environment, not just in development: a
+// production Next server bundles this module into more than one layer (route
+// handlers, server components, the pages router), and each would otherwise
+// build its own client with its own connection pool. One client per process
+// is what Prisma recommends, and the desktop app depends on it, since its
+// embedded database serves a single connection.
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+globalForPrisma.prisma = prisma;
 
 /**
  * The client type as the application actually sees it, extension included.
