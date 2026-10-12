@@ -1,0 +1,946 @@
+/* Erwin's landing page. Tokens come from brand/tokens.css (copied in by
+   scripts/prepare.mjs), so the page cannot drift from the app. Spacing is
+   ui-master Design 03, the same ladder and gutters Mahoraga's page uses:
+   one gutter for everything pinned to the frame, outer gaps at least three
+   times the inner ones, one idea per screen. The parts are the field kit
+   (brand/BRAND.md): cut plates, corner brackets, the railroad track. */
+@import "../generated/tokens.css";
+
+:root {
+  /* The personal site's fluid rem, for the shared MENU pill only. */
+  --site-rem: 12px;
+  --lift: max(4.5rem, calc(env(safe-area-inset-bottom) + 3.5rem));
+}
+@media (min-width: 992px) {
+  :root {
+    --site-rem: clamp(10px, calc(10px + 6 * ((100vw - 991px) / 929)), 16px);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--er-stage);
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+body {
+  margin: 0;
+  background: var(--er-stage);
+  color: var(--er-ink);
+  font-family: var(--er-font-sans), var(--er-font-ja);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+:lang(ja) body,
+html:lang(ja) {
+  font-family: var(--er-font-sans), var(--er-font-ja);
+  line-break: strict;
+  word-break: normal;
+}
+/* Japanese headings break between phrases, never before a particle. */
+:lang(ja) :is(h1, h2, h3, .hero__sub, .screen__sub) {
+  word-break: auto-phrase;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+img {
+  max-width: 100%;
+  display: block;
+}
+/* Element rules above set display, which would beat the UA's [hidden]. */
+[hidden] {
+  display: none !important;
+}
+ul,
+ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+h1,
+h2,
+h3,
+p {
+  margin: 0;
+}
+:focus-visible {
+  outline: 2px solid var(--er-accent);
+  outline-offset: 3px;
+}
+
+/* ── Voices ─────────────────────────────────────────────────────────── */
+
+.label {
+  font-family: var(--er-font-mono), var(--er-font-ja);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--er-faint);
+}
+a.label:hover {
+  color: var(--er-ink);
+}
+/* An eyebrow sits on the railroad: the dial's minute track as a rule. */
+.eyebrow {
+  display: grid;
+  gap: var(--er-s-3);
+  justify-items: center;
+}
+.eyebrow::before {
+  content: "";
+  width: min(240px, 60vw);
+  height: 9px;
+  color: var(--er-line-strong);
+  background:
+    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 30px) left bottom / 100% 9px no-repeat,
+    repeating-linear-gradient(90deg, currentColor 0 1px, transparent 1px 6px) left bottom / 100% 4px no-repeat;
+  border-bottom: 1px solid currentColor;
+}
+
+/* ── The kit ─────────────────────────────────────────────────────────── */
+
+/* The main action: a rust plate with two corners cut, painted with gradients
+   so the focus outline around it is never clipped. One per screen. */
+.plate {
+  --cut: 6px;
+  --plate: var(--er-accent);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--er-s-2);
+  height: 44px;
+  padding: 0 var(--er-s-5);
+  color: var(--er-on-accent);
+  font-family: var(--er-font-sans), var(--er-font-ja);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background:
+    linear-gradient(135deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) top left / 100% 51% no-repeat,
+    linear-gradient(-45deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) bottom right / 100% 51% no-repeat;
+  transition: --plate 160ms var(--er-ease), transform 160ms var(--er-ease);
+}
+.plate:hover {
+  --plate: var(--er-accent-text);
+}
+.plate:active {
+  transform: translateY(1px);
+}
+.plate--lg {
+  --cut: 7px;
+  height: 48px;
+  padding: 0 var(--er-s-6);
+}
+:lang(ja) .plate {
+  letter-spacing: 0.06em;
+}
+
+/* Corner brackets: the registration marks around a stencil. */
+.brackets {
+  --bracket: var(--er-line-strong);
+  --arm: 16px;
+  --stroke: 2px;
+  background:
+    linear-gradient(var(--bracket) 0 0) top left / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top left / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top right / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top right / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom left / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom left / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom right / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom right / var(--stroke) var(--arm) no-repeat;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+
+/* Three columns, so the links sit in the true centre (Design 03 §3.2). */
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  height: var(--er-header);
+  padding: env(safe-area-inset-top, 0) var(--er-gutter) 0;
+  background: transparent;
+}
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .bar {
+      animation: bar-frost linear both;
+      animation-timeline: scroll(root);
+      animation-range: 60svh 90svh;
+    }
+  }
+}
+@keyframes bar-frost {
+  to {
+    background: color-mix(in srgb, var(--er-stage) 86%, transparent);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--er-line);
+  }
+}
+.bar__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--er-s-3);
+  justify-self: start;
+  font-family: var(--er-font-display);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: var(--er-ink);
+}
+.bar__nav {
+  display: flex;
+  gap: var(--er-s-6);
+  font-size: 14px;
+  color: var(--er-muted);
+}
+.bar__nav a:hover {
+  color: var(--er-ink);
+}
+.bar__util {
+  display: flex;
+  gap: var(--er-s-5);
+  justify-self: end;
+}
+
+/* ── Hero ───────────────────────────────────────────────────────────── */
+
+/* Corner-anchored: the statement bottom-left, the action middle-right, the
+   dial in the middle, which belongs to the visual and never to text. */
+.hero {
+  position: relative;
+  isolation: isolate;
+  height: 100svh;
+  min-height: 640px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: 1fr auto;
+  padding: calc(var(--er-header) + var(--er-s-5)) var(--er-gutter) var(--er-s-10);
+  overflow: hidden;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: var(--er-grain);
+  opacity: calc(var(--er-grain-opacity) * 1.6);
+}
+.hero__visual {
+  position: absolute;
+  left: 50%;
+  top: 43%;
+  translate: -50% -50%;
+  display: grid;
+  justify-items: center;
+  gap: var(--er-s-4);
+  z-index: -1;
+}
+/* Sized so the dial's lower-left curve clears the statement's last line. */
+.dial {
+  width: min(58svh, 40vw, 560px);
+  aspect-ratio: 1;
+}
+.dial canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hero__words {
+  grid-column: 1;
+  grid-row: 2;
+  display: grid;
+  gap: var(--er-s-4);
+  max-width: var(--er-measure-statement);
+}
+.hero__statement {
+  font-family: var(--er-font-display), var(--er-font-ja);
+  font-weight: 400;
+  font-size: clamp(26px, 3.4vw, 46px);
+  line-height: 1.06;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+:lang(ja) .hero__statement {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+.hero__sub {
+  max-width: var(--er-measure-lede);
+  font-size: clamp(16px, 1.35vw, 19px);
+  line-height: 1.5;
+  color: var(--er-muted);
+  text-wrap: pretty;
+}
+.hero__action {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  display: grid;
+  justify-items: end;
+  gap: var(--er-s-3);
+  padding-right: var(--er-s-9);
+}
+.hero__more {
+  font-size: 14px;
+  color: var(--er-muted);
+}
+.hero__more:hover {
+  color: var(--er-ink);
+}
+
+/* The hero drifts down at half speed so the next screen slides over it. */
+@supports (animation-timeline: scroll()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__visual,
+    .hero__words {
+      animation: drift linear both;
+      animation-timeline: scroll(root);
+      animation-range: 0 100svh;
+    }
+    .hero__action {
+      animation: fade-out linear both;
+      animation-timeline: scroll(root);
+      animation-range: 15svh 40svh;
+    }
+  }
+}
+@keyframes drift {
+  to {
+    transform: translateY(40svh);
+  }
+}
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+/* ── Screens ────────────────────────────────────────────────────────── */
+
+/* One idea per screen, opaque, sliding up over the hero. */
+.screen {
+  position: relative;
+  z-index: 1;
+  min-height: 100svh;
+  display: grid;
+  align-items: center;
+  padding: var(--er-s-11) var(--er-gutter);
+  background: var(--er-stage);
+  border-top: 1px solid var(--er-line);
+}
+.screen__body {
+  width: 100%;
+  max-width: var(--er-measure-section);
+  margin: 0 auto;
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+.screen__body--wide {
+  max-width: var(--er-measure-page);
+}
+#app {
+  padding-block: var(--er-s-9);
+}
+#app .screen__title {
+  max-width: 32ch;
+}
+.screen__title {
+  margin-top: var(--er-s-5);
+  max-width: 24ch;
+  /* Section titles are sentences, so they are set in Chivo: Michroma's wide
+     capitals are for the statement and the readouts, where they stay short. */
+  font-size: clamp(28px, 3.2vw, 40px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+:lang(ja) .screen__title {
+  letter-spacing: 0.01em;
+  line-height: 1.35;
+  font-weight: 700;
+  max-width: 22em;
+}
+.screen__sub {
+  margin-top: var(--er-s-4);
+  max-width: var(--er-measure-lede);
+  color: var(--er-muted);
+  font-size: 18px;
+  text-wrap: pretty;
+}
+
+/* Steps: number, title, body, eight pixels apart; columns forty-eight apart. */
+.steps {
+  margin-top: var(--er-s-9);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 48px;
+  text-align: left;
+  width: 100%;
+}
+.step {
+  display: grid;
+  align-content: start;
+  gap: var(--er-s-2);
+  padding-top: var(--er-s-4);
+  border-top: 1px solid var(--er-line-strong);
+}
+.step__n {
+  font-family: var(--er-font-display);
+  font-size: 15px;
+  letter-spacing: 0.08em;
+  color: var(--er-accent-text);
+}
+.step__title {
+  font-size: 20px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.step__body {
+  color: var(--er-muted);
+  line-height: 1.6;
+}
+
+/* The app tour. */
+/* The tour fits one screen: the frame's width follows the height left over. */
+.tour {
+  margin-top: var(--er-s-7);
+  width: min(100%, calc((100svh - 460px) * 1.6));
+  display: grid;
+  justify-items: center;
+  gap: var(--er-s-5);
+}
+.tour__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--er-s-1);
+}
+.plate-tab {
+  --cut: 4px;
+  --plate: var(--er-surface);
+  height: 36px;
+  padding: 0 var(--er-s-4);
+  border: 0;
+  cursor: pointer;
+  color: var(--er-muted);
+  font-family: var(--er-font-mono), var(--er-font-ja);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background:
+    linear-gradient(135deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) top left / 100% 51% no-repeat,
+    linear-gradient(-45deg, transparent var(--cut), var(--plate) calc(var(--cut) + 0.5px)) bottom right / 100% 51% no-repeat;
+}
+.plate-tab:hover {
+  color: var(--er-ink);
+  --plate: var(--er-hover);
+}
+.plate-tab[aria-selected="true"] {
+  --plate: var(--er-ink);
+  color: var(--er-stage);
+}
+.tour__frame {
+  margin: 0;
+  width: 100%;
+  display: grid;
+  gap: var(--er-s-4);
+}
+.tour__shot {
+  --bracket: var(--er-ink);
+  --arm: 22px;
+  --stroke: 2px;
+  padding: var(--er-s-3);
+  background:
+    linear-gradient(var(--bracket) 0 0) top left / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top left / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top right / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) top right / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom left / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom left / var(--stroke) var(--arm) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom right / var(--arm) var(--stroke) no-repeat,
+    linear-gradient(var(--bracket) 0 0) bottom right / var(--stroke) var(--arm) no-repeat;
+}
+.tour__shot img {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  border: 1px solid var(--er-line);
+  background: var(--er-bg);
+}
+.tour__caption {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--er-s-5);
+  text-align: left;
+  color: var(--er-muted);
+  padding: 0 var(--er-s-3);
+}
+
+/* The data screen: a lead on the left, a hairline-split list on the right. */
+.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  justify-items: stretch;
+  text-align: left;
+  gap: 0;
+  align-items: center;
+}
+.split__lead {
+  display: grid;
+  gap: var(--er-s-4);
+  padding-right: var(--er-s-8);
+}
+.split__lead .eyebrow {
+  justify-items: start;
+}
+.screen__title--left {
+  margin-top: var(--er-s-2);
+}
+.lede {
+  color: var(--er-muted);
+  font-size: 18px;
+  text-wrap: pretty;
+}
+.points {
+  padding-left: var(--er-s-8);
+  border-left: 1px solid var(--er-line);
+}
+.points li {
+  position: relative;
+  padding: 20px 0 20px var(--er-s-6);
+  border-top: 1px solid var(--er-line);
+  color: var(--er-ink);
+}
+.points li:last-child {
+  border-bottom: 1px solid var(--er-line);
+}
+/* A lume pip, the one round thing on the watch face. */
+.points li::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 29px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--er-lume);
+}
+
+/* Downloads: four systems, each a column of channels. */
+.downloads {
+  margin-top: var(--er-s-8);
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--er-s-6);
+  text-align: left;
+}
+.downloads__group {
+  display: grid;
+  align-content: start;
+  gap: var(--er-s-3);
+  padding-top: var(--er-s-4);
+  border-top: 1px solid var(--er-line-strong);
+}
+.downloads__group[data-mine] {
+  border-top-color: var(--er-accent);
+}
+.downloads__os {
+  display: flex;
+  align-items: center;
+  gap: var(--er-s-2);
+  font-family: var(--er-font-display), var(--er-font-ja);
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+/* The rust index marks the visitor's own system. */
+.index {
+  width: 10px;
+  height: 9px;
+  background: var(--er-accent);
+  clip-path: polygon(0 0, 100% 0, 50% 100%);
+}
+.channel {
+  display: grid;
+  gap: var(--er-s-2);
+  padding: var(--er-s-3) 0;
+  border-top: 1px solid var(--er-line);
+}
+.channel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--er-s-3);
+}
+.channel__name {
+  font-size: 15px;
+  color: var(--er-ink);
+}
+a.channel__name {
+  text-decoration: underline;
+  text-decoration-color: var(--er-line-strong);
+  text-underline-offset: 4px;
+}
+a.channel__name:hover {
+  text-decoration-color: var(--er-ink);
+}
+.status {
+  flex: none;
+  font-family: var(--er-font-mono), var(--er-font-ja);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--er-faint);
+}
+.status::before {
+  content: "[ ";
+}
+.status::after {
+  content: " ]";
+}
+.status--live {
+  color: var(--er-ok);
+}
+.channel__cmd {
+  display: flex;
+  align-items: center;
+  gap: var(--er-s-2);
+  min-width: 0;
+  padding: var(--er-s-2) var(--er-s-2) var(--er-s-2) var(--er-s-3);
+  background: var(--er-bg);
+  border: 1px solid var(--er-line);
+}
+.channel__cmd code {
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  white-space: nowrap;
+  font-family: var(--er-font-mono);
+  font-size: 12px;
+  color: var(--er-muted);
+  scrollbar-width: none;
+}
+.copy {
+  flex: none;
+  min-height: 28px;
+  padding: 0 var(--er-s-2);
+  border: 1px solid var(--er-line-strong);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--er-muted);
+  font-family: var(--er-font-mono), var(--er-font-ja);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.copy:hover {
+  color: var(--er-ink);
+  border-color: var(--er-ink);
+}
+
+/* The last screen: one action, one footnote. */
+.end__action {
+  margin-top: var(--er-s-8);
+  display: grid;
+  justify-items: center;
+  gap: var(--er-s-4);
+}
+.end__note {
+  font-size: 14px;
+  color: var(--er-faint);
+}
+.end__note a {
+  color: var(--er-muted);
+}
+.end__note a:hover {
+  color: var(--er-ink);
+}
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+
+.foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--er-s-6);
+  padding: var(--er-s-6) var(--er-gutter) calc(var(--er-s-11) + env(safe-area-inset-bottom, 0px));
+  background: var(--er-stage);
+  border-top: 1px solid var(--er-line);
+}
+.foot__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--er-s-3);
+  font-size: 12px;
+  color: var(--er-faint);
+}
+.foot__cols {
+  display: flex;
+  gap: var(--er-s-9);
+}
+.foot__cols ul {
+  margin-top: var(--er-s-3);
+  display: grid;
+  gap: var(--er-s-2);
+  font-size: 14px;
+  color: var(--er-muted);
+}
+.foot__cols a:hover {
+  color: var(--er-ink);
+}
+
+/* ── 404 ────────────────────────────────────────────────────────────── */
+
+.lost {
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  justify-items: start;
+  gap: var(--er-s-5);
+  padding: var(--er-gutter);
+}
+
+/* ── Entrances ──────────────────────────────────────────────────────── */
+
+/* Each screen's content rises into place as it arrives, run by the browser.
+   Where scroll timelines are missing, it is simply already in place. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .screen__body > * {
+      animation: rise linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}
+
+/* ── The site's own MENU pill (copied with SiteMenu.tsx from mahoraga/site,
+   which ports kaitosoeno.com's 348652e pill with a true 44px button row) ── */
+
+.site-menu {
+  position: fixed;
+  bottom: calc(1.25 * var(--site-rem));
+  left: 50%;
+  z-index: 50;
+  transform: translateX(-50%);
+  font-family: var(--er-font-sans), sans-serif;
+  line-height: 1.4; /* the site's body leading, so the drawer opens to the same height */
+}
+
+/* One surface, one border: the pill grows up and out into the drawer and the
+   button stays its bottom row. Width and height animate (a scale would stretch
+   the hairline and the type mid-flight). Radius is half the closed height. */
+.site-menu__surface {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: calc(7 * var(--site-rem) + 2px);
+  height: 46px;
+  overflow: hidden;
+  border: 1px solid #353535;
+  border-radius: 23px;
+  background: #000;
+  transition:
+    width 300ms cubic-bezier(0.62, 0.04, 0.06, 1),
+    height 300ms cubic-bezier(0.62, 0.04, 0.06, 1),
+    border-color 220ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.site-menu__surface:has(> .site-menu__button:hover) {
+  border-color: #8f8f8f;
+}
+
+.site-menu__drawer {
+  position: absolute;
+  bottom: 44px;
+  left: 50%;
+  width: calc(13 * var(--site-rem));
+  padding: calc(0.8 * var(--site-rem));
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 180ms cubic-bezier(0.4, 0, 1, 1),
+    visibility 0s linear 180ms;
+}
+
+/* Fades in once the surface has room for it, and out at once on close. */
+.site-menu__drawer[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 220ms cubic-bezier(0, 0, 0.2, 1) 80ms,
+    visibility 0s;
+}
+
+.site-menu__link {
+  display: block;
+  padding: calc(0.4 * var(--site-rem)) calc(0.8 * var(--site-rem));
+  font-size: clamp(14px, calc(0.875 * var(--site-rem)), 16px);
+  text-align: center;
+  color: #8f8f8f;
+  transition: color 180ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+.site-menu__link:hover {
+  color: #fff;
+}
+
+.site-menu__button {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 9999px;
+  background: transparent;
+  color: #fff;
+  font-size: clamp(12px, calc(0.75 * var(--site-rem)), calc(0.9 * var(--site-rem)));
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.site-menu__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: calc(0.8 * var(--site-rem));
+  min-width: calc(7 * var(--site-rem));
+  padding: 0 calc(1.25 * var(--site-rem));
+}
+
+.site-menu__glyph {
+  color: #8f8f8f;
+  transition: transform 300ms cubic-bezier(0.62, 0.04, 0.06, 1);
+}
+
+.site-menu__glyph[data-open] {
+  transform: rotate(180deg);
+}
+
+/* The surface clips anything outside it, so focus rings are drawn inside. */
+.site-menu :focus-visible {
+  outline: 2px solid var(--er-accent);
+  outline-offset: -2px;
+}
+
+.site-menu__button:focus-visible {
+  border-radius: 9999px;
+}
+
+/* ── Narrow screens ─────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .downloads {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--er-s-8);
+  }
+}
+
+/* Phones and tall screens: the corners become a column (Design 03 §3.6). */
+@media (max-width: 760px), (max-aspect-ratio: 5/4) {
+  .bar__nav {
+    display: none;
+  }
+  .bar {
+    grid-template-columns: 1fr auto;
+  }
+  .hero {
+    height: auto;
+    min-height: 100svh;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto 1fr auto;
+    gap: var(--er-s-6);
+    padding-bottom: var(--lift);
+  }
+  .hero__words {
+    grid-row: 1;
+  }
+  .hero__visual {
+    position: static;
+    translate: none;
+    grid-row: 2;
+    align-self: center;
+    z-index: 0;
+  }
+  .dial {
+    width: min(86vw, 52svh, 520px);
+  }
+  .hero__action {
+    grid-column: 1;
+    grid-row: 3;
+    justify-items: start;
+    padding-right: 0;
+  }
+  .steps,
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--er-s-7);
+  }
+  .split__lead {
+    padding-right: 0;
+  }
+  .points {
+    padding-left: 0;
+    border-left: 0;
+  }
+  .screen {
+    padding: var(--er-s-10) var(--er-gutter);
+  }
+  .tour__caption {
+    flex-direction: column;
+    gap: var(--er-s-2);
+  }
+  .foot {
+    flex-direction: column;
+  }
+}
+@media (max-width: 560px) {
+  .downloads {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .bar__util .label:last-child {
+    display: none;
+  }
+}

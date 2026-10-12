@@ -1,0 +1,12 @@
+node_modules
+.next
+out
+dist
+.wrangler
+next-env.d.ts
+*.tsbuildinfo
+# Copied from ../brand by scripts/prepare.mjs on every build
+generated/
+public/brand/
+public/favicon.svg
+public/apple-touch-icon.png

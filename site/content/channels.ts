@@ -1,0 +1,37 @@
+// Every place Erwin ships, in the order a visitor scans for their own system.
+// `live` flips to true when a channel actually serves the app, and until then
+// the page labels it as coming soon rather than linking to something empty.
+// Commands and ids must match packaging/ (the release runbook lives there).
+
+export type ChannelGroup = "mac" | "windows" | "linux" | "server";
+
+export interface Channel {
+  id: string;
+  group: ChannelGroup;
+  name: string;
+  /** A command to copy, for channels you install from a terminal. */
+  command?: string;
+  /** Where the channel lives, for channels you install from a page. */
+  href?: string;
+  live: boolean;
+}
+
+const RELEASES = "https://github.com/pockanoodles/erwin/releases/latest";
+
+export const channels: Channel[] = [
+  { id: "mas", group: "mac", name: "Mac App Store", live: false },
+  { id: "brew", group: "mac", name: "Homebrew", command: "brew install --cask pockanoodles/tap/erwin", live: false },
+  { id: "dmg", group: "mac", name: "Disk image (Apple silicon and Intel)", href: RELEASES, live: false },
+  { id: "msstore", group: "windows", name: "Microsoft Store", live: false },
+  { id: "winget", group: "windows", name: "winget", command: "winget install KaitoSoeno.Erwin", live: false },
+  { id: "exe", group: "windows", name: "Installer (.exe)", href: RELEASES, live: false },
+  { id: "snap", group: "linux", name: "Snap Store", command: "sudo snap install erwin", live: false },
+  { id: "aur", group: "linux", name: "AUR", command: "yay -S erwin-bin", live: false },
+  { id: "appimage", group: "linux", name: "AppImage, .deb, .rpm", href: RELEASES, live: false },
+  { id: "docker", group: "server", name: "Docker Compose", href: "https://github.com/pockanoodles/erwin#self-host", live: false },
+  { id: "source", group: "server", name: "From source", command: "git clone https://github.com/pockanoodles/erwin && cd erwin && npm install && npm run dev:local", live: false },
+];
+
+export const RELEASES_URL = RELEASES;
+export const REPO_URL = "https://github.com/pockanoodles/erwin";
+export const PORTFOLIO_URL = "https://kaitosoeno.com/portfolio";
