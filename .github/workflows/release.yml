@@ -1,0 +1,666 @@
+# Release pipeline for Erwin. The runbook is packaging/README.md.
+#
+# Push a tag vX.Y.Z (it must match the version in desktop/package.json) and this
+# builds every package, drafts a GitHub Release with the files and
+# SHA256SUMS.txt, then runs the store jobs whose secrets exist.
+#
+# A manual run only builds and keeps the files as workflow artifacts. Tick
+# create_release to also draft the release and run the store jobs.
+#
+# Signing is optional. A job that finds no secrets builds unsigned packages and
+# still succeeds. Secrets reach only the step that uses them.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      create_release:
+        description: Draft the GitHub Release and run the store jobs
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  HUSKY: "0"
+  NEXT_TELEMETRY_DISABLED: "1"
+  NPM_CONFIG_AUDIT: "false"
+  NPM_CONFIG_FUND: "false"
+
+jobs:
+  # Reads the version, checks it against the tag, and records which optional
+  # channels have their secrets. Job conditions cannot read secrets, so every
+  # later gate reads these outputs.
+  plan:
+    name: Plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      apple_sign: ${{ steps.gates.outputs.apple_sign }}
+      win_sign: ${{ steps.gates.outputs.win_sign }}
+      mas: ${{ steps.gates.outputs.mas }}
+      mas_upload: ${{ steps.gates.outputs.mas_upload }}
+      msstore: ${{ steps.gates.outputs.msstore }}
+      msstore_submit: ${{ steps.gates.outputs.msstore_submit }}
+      snap: ${{ steps.gates.outputs.snap }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the version
+        id: version
+        env:
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="$(jq -r '.version' desktop/package.json)"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error file=desktop/package.json::'$version' is not a semver version."
+            exit 1
+          fi
+          tag="v${version}"
+          if [ "$REF_TYPE" = "tag" ] && [ "$REF_NAME" != "$tag" ]; then
+            echo "::error::Tag $REF_NAME does not match desktop/package.json ($version). Expected $tag."
+            exit 1
+          fi
+          prerelease=false
+          if [[ "$version" == *-* ]]; then prerelease=true; fi
+          {
+            echo "version=$version"
+            echo "tag=$tag"
+            echo "prerelease=$prerelease"
+            echo "major=${version%%.*}"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Check which secrets exist
+        id: gates
+        env:
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+          MAJOR: ${{ steps.version.outputs.major }}
+          HAS_APPLE_SIGN: ${{ secrets.CSC_LINK != '' && secrets.CSC_KEY_PASSWORD != '' && secrets.APPLE_ID != '' && secrets.APPLE_APP_SPECIFIC_PASSWORD != '' && secrets.APPLE_TEAM_ID != '' }}
+          HAS_WIN_SIGN: ${{ secrets.WIN_CSC_LINK != '' && secrets.WIN_CSC_KEY_PASSWORD != '' }}
+          HAS_MAS: ${{ secrets.MAS_CSC_LINK != '' && secrets.MAS_CSC_KEY_PASSWORD != '' && secrets.MAS_INSTALLER_CSC_LINK != '' && secrets.MAS_INSTALLER_CSC_KEY_PASSWORD != '' && secrets.MAS_PROVISIONING_PROFILE != '' && secrets.APPLE_TEAM_ID != '' }}
+          HAS_MAS_UPLOAD: ${{ secrets.APP_STORE_CONNECT_KEY_ID != '' && secrets.APP_STORE_CONNECT_ISSUER_ID != '' && secrets.APP_STORE_CONNECT_API_KEY != '' && secrets.APP_STORE_APP_ID != '' }}
+          HAS_APPX: ${{ secrets.MS_STORE_IDENTITY_NAME != '' && secrets.MS_STORE_PUBLISHER != '' }}
+          HAS_MSSTORE: ${{ secrets.MS_STORE_PRODUCT_ID != '' && secrets.MS_STORE_TENANT_ID != '' && secrets.MS_STORE_SELLER_ID != '' && secrets.MS_STORE_CLIENT_ID != '' && secrets.MS_STORE_CLIENT_SECRET != '' }}
+          HAS_SNAP: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS != '' }}
+        run: |
+          set -euo pipefail
+          all() { for v in "$@"; do [ "$v" = "true" ] || { echo false; return; }; done; echo true; }
+
+          stable="$(all "$([ "$PRERELEASE" = "false" ] && echo true || echo false)")"
+          # The Microsoft Store rejects a package version that starts with 0.
+          store_version="$(all "$stable" "$([ "$MAJOR" -ge 1 ] && echo true || echo false)")"
+
+          apple_sign="$HAS_APPLE_SIGN"
+          win_sign="$HAS_WIN_SIGN"
+          mas="$(all "$HAS_MAS" "$stable")"
+          mas_upload="$(all "$mas" "$HAS_MAS_UPLOAD")"
+          msstore="$(all "$HAS_APPX" "$store_version")"
+          msstore_submit="$(all "$msstore" "$HAS_MSSTORE")"
+          snap="$HAS_SNAP"
+
+          {
+            echo "apple_sign=$apple_sign"
+            echo "win_sign=$win_sign"
+            echo "mas=$mas"
+            echo "mas_upload=$mas_upload"
+            echo "msstore=$msstore"
+            echo "msstore_submit=$msstore_submit"
+            echo "snap=$snap"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Release plan"
+            echo
+            echo "| Step | Runs |"
+            echo "| --- | --- |"
+            echo "| macOS signing and notarization | $apple_sign |"
+            echo "| Windows signing | $win_sign |"
+            echo "| Mac App Store build | $mas |"
+            echo "| App Store Connect upload | $mas_upload |"
+            echo "| Microsoft Store package | $msstore |"
+            echo "| Microsoft Store draft submission | $msstore_submit |"
+            echo "| Snap Store upload (edge) | $snap |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  build-macos:
+    name: macOS (arm64 and x64)
+    needs: plan
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Stage the server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:desktop
+
+      # Both arches come from one run so latest-mac.yml lists all four files.
+      - name: Build DMG and zip (signed and notarized)
+        if: needs.plan.outputs.apple_sign == 'true'
+        working-directory: desktop
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: npm run dist -- --mac dmg zip --arm64 --x64 --publish never -c.mac.notarize=true
+
+      # electron-builder 26 skips signing when it finds no identity, and Apple
+      # silicon will not run an unsigned app. Identity "-" asks for an ad-hoc
+      # signature. Hardened runtime goes off with it, because electron-builder
+      # warns that it can stop an unsigned app from launching.
+      - name: Build DMG and zip (unsigned)
+        if: needs.plan.outputs.apple_sign != 'true'
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npm run dist -- --mac dmg zip --arm64 --x64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false
+
+      # The x64 app is packed on an arm64 runner. This fails the job if the
+      # staged Prisma engines do not cover both arches.
+      - name: Check the Prisma engine in each app
+        run: |
+          set -euo pipefail
+          fail=0
+          check() {
+            local app="$1" engine="$2" want="$3" found archs
+            found="$(find "$app" -name "$engine" -print -quit)"
+            if [ -z "$found" ]; then
+              echo "::error::$app has no $engine. Add the target to binaryTargets in prisma/schema.prisma."
+              fail=1
+              return
+            fi
+            archs="$(lipo -archs "$found")"
+            case " $archs " in
+              *" $want "*) echo "ok: $found ($archs)" ;;
+              *) echo "::error::$found is built for $archs, expected $want."; fail=1 ;;
+            esac
+          }
+          check desktop/release/mac/Erwin.app libquery_engine-darwin.dylib.node x86_64
+          check desktop/release/mac-arm64/Erwin.app libquery_engine-darwin-arm64.dylib.node arm64
+          exit "$fail"
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-macos
+          path: |
+            desktop/release/*.dmg
+            desktop/release/*.zip
+            desktop/release/*.blockmap
+            desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  build-windows:
+    name: Windows (x64)
+    needs: plan
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Stage the server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:desktop
+
+      # The certificate goes to a file because Windows limits the size of an
+      # environment variable.
+      - name: Write the signing certificate
+        if: needs.plan.outputs.win_sign == 'true'
+        env:
+          WIN_CERT_BASE64: ${{ secrets.WIN_CSC_LINK }}
+        run: printf '%s' "$WIN_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/erwin-win.pfx"
+
+      - name: Build the installer (signed)
+        if: needs.plan.outputs.win_sign == 'true'
+        working-directory: desktop
+        env:
+          WIN_CSC_LINK: ${{ runner.temp }}/erwin-win.pfx
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: npm run dist -- --win nsis --x64 --publish never
+
+      - name: Build the installer (unsigned)
+        if: needs.plan.outputs.win_sign != 'true'
+        working-directory: desktop
+        run: npm run dist -- --win nsis --x64 --publish never
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-windows
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.blockmap
+            desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    needs: plan
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+            targets: AppImage deb rpm tar.gz snap
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+            targets: AppImage deb rpm tar.gz
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      # fpm shells out to rpmbuild for the rpm target. The snap target builds
+      # from electron-builder's template and does not need snapcraft.
+      - name: Install packaging tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends rpm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Stage the server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:desktop
+
+      # Target names go on the command line because electron-builder ignores
+      # the --arch flags for targets that list their own arch in the config.
+      - name: Build
+        working-directory: desktop
+        env:
+          TARGETS: ${{ matrix.targets }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          # shellcheck disable=SC2086
+          npm run dist -- --linux $TARGETS --$ARCH --publish never
+
+      - name: Upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-linux-${{ matrix.arch }}
+          path: |
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+            desktop/release/*.rpm
+            desktop/release/*.tar.gz
+            desktop/release/*.snap
+            desktop/release/*.blockmap
+            desktop/release/latest*.yml
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Draft the GitHub Release
+    needs: [plan, build-macos, build-windows, build-linux]
+    if: github.event_name == 'push' || inputs.create_release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Download the builds
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: release-*
+          path: assets
+          merge-multiple: true
+
+      # Store-only packages (.pkg, .appx) never reach this job. They are not
+      # installable outside their stores.
+      - name: Check the file set
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+        working-directory: assets
+        run: |
+          set -euo pipefail
+          missing=0
+          need() {
+            if [ ! -f "$1" ]; then
+              echo "::error::Missing $1"
+              missing=1
+            fi
+          }
+          count() {
+            local n
+            n="$(find . -maxdepth 1 -name "$1" | wc -l)"
+            if [ "$n" -lt "$2" ]; then
+              echo "::error::Expected at least $2 files matching $1, found $n"
+              missing=1
+            fi
+          }
+          # The package manifests depend on these exact names.
+          need "Erwin-${VERSION}-mac-arm64.dmg"
+          need "Erwin-${VERSION}-mac-x64.dmg"
+          need "Erwin-${VERSION}-win-x64.exe"
+          need "Erwin-${VERSION}-linux-x64.tar.gz"
+          need "Erwin-${VERSION}-linux-arm64.tar.gz"
+          count '*.zip' 2
+          count '*.AppImage' 2
+          count '*.deb' 2
+          count '*.rpm' 2
+          count '*.snap' 1
+          count 'latest*.yml' 4
+          ls -l
+          exit "$missing"
+
+      - name: Write SHA256SUMS.txt
+        working-directory: assets
+        run: |
+          set -euo pipefail
+          find . -maxdepth 1 -type f ! -name SHA256SUMS.txt -printf '%f\0' \
+            | LC_ALL=C sort -z \
+            | xargs -0 sha256sum > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create the draft release
+        working-directory: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.plan.outputs.tag }}
+          VERSION: ${{ needs.plan.outputs.version }}
+          PRERELEASE: ${{ needs.plan.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          mapfile -t files < <(find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+
+          # A re-run replaces the files of its own draft. A published release
+          # is never touched.
+          if state="$(gh release view "$TAG" --json isDraft --jq '.isDraft' 2>/dev/null)"; then
+            if [ "$state" != "true" ]; then
+              echo "::error::Release $TAG is already published. Not changing it."
+              exit 1
+            fi
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            flags=(--draft --title "Erwin ${VERSION}" --target "$GITHUB_SHA" --generate-notes
+                   --notes "Check a download against SHA256SUMS.txt before you run it.")
+            if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
+            gh release create "$TAG" "${files[@]}" "${flags[@]}"
+          fi
+
+  # The store jobs start after the draft exists, so nothing reaches a store
+  # unless every direct build passed. They rebuild with their own certificates.
+
+  snap:
+    name: Snap Store (edge)
+    needs: [plan, build-linux, release]
+    if: needs.plan.outputs.snap == 'true' && needs.release.result == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Download the Linux x64 build
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-linux-x64
+          path: linux
+
+      - name: Upload to the edge channel
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+        run: |
+          set -euo pipefail
+          sudo snap install snapcraft --classic
+          snap_file="$(find linux -name '*.snap' -print -quit)"
+          test -n "$snap_file"
+          snapcraft upload --release=edge "$snap_file"
+
+  mas:
+    name: Mac App Store
+    needs: [plan, release]
+    if: needs.plan.outputs.mas == 'true' && needs.release.result == 'success'
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Stage the server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:desktop
+
+      - name: Add the provisioning profile and team id
+        env:
+          MAS_PROVISIONING_PROFILE: ${{ secrets.MAS_PROVISIONING_PROFILE }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$MAS_PROVISIONING_PROFILE" | base64 --decode > desktop/build/embedded.provisionprofile
+          sed -i.bak "s/TEAMID/${APPLE_TEAM_ID}/g" desktop/build/entitlements.mas.plist desktop/build/entitlements.mas.inherit.plist
+          rm -f desktop/build/*.bak
+
+      # One universal .pkg covers Apple silicon and Intel. The build number
+      # must rise with every upload of the same version.
+      - name: Build the signed .pkg
+        working-directory: desktop
+        env:
+          CSC_LINK: ${{ secrets.MAS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAS_CSC_KEY_PASSWORD }}
+          CSC_INSTALLER_LINK: ${{ secrets.MAS_INSTALLER_CSC_LINK }}
+          CSC_INSTALLER_KEY_PASSWORD: ${{ secrets.MAS_INSTALLER_CSC_KEY_PASSWORD }}
+        run: npm run dist -- --mac mas --universal --publish never -c.mac.bundleVersion="1.0.${GITHUB_RUN_NUMBER}"
+
+      - name: Check the Prisma engines in the universal app
+        run: |
+          set -euo pipefail
+          fail=0
+          app="$(find desktop/release -maxdepth 2 -type d -name Erwin.app -print -quit)"
+          test -n "$app"
+          check() {
+            local engine="$1" want="$2" found archs
+            found="$(find "$app" -name "$engine" -print -quit)"
+            if [ -z "$found" ]; then
+              echo "::error::$app has no $engine. Add the target to binaryTargets in prisma/schema.prisma."
+              fail=1
+              return
+            fi
+            archs="$(lipo -archs "$found")"
+            case " $archs " in
+              *" $want "*) echo "ok: $found ($archs)" ;;
+              *) echo "::error::$found is built for $archs, expected $want."; fail=1 ;;
+            esac
+          }
+          check libquery_engine-darwin.dylib.node x86_64
+          check libquery_engine-darwin-arm64.dylib.node arm64
+          exit "$fail"
+
+      # Kept even when the upload job is off, so the package can go up by hand
+      # with the Transporter app.
+      - name: Keep the package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-mas
+          path: desktop/release/**/*.pkg
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload to App Store Connect
+        if: needs.plan.outputs.mas_upload == 'true'
+        env:
+          VERSION: ${{ needs.plan.outputs.version }}
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          API_KEY: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+          APP_ID: ${{ secrets.APP_STORE_APP_ID }}
+        run: |
+          set -euo pipefail
+          key_dir="$RUNNER_TEMP/appstoreconnect"
+          mkdir -p "$key_dir"
+          printf '%s\n' "$API_KEY" > "$key_dir/AuthKey_${KEY_ID}.p8"
+          chmod 600 "$key_dir/AuthKey_${KEY_ID}.p8"
+          export API_PRIVATE_KEYS_DIR="$key_dir"
+          pkg="$(find desktop/release -name '*.pkg' -print -quit)"
+          test -n "$pkg"
+          xcrun altool --upload-package "$pkg" --type macos \
+            --apple-id "$APP_ID" \
+            --bundle-id com.kaitosoeno.erwin \
+            --bundle-short-version-string "$VERSION" \
+            --bundle-version "1.0.${GITHUB_RUN_NUMBER}" \
+            --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
+          rm -rf "$key_dir"
+
+  msstore:
+    name: Microsoft Store
+    needs: [plan, release]
+    if: needs.plan.outputs.msstore == 'true' && needs.release.result == 'success'
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install shell dependencies
+        working-directory: desktop
+        run: npm ci
+
+      - name: Stage the server
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+        run: npm run build:desktop
+
+      # The Store signs the package itself, so it is built without a certificate.
+      - name: Build the Store package
+        working-directory: desktop
+        env:
+          MS_STORE_IDENTITY_NAME: ${{ secrets.MS_STORE_IDENTITY_NAME }}
+          MS_STORE_PUBLISHER: ${{ secrets.MS_STORE_PUBLISHER }}
+        run: >-
+          npm run dist -- --win appx --x64 --publish never
+          -c.appx.identityName="$MS_STORE_IDENTITY_NAME"
+          -c.appx.publisher="$MS_STORE_PUBLISHER"
+
+      - name: Keep the package
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: store-appx
+          path: desktop/release/*.appx
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Set up the Microsoft Store CLI
+        if: needs.plan.outputs.msstore_submit == 'true'
+        uses: microsoft/microsoft-store-apppublisher@cc9910a8d59f2eb55cbb83df0a3800cf3b5300e0 # v1.4
+
+      # --noCommit leaves the submission as a draft in Partner Center. Press
+      # Submit there. The CLI documents .msix and .msixupload, so the .appx is
+      # copied under a .msix name.
+      - name: Upload the package as a draft submission
+        if: needs.plan.outputs.msstore_submit == 'true'
+        shell: pwsh
+        env:
+          MS_STORE_TENANT_ID: ${{ secrets.MS_STORE_TENANT_ID }}
+          MS_STORE_SELLER_ID: ${{ secrets.MS_STORE_SELLER_ID }}
+          MS_STORE_CLIENT_ID: ${{ secrets.MS_STORE_CLIENT_ID }}
+          MS_STORE_CLIENT_SECRET: ${{ secrets.MS_STORE_CLIENT_SECRET }}
+          MS_STORE_PRODUCT_ID: ${{ secrets.MS_STORE_PRODUCT_ID }}
+        run: |
+          msstore reconfigure --tenantId $env:MS_STORE_TENANT_ID --sellerId $env:MS_STORE_SELLER_ID --clientId $env:MS_STORE_CLIENT_ID --clientSecret $env:MS_STORE_CLIENT_SECRET
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $appx = Get-ChildItem -Path desktop/release -Filter *.appx | Select-Object -First 1
+          $msix = Join-Path $env:RUNNER_TEMP 'Erwin.msix'
+          Copy-Item -Path $appx.FullName -Destination $msix
+          msstore publish $msix -id $env:MS_STORE_PRODUCT_ID --noCommit
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

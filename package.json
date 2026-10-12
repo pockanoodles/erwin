@@ -27,7 +27,6 @@
     "redis:up": "docker compose up redis -d",
     "build:worker": "tsc -p tsconfig.worker.json",
     "start:worker": "node dist/saas/jobs/worker.js",
-    "docker:publish": "docker build -t erwin:prod -f docker/production/Dockerfile . && docker tag erwin:prod pockanoodles/erwin:latest && docker push pockanoodles/erwin:latest",
     "prepare": "husky"
   },
   "dependencies": {

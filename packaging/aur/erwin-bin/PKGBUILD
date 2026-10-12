@@ -1,0 +1,62 @@
+# Maintainer: Kaito Soeno <contact@kaitosoeno.com>
+#
+# scripts/release/update-manifests.mjs rewrites pkgver, pkgrel and the checksums,
+# and derives .SRCINFO from this file. Keep the header assignments simple
+# (quoted strings and arrays) so that script can read them. On Arch, finish with
+# `makepkg --printsrcinfo > .SRCINFO` before pushing to the AUR.
+pkgname=erwin-bin
+_pkgname=erwin
+pkgver={{VERSION}}
+pkgrel=1
+pkgdesc='A field-watch-plain secretary for your calendar, courses and goals'
+arch=('x86_64' 'aarch64')
+url='https://kaitosoeno.com/erwin'
+license=('MIT')
+depends=('alsa-lib' 'gtk3' 'libnotify' 'libxss' 'libxtst' 'nss' 'xdg-utils')
+provides=("${_pkgname}")
+conflicts=("${_pkgname}")
+options=('!strip' '!debug' '!emptydirs')
+source=("LICENSE-${pkgver}::https://raw.githubusercontent.com/pockanoodles/erwin/v${pkgver}/LICENSE"
+        "${_pkgname}-${pkgver}.png::https://raw.githubusercontent.com/pockanoodles/erwin/v${pkgver}/desktop/build/icon.png")
+source_x86_64=("${_pkgname}-${pkgver}-x64.tar.gz::https://github.com/pockanoodles/erwin/releases/download/v${pkgver}/Erwin-${pkgver}-linux-x64.tar.gz")
+source_aarch64=("${_pkgname}-${pkgver}-arm64.tar.gz::https://github.com/pockanoodles/erwin/releases/download/v${pkgver}/Erwin-${pkgver}-linux-arm64.tar.gz")
+sha256sums=('{{SHA256_LICENSE}}'
+            '{{SHA256_ICON}}')
+sha256sums_x86_64=('{{SHA256_LINUX_X64}}')
+sha256sums_aarch64=('{{SHA256_LINUX_ARM64}}')
+
+package() {
+  # The release archive holds one top-level directory named after the file.
+  local _target
+  case "${CARCH}" in
+    x86_64) _target=x64 ;;
+    aarch64) _target=arm64 ;;
+  esac
+  local _appdir="${srcdir}/Erwin-${pkgver}-linux-${_target}"
+
+  install -d "${pkgdir}/opt/${_pkgname}"
+  cp -a "${_appdir}/." "${pkgdir}/opt/${_pkgname}/"
+  chmod 4755 "${pkgdir}/opt/${_pkgname}/chrome-sandbox"
+
+  install -d "${pkgdir}/usr/bin"
+  ln -s "/opt/${_pkgname}/${_pkgname}" "${pkgdir}/usr/bin/${_pkgname}"
+
+  install -Dm644 "${srcdir}/${_pkgname}-${pkgver}.png" "${pkgdir}/usr/share/pixmaps/${_pkgname}.png"
+
+  install -d "${pkgdir}/usr/share/applications"
+  cat > "${pkgdir}/usr/share/applications/${_pkgname}.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Erwin
+GenericName=Planner
+Comment=Reads your calendar, your Canvas courses and your goals, then tells you the one thing to do next
+Exec=/usr/bin/${_pkgname}
+Icon=${_pkgname}
+Terminal=false
+Categories=Office;Calendar;ProjectManagement;
+Keywords=tasks;calendar;canvas;planner;focus;todo;
+StartupWMClass=Erwin
+EOF
+
+  install -Dm644 "${srcdir}/LICENSE-${pkgver}" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}

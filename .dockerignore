@@ -11,3 +11,11 @@ yarn-error.log*
 coverage
 .vscode
 *.log 
+# Not part of the server image: the desktop shell, the landing page, and local
+# build and runtime state.
+desktop
+site
+.local
+.next-dev
+.next-desktop
+.next-local
