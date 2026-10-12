@@ -2,6 +2,8 @@ import {
   formatEventTime,
   getMonthEventDisplay,
   isDayGridView,
+  readableLabelOn,
+  resolveEventChipColors,
 } from "@/lib/calendar-event-display";
 
 // Dates are built with the local-time constructor (year, monthIndex, day, hour,
@@ -177,5 +179,38 @@ describe("getMonthEventDisplay", () => {
     });
     expect(display.showTimeChip).toBe(true);
     expect(display.timeText).toBe("7:30 PM");
+  });
+});
+
+describe("readableLabelOn", () => {
+  it("puts the light label on dark fills", () => {
+    // The saddle-leather brown the example "Classes" calendar uses.
+    expect(readableLabelOn("#7E513AFF")).toBe("#fdfaf3");
+    expect(readableLabelOn("#1b1a0f")).toBe("#fdfaf3");
+  });
+
+  it("puts the dark label on light fills", () => {
+    expect(readableLabelOn("#FFCC00")).toBe("#120c07");
+    expect(readableLabelOn("#f8f6ee")).toBe("#120c07");
+  });
+
+  it("leaves non-hex colours to the stylesheet", () => {
+    expect(readableLabelOn("rebeccapurple")).toBeUndefined();
+  });
+});
+
+describe("resolveEventChipColors", () => {
+  it("labels solid timed blocks against their own fill", () => {
+    expect(resolveEventChipColors("#7E513AFF", false)).toEqual({
+      backgroundColor: "#7E513AFF",
+      borderColor: "#7E513AFF",
+      textColor: "#fdfaf3",
+    });
+  });
+
+  it("tints all-day chips and leaves their label to the page ink", () => {
+    const colors = resolveEventChipColors("#7E513AFF", true);
+    expect(colors.backgroundColor).toBe("#7E513A45");
+    expect(colors.textColor).toBeUndefined();
   });
 });

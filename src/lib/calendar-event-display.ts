@@ -108,11 +108,49 @@ export function tintCalendarColor(color: string): string {
 export function resolveEventChipColors(
   color: string,
   allDay: boolean
-): { backgroundColor: string; borderColor: string } {
+): { backgroundColor: string; borderColor: string; textColor?: string } {
   return {
     backgroundColor: allDay ? tintCalendarColor(color) : color,
     borderColor: color,
+    // A solid block needs a label chosen against its own fill. Tinted
+    // all-day chips keep the page's ink from the stylesheet instead.
+    ...(allDay ? {} : { textColor: readableLabelOn(color) }),
   };
+}
+
+/**
+ * The two labels a solid event block can carry: the brand's on-accent pair
+ * (brand/tokens.css), fixed rather than themed because a calendar's colour is
+ * the same in both themes. The feed colours people pick run from pale yellow
+ * to dark brown, so neither label works for all of them.
+ */
+const LABEL_ON_DARK_FILL = "#fdfaf3";
+const LABEL_ON_LIGHT_FILL = "#120c07";
+
+/** Whichever label has the higher WCAG contrast against `color`. */
+export function readableLabelOn(color: string): string | undefined {
+  if (!HEX_COLOR.test(color)) return undefined;
+  const fill = luminance(color);
+  const onDark = (luminance(LABEL_ON_DARK_FILL) + 0.05) / (fill + 0.05);
+  const onLight = (fill + 0.05) / (luminance(LABEL_ON_LIGHT_FILL) + 0.05);
+  return onDark >= onLight ? LABEL_ON_DARK_FILL : LABEL_ON_LIGHT_FILL;
+}
+
+function luminance(hex: string): number {
+  const digits = hex.slice(1);
+  const full =
+    digits.length <= 4
+      ? digits
+          .slice(0, 3)
+          .split("")
+          .map((d) => d + d)
+          .join("")
+      : digits.slice(0, 6);
+  const [r, g, b] = [0, 2, 4].map((i) => {
+    const c = parseInt(full.slice(i, i + 2), 16) / 255;
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
 export interface MonthEventDisplay {
