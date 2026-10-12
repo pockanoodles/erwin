@@ -5,12 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Erwin's own releases start at 1.0.0. The entries from [1.3.0] down are FluidCalendar's, from before the fork.
+
 ## [Unreleased]
 
 ### Added
 
-- **Linear surface:** light and dark tokens sampled from Linear's brand page, `linear.app` CSS, and the March 2026 theme editor (`#5e6ad2` accent, Mercury White / Nordic Gray, dimmer rail). Inter, 6px controls, flat buttons. Focus is a three-column desk (context, work, grade book) with the next two tasks as a tape. Done / Skip stay; Later defers until end of day; subtasks on the focused task can be checked off. `D` / `S` / `L` when focus is open.
-- **Linear surface, density pass:** Tasks page's Lord filter moved from a 224px side column to a spreadsheet-tab strip along the bottom (`LordSidebar`); the Sheet view's grid now continues past the last row/column instead of dead-ending into blank background (`TaskSheet`); Bosses list view drops its `max-w-5xl` cap; Tasks List rows put title and meta on one line instead of stacking, so every row is a uniform height regardless of how much meta it carries. Removed orphaned `ProjectSidebar`, `FocusTaskCard`, `UpNext`, and unused `--chart-*` tokens left over from earlier iterations.
+- **Field kit:** a palette sampled from Hamilton's Khaki Field watches (`brand/tokens.css`), with one rust accent that marks what is happening now. Michroma sets titles and readouts, Chivo sets reading text, and Chivo Mono sets times and labels. Buttons are plates with two cut corners, and a selection gets ink corner brackets. `brand/BRAND.md` is the spec, and `scripts/brand-assets.mjs` renders every icon from `brand/`.
+- **Desktop app (`desktop/`):** Electron around the same Next server, on PGlite (Postgres compiled to WebAssembly) served over the Postgres wire protocol, so the Prisma client runs unchanged. A download needs no account and no setup. The app saves a copy of the database before any migration that changes it and runs background sync on a timer in the server process (`ERWIN_SCHEDULER=inprocess`).
+- **`npm run dev:local`:** the app on PGlite with nothing else installed, with its database in `.local/`. `--seed demo` fills it with one example week (`scripts/demo/seed.ts`), and `--reset` starts over.
+- **Landing page (`site/`):** kaitosoeno.com/erwin in English and Japanese, a static export served by a Cloudflare Worker.
+- **Release pipeline:** a version tag builds every desktop package and drafts a GitHub Release (`release.yml`), and the server image goes to GHCR (`docker.yml`). `packaging/` holds the store and package-manager manifests, and its README is the release runbook.
+- **Focus desk:** Focus is a three-column desk (context, work, grade book) with the next two tasks as a tape. Done and Skip stay, Later defers until end of day, and subtasks on the focused task can be checked off. `D` / `S` / `L` work when focus is open.
+- **Density pass:** Tasks page's Lord filter moved from a 224px side column to a spreadsheet-tab strip along the bottom (`LordSidebar`); the Sheet view's grid now continues past the last row/column instead of dead-ending into blank background (`TaskSheet`); Bosses list view drops its `max-w-5xl` cap; Tasks List rows put title and meta on one line instead of stacking, so every row is a uniform height regardless of how much meta it carries. Removed orphaned `ProjectSidebar`, `FocusTaskCard`, `UpNext`, and unused `--chart-*` tokens left over from earlier iterations.
 - **Task list modes (tududi adaptation phase 4):** All / Today / Upcoming / Someday query the `/tasks` inventory by due date (`?mode=`). Today splits Overdue / Today; Upcoming groups the next 7 days. Not Focus — no ranking, no suggested lane. Cmdk entries for these views still need confirmation.
 - **Task subtasks (tududi adaptation phase 3):** one-level `parentTaskId` + `order`. Nested checklist under TaskRow with progress (`2 of 5`) and Enter-to-add. Children stay out of Focus, auto-schedule, and the board. Canvas sync does not create subtasks; local children are `skipSync`. Completing a child does not auto-complete the parent.
 - **Task defer (tududi adaptation phase 2):** `postponedUntil` is the hide-until stamp (Focus queue, `/tasks` list, auto-schedule). TaskRow Defer writes it with Later today / Tomorrow / Next week presets; `startDate` stays the scheduler/Outlook earliest-work field. Deferred tasks are hidden from Tasks unless **Show deferred** is on or you search. Modal has a Defer until field.
@@ -23,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **One Prisma client per process:** the client is cached on `globalThis` in production too, because a production Next server bundles `src/lib/prisma.ts` into several layers and each one built its own connection pool.
+- **Calendar event labels:** timed events pick a light or dark label by WCAG contrast against their calendar color (`readableLabelOn`), so labels stay readable on dark feeds.
+- **The Ladder:** goals can be edited again, unless they are projected in from a vault (`managedExternally` on the goals overview).
+- **Focus and Today copy:** counts take the right plural ("1 task"), the doubled "in in 3h" is gone, and a fresh install's Today screen offers Connect Canvas, Add a calendar and Add a task.
 - **Turbopack dev white screen:** `next dev --turbopack` was bundling `@/lib/logger/server` (and Prisma's `defineExtension`) into the browser. The existing swap only ran under Webpack. A browser-only Turbopack alias points that import at `server.browser.ts`.
 - **Upstream port round 1 (2026-07)** — robustness fixes from `dotnetfactory/fluid-calendar` upstream, hand-applied to the fork:
   - Google OAuth token expiry uses the absolute `expiry_date` rather than a recomputed offset (upstream #196; `token-manager.ts`, `google-calendar.ts`)

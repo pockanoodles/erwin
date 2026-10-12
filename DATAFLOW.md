@@ -1,15 +1,17 @@
 # Where Erwin's data goes
 
-Erwin is a personal calendar and task assistant. It runs on one laptop, stores
-everything in a Postgres database on that same laptop, and talks to a handful of
-outside services to fetch your schedule and coursework.
+Erwin is a personal calendar and task assistant. It runs either as a desktop
+app on your own machine or as a server you host, and in both cases everything
+is stored in a Postgres database you control: PGlite inside the desktop app's
+data folder, or your own Postgres server. It talks to a handful of outside
+services to fetch your schedule and coursework.
 
 This document is the plain-language answer to three questions: **what leaves
 this machine, where does it go, and why.** It is written to be read by someone
 who does not work on the code. It is kept by hand, so if you change how Erwin
 talks to the outside world, change this file in the same commit.
 
-Last verified against the code on **2026-09-09**.
+Last verified against the code on **2026-10-12**.
 
 ---
 
@@ -22,6 +24,7 @@ Last verified against the code on **2026-09-09**.
 | **Microsoft** (Outlook + To Do) | Event and task titles, notes, times | **Yes** | Two-way calendar and task sync |
 | **A CalDAV server** (e.g. Fastmail, iCloud) | Event titles, descriptions, locations, times | **Yes** | Two-way calendar sync |
 | **Resend** (email delivery) | Your email address and a reset link | Sends one email | Password reset |
+| **GitHub Releases** (desktop downloads only) | The app's version and platform, in a request for the latest release | No | Update check, see [The desktop app](#the-desktop-app) |
 
 There is **no analytics, no crash reporting, no telemetry, and no AI service**
 of any kind. That is not a policy statement — it is a fact about the
@@ -112,9 +115,37 @@ code sends them today.
   Google or Microsoft, in which case that task's content goes there.
 - Everything Erwin derives about you: the focus queue, daily briefings, task
   rankings, skip history, XP and goal progress. All computed locally.
-- Your goals. These live in a separate plain-text vault on this machine and are
-  pushed *into* Erwin by a local script. They never go outward.
+- Your goals. They stay in Erwin's database. An install can also project goals
+  in from a local vault through Erwin's goals API, and that flow only ever comes
+  inward.
 - Logs. Erwin writes its own logs to a table in the local database.
+
+---
+
+## The desktop app
+
+The desktop app runs the same server as a self-hosted install, inside the app,
+and adds nothing that leaves the machine except the update check below.
+
+- **The database never listens on the network.** PGlite (Postgres compiled to
+  WebAssembly) lives in the app's data folder. The app's server reaches it over
+  a Unix socket in that folder, readable only by your user, on macOS and Linux,
+  and over the loopback interface on Windows.
+- **The server listens on the loopback interface only**, so other machines on
+  your network cannot reach it. The one local user is signed in with a token
+  that is generated fresh on every launch and handed to the server privately,
+  never through the command line or the environment.
+- **Before a schema update, the app saves a copy of the database** in the
+  `backups` folder beside it and keeps the last five.
+- **The update check.** Builds from GitHub Releases (the macOS disk image, the
+  Windows installer and the AppImage, which are also what Homebrew and winget
+  install) ask GitHub Releases for the newest version at launch. GitHub sees the
+  request, which carries the app's version and platform, and your IP address.
+  Builds from the Mac App Store, the Microsoft Store, Snap and the Linux
+  packages (.deb, .rpm, the AUR) make no such request, because their store or
+  package manager updates them.
+- **Nothing reports back.** There are no analytics, no crash reporting and no
+  telemetry. Fonts ship inside the app.
 
 ---
 
@@ -136,8 +167,15 @@ Be clear about what that does and does not buy:
   realistic way these values would escape this laptop.
 - **It does not protect against anything running as you on this machine**,
   which can read the key out of the environment just as easily as the database.
-  Closing that gap means moving the key into the macOS Keychain, which is a
-  separate change and not done yet.
+  On a server install, closing that gap means moving the key into the OS secret
+  store, which is not done yet.
+
+**In the desktop app, the keys are made on first launch and sealed by the
+operating system.** The credential key and the session signing key are
+generated randomly, then stored with Electron's safeStorage, which uses the
+macOS Keychain, Windows DPAPI or the Linux secret service. On a Linux desktop
+with no secret service, they are written to a file in the app's data folder
+that only your user can read.
 
 Two practical consequences of the key living outside the database: **lose the
 key and every stored credential becomes unreadable** — you would have to
