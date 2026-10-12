@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Erwin">
+  <!-- The plate: two corners cut, like the crate-stencil controls. The track
+       and the index are cut out of it, so the mark works in one colour. -->
+  <path fill="currentColor" fill-rule="evenodd" d="M16 4H60V48L48 60H4V16ZM11 14h1v4h-1zM15.5 14h1v4h-1zM20 14h1v4h-1zM24.5 14h1v4h-1zM38.5 14h1v4h-1zM43 14h1v4h-1zM47.5 14h1v4h-1zM52 14h1v4h-1zM11 19h42v1H11zM25 11h14l-7 13z"/>
+</svg>

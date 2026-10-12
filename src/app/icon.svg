@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- 16px-safe: the track is dropped and the index made heavier. Follows the OS theme. -->
+  <style>
+    .plate { fill: #1b1a0f; }
+    @media (prefers-color-scheme: dark) { .plate { fill: #f0e7d3; } }
+  </style>
+  <path class="plate" d="M7 1H31V25L25 31H1V7Z"/>
+  <path fill="#cf6136" d="M9.5 6h13L16 18z"/>
+</svg>

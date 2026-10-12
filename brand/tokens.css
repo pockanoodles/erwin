@@ -1,0 +1,192 @@
+/*
+ * Erwin brand tokens. One source of truth for the app (src/), the desktop
+ * shell (desktop/) and the landing page (site/, kaitosoeno.com/erwin). Change
+ * a value here and rebuild; nothing else holds a hex.
+ *
+ * The look is a field watch: the Hamilton Khaki Field Mechanical, a 1960s
+ * army-issue dial still made today. Every colour was sampled from its product
+ * shots, then converged in oklch (ui-master decision protocol §1):
+ *
+ *   neutrals  the olive NATO strap (#544e33, H 97–99), chroma pressed to
+ *             0.011–0.017 so the greys read as canvas, not paint
+ *   ink       dark: the Old Radium lume on the black dial (#caaa80–#dac19b,
+ *             H 74–86) lifted to L 0.93 and pressed to C 0.028. Light: the
+ *             dark strap weave (#332e13) deepened to L 0.215
+ *   accent    the saddle-leather strap (#7e513a, H 47–49) pulled six degrees
+ *             toward iron oxide and raised to C 0.15. Rust. It means "now":
+ *             the next task, the now-line, the primary action, focus
+ *   stage     light: the khaki canvas strap (#d0be8d, H 90) pressed to C 0.024
+ *   olive     the strap itself (#544e33), kept for bands on the landing page
+ *   lume      the Old Radium median (H 80), for the dial motif and warnings
+ *
+ * Status colours (ok / warn / danger) are semantic, not accents. ok comes from
+ * the green dial (#40422d, H 112) raised to legible chroma; warn is the lume
+ * family raised to C 0.12; danger is signal red. Every text pair below clears
+ * WCAG 4.5:1 against bg and surface; the numbers are in BRAND.md.
+ *
+ * Spacing is ui-master Design 03 (the ladder Mahoraga shares), so the three
+ * product pages on kaitosoeno.com sit on one rhythm. Shape is the opposite of
+ * Mahoraga's soft panels: machined plate, 2px corners, nothing pill-shaped
+ * except lume pips.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Khaki by day. Neutrals, light: L 0.993 / 0.972 / 0.945 / 0.942 / 0.925 /
+     0.905 / 0.87 / 0.76 / 0.505 / 0.42 / 0.215, all H 93–100. */
+  --er-stage: #f3eddb; /* oklch(0.945 0.024 90)  khaki canvas */
+  --er-bg: #f8f6ee; /* oklch(0.972 0.011 95) */
+  --er-surface: #f0ecdf; /* oklch(0.942 0.017 93)  rails, grouped panels */
+  --er-raised: #fefdf9; /* oklch(0.993 0.005 95)  inputs, popovers */
+  --er-hover: #ebe6d8; /* oklch(0.925 0.020 93) */
+  --er-selected: #e5e0cb; /* oklch(0.905 0.028 95) */
+  --er-line: #d8d4c6; /* oklch(0.870 0.020 95) */
+  --er-line-strong: #b5b1a0; /* oklch(0.760 0.025 97) */
+  --er-faint: #686557; /* oklch(0.505 0.022 97)  5.4:1 on bg */
+  --er-muted: #514d3e; /* oklch(0.420 0.025 98)  7.8:1 */
+  --er-ink: #1b1a0f; /* oklch(0.215 0.020 100) 16.2:1 */
+
+  /* Rust. One accent, and it means "now". */
+  --er-accent: #b3491b; /* oklch(0.540 0.150 41) */
+  --er-accent-text: #ad4212; /* oklch(0.520 0.150 41)  5.4:1 on bg */
+  --er-accent-wash: #fae5d7; /* oklch(0.935 0.030 55)  the selected "now" row */
+  --er-accent-band: #f2c2a8; /* oklch(0.850 0.065 50)  bars, now-line halo */
+  --er-on-accent: #fdfaf3; /* 5.2:1 on accent */
+
+  /* Semantic. Status only, never decoration. */
+  --er-ok: #4d6824; /* oklch(0.480 0.100 128) 5.8:1 */
+  --er-warn: #8f5d04; /* oklch(0.520 0.110 72)  5.2:1 */
+  --er-danger: #b9292d; /* oklch(0.515 0.180 25)  5.7:1 */
+
+  /* Field colours, for the landing page and the dial motif. */
+  --er-olive: #4d482d; /* oklch(0.400 0.042 99)  the strap */
+  --er-lume: #d4ba8e; /* oklch(0.800 0.065 80)  Old Radium */
+
+  --er-frost: rgb(248 246 238 / 0.84);
+
+  /* Grain: the bead-blasted, canvas-rough surface. Dark specks by day. */
+  --er-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --er-grain-opacity: 0.07;
+}
+
+/* Field at night. Neutrals, dark: L 0.16 / 0.185 / 0.215 / 0.25 / 0.275 /
+   0.29 / 0.31 / 0.41 / 0.64 / 0.78 / 0.93. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --er-stage: #0e0d08;
+    --er-bg: #14130d;
+    --er-surface: #1b1a13;
+    --er-raised: #23221a;
+    --er-hover: #292820;
+    --er-selected: #2e2c1f;
+    --er-line: #323127;
+    --er-line-strong: #4d4b40;
+    --er-faint: #928c7b;
+    --er-muted: #c0b6a2;
+    --er-ink: #f0e7d3;
+    --er-accent: #cf6136;
+    --er-accent-text: #e57f4f;
+    --er-accent-wash: #331c12;
+    --er-accent-band: #67311a;
+    --er-on-accent: #120c07;
+    --er-ok: #9dbf71;
+    --er-warn: #ebbc63;
+    --er-danger: #ef6661;
+    --er-olive: #3b361c;
+    --er-lume: #d4ba8e;
+    --er-frost: rgb(20 19 13 / 0.82);
+    --er-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+    --er-grain-opacity: 0.05;
+  }
+}
+
+:root[data-theme="dark"],
+:root.dark {
+  color-scheme: dark;
+  --er-stage: #0e0d08; /* oklch(0.160 0.012 100) */
+  --er-bg: #14130d; /* oklch(0.185 0.012 100) */
+  --er-surface: #1b1a13; /* oklch(0.215 0.013 100) */
+  --er-raised: #23221a; /* oklch(0.250 0.014 100) */
+  --er-hover: #292820; /* oklch(0.275 0.015 100) */
+  --er-selected: #2e2c1f; /* oklch(0.290 0.022 98) */
+  --er-line: #323127; /* oklch(0.310 0.016 100) */
+  --er-line-strong: #4d4b40; /* oklch(0.410 0.018 98) */
+  --er-faint: #928c7b; /* oklch(0.640 0.026 90)  5.5:1 on bg */
+  --er-muted: #c0b6a2; /* oklch(0.780 0.030 85)  9.3:1 */
+  --er-ink: #f0e7d3; /* oklch(0.930 0.028 85)  15.2:1, lume-cream */
+  --er-accent: #cf6136; /* oklch(0.620 0.150 41) */
+  --er-accent-text: #e57f4f; /* oklch(0.700 0.140 45)  6.6:1 on bg */
+  --er-accent-wash: #331c12; /* oklch(0.255 0.040 45) */
+  --er-accent-band: #67311a; /* oklch(0.380 0.085 43) */
+  --er-on-accent: #120c07; /* 5.0:1 on accent */
+  --er-ok: #9dbf71; /* oklch(0.760 0.110 128) */
+  --er-warn: #ebbc63; /* oklch(0.820 0.120 82) */
+  --er-danger: #ef6661; /* oklch(0.680 0.170 25) */
+  --er-olive: #3b361c; /* oklch(0.330 0.042 99) */
+  --er-lume: #d4ba8e; /* oklch(0.800 0.065 80) */
+  --er-frost: rgb(20 19 13 / 0.82);
+  --er-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  --er-grain-opacity: 0.05;
+}
+
+:root {
+  /* Type: F4, equipment plate (picked 2026-10-12). Three voices with strict
+     jobs. Where next/font loads the faces (the app, the site) it sets the
+     --font-* variables to its self-hosted copies; anywhere else (the desktop
+     boot screen) the family names resolve to bundled @font-face files. */
+  --er-font-display: var(--font-display, "Michroma"), ui-sans-serif, system-ui,
+    sans-serif;
+  --er-font-sans: var(--font-sans, "Chivo"), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --er-font-mono: var(--font-mono, "Chivo Mono"), ui-monospace, "SF Mono", Menlo,
+    Consolas, monospace;
+  --er-font-ja: var(--font-ja, "Murecho"), "Hiragino Sans", "Yu Gothic UI",
+    "Noto Sans JP", sans-serif;
+
+  /* The ladder (Design 03, shared with Mahoraga). Nothing off it. */
+  --er-s-1: 4px;
+  --er-s-2: 8px;
+  --er-s-3: 12px;
+  --er-s-4: 16px;
+  --er-s-5: 24px;
+  --er-s-6: 40px;
+  --er-s-7: 56px;
+  --er-s-8: 64px;
+  --er-s-9: 80px;
+  --er-s-10: 96px;
+  --er-s-11: 112px;
+  --er-s-12: 128px;
+
+  --er-gutter: 16px;
+  --er-header: 56px;
+
+  --er-measure-statement: 42rem;
+  --er-measure-lede: 36rem;
+  --er-measure-section: 64rem;
+  --er-measure-page: 72rem;
+  --er-measure-narrow: 28rem;
+
+  /* Shape: machined plate. Square-ish controls, square panels, round only
+     where the dial is round (lume pips, the crown). */
+  --er-radius-pill: 9999px;
+  --er-radius-panel: 2px;
+  --er-radius-control: 2px;
+  --er-radius-small: 1px;
+  --er-control: 44px;
+  --er-control-compact: 32px;
+
+  /* Motion. One curve, shared across the three products. */
+  --er-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --er-ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --er-dur-micro: 160ms;
+  --er-dur-ui: 240ms;
+  --er-dur-enter: 700ms;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --er-gutter: 32px;
+  }
+}
