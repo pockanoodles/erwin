@@ -104,7 +104,6 @@ export interface CanvasAssignment {
   course_id: number;
   html_url?: string | null;
   omit_from_final_grade?: boolean | null;
-  has_submitted_submissions?: boolean | null;
   /** Present when using include[]=submission */
   submission?: CanvasSubmission | null;
   rubric?: CanvasRubricCriterion[] | null;

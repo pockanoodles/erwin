@@ -76,7 +76,7 @@ function computeGradeImpactRaw(params: {
   return Math.min(1, base);
 }
 
-function mapStatusFromSubmission(
+export function mapStatusFromSubmission(
   assignment: CanvasAssignment
 ): { taskStatus: string; submissionStatus: string | null } {
   const sub = assignment.submission;
@@ -88,9 +88,8 @@ function mapStatusFromSubmission(
   if (ws === "unsubmitted" || ws === "pending_review") {
     return { taskStatus: "todo", submissionStatus: ws };
   }
-  if (assignment.has_submitted_submissions) {
-    return { taskStatus: "completed", submissionStatus: "submitted" };
-  }
+  // Not `has_submitted_submissions`: that flag is course-wide (true once any
+  // student submits), so it says nothing about this user.
   return { taskStatus: "todo", submissionStatus: ws ?? "unsubmitted" };
 }
 
@@ -119,7 +118,7 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
  * Returns true if this assignment should be skipped during sync.
  * isNew = true when no existing DB row found for this assignment.
  */
-function shouldSkipAssignment(
+export function shouldSkipAssignment(
   a: CanvasAssignment,
   now: Date,
   isNew: boolean
@@ -134,8 +133,11 @@ function shouldSkipAssignment(
   }
   // Don't create new tasks for already-submitted assignments; existing tasks get updated to completed
   if (isNew) {
+    // Only this user's submission counts — `has_submitted_submissions` is
+    // course-wide, and trusting it dropped assignments a classmate had
+    // already turned in.
     const ws = a.submission?.workflow_state;
-    if (ws === "graded" || ws === "submitted" || a.has_submitted_submissions) {
+    if (ws === "graded" || ws === "submitted") {
       return true;
     }
   }
