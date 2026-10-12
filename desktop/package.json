@@ -1,7 +1,7 @@
 {
   "name": "erwin-desktop",
   "productName": "Erwin",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Erwin reads your calendar, your courses and your goals, then tells you the one thing to do next.",
   "homepage": "https://kaitosoeno.com/erwin",
   "repository": "github:pockanoodles/erwin",
