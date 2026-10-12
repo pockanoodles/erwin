@@ -177,11 +177,19 @@ a.label:hover {
   align-items: center;
   height: var(--er-header);
   padding: env(safe-area-inset-top, 0) var(--er-gutter) 0;
-  background: transparent;
+  /* Frosted unless the scroll timeline below can clear it over the hero and
+     bring it back: where it can't (Firefox, reduced motion), a clear bar
+     would leave the links bare over whatever scrolls under them. */
+  background: color-mix(in srgb, var(--er-stage) 86%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--er-line);
 }
 @supports (animation-timeline: scroll()) {
   @media (prefers-reduced-motion: no-preference) {
     .bar {
+      background: transparent;
+      backdrop-filter: none;
+      border-bottom-color: transparent;
       animation: bar-frost linear both;
       animation-timeline: scroll(root);
       animation-range: 60svh 90svh;
@@ -841,7 +849,11 @@ a.channel__name:hover {
   cursor: pointer;
 }
 
+/* flex: none, or the label shrinks to the closed pill before the observer
+   measures it and メニュー wraps onto two lines. */
 .site-menu__label {
+  flex: none;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   justify-content: center;
