@@ -19,7 +19,8 @@ import path from "node:path";
 
 const CHUNK_DIR = path.resolve(
   process.cwd(),
-  process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
+  process.env.ERWIN_DIST_DIR ||
+    (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
   "static/chunks"
 );
 

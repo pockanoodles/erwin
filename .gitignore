@@ -18,6 +18,8 @@
 # `next dev` writes here instead of /.next/ so a dev session can't clobber
 # the production build that launchd serves (see next.config.js distDir).
 /.next-dev/
+# `npm run build:desktop` builds here, so it never replaces the served build.
+/.next-desktop/
 /out/
 
 # production

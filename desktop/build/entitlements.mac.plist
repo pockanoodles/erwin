@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Direct-download build (DMG/zip): hardened runtime, notarized. -->
+<plist version="1.0">
+<dict>
+  <!-- V8 and PGlite's WebAssembly need to generate code at run time. -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <!-- Prisma's query engine is a native library inside the app's resources. -->
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>

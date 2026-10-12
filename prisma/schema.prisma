@@ -3,6 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" serves this machine and the Docker image. The rest are the query
+  // engines the desktop builds ship (macOS both arches from one runner, glibc
+  // Linux on Debian- and RHEL-family OpenSSL, arm64 Linux, Windows);
+  // scripts/desktop/stage.mjs keeps only the ones the target platform loads.
+  binaryTargets = ["native", "darwin", "darwin-arm64", "debian-openssl-3.0.x", "rhel-openssl-3.0.x", "linux-arm64-openssl-3.0.x", "windows"]
 }
 
 datasource db {

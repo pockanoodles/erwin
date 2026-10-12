@@ -4,12 +4,16 @@ const nextConfig = {
   devIndicators: false,
 
   // `next dev` and `next start` both default to `.next`, so a dev session
-  // silently overwrites the production build that the launchd service
-  // (`com.erwin.app`, :3939) is serving — and the running server keeps
-  // answering from memory, so nothing looks wrong until it restarts weeks
-  // later on whatever the last dev run happened to leave behind. Give dev its
-  // own directory; the two never touch.
-  distDir: process.env.NODE_ENV === "development" ? ".next-dev" : ".next",
+  // silently overwrites the production build a running `next start` server is
+  // serving — and that server keeps answering from memory, so nothing looks
+  // wrong until it restarts weeks later on whatever the last dev run happened
+  // to leave behind. Give dev its own directory; the two never touch.
+  //
+  // The desktop build (`npm run build:desktop`) gets a third directory for the
+  // same reason: it must never replace the build a running server is using.
+  distDir:
+    process.env.ERWIN_DIST_DIR ||
+    (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
 
   // Standalone output is only needed for the minimal Docker image. Native
   // `next start` (the daily-driver run path) needs a full build, and using

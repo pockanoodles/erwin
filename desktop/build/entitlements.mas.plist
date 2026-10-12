@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Mac App Store build: sandboxed. CI replaces TEAMID with the Apple team id. -->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <!-- Canvas, CalDAV, Google and Microsoft calendars are all network calls. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- The app's own server listens on 127.0.0.1 for its window. -->
+  <key>com.apple.security.network.server</key>
+  <true/>
+  <!-- Import and export pick files through the system dialog. -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <key>com.apple.security.application-groups</key>
+  <array>
+    <string>TEAMID.com.kaitosoeno.erwin</string>
+  </array>
+</dict>
+</plist>

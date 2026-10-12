@@ -1,0 +1,119 @@
+# Packaging for every channel Erwin ships on. CI drives it per OS
+# (.github/workflows/release.yml); locally: `npm run build:desktop` at the
+# repo root, then `npm run dist -- --mac --dir` here for an unpacked app.
+appId: com.kaitosoeno.erwin
+productName: Erwin
+copyright: Copyright © 2026 Kaito Soeno
+artifactName: "Erwin-${version}-${os}-${arch}.${ext}"
+
+directories:
+  output: release
+  buildResources: build
+
+# The shell itself: compiled main/runtime/preload, the boot screen, and the
+# PGlite packages. PGlite's optional Postgres extensions are left out; Erwin
+# loads none of them.
+files:
+  - dist/**
+  - static/**
+  - package.json
+  - "!**/*.map"
+  - "!node_modules/@electric-sql/pglite/dist/*.tar.gz"
+asarUnpack:
+  - node_modules/@electric-sql/**
+npmRebuild: false
+
+# Erwin's server, staged by scripts/desktop/stage.mjs, is kept outside the
+# asar, since Next reads its build from disk and Prisma loads a native query
+# engine. The migrations go in as extraResources; the server goes in through
+# build/after-pack.cjs, because extraResources would drop its node_modules.
+extraResources:
+  - from: .stage/migrations
+    to: migrations
+afterPack: build/after-pack.cjs
+
+publish:
+  provider: github
+  owner: pockanoodles
+  repo: erwin
+  releaseType: draft
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+    - target: zip
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  # CI turns this on when the Apple secrets exist (-c.mac.notarize=true).
+  notarize: false
+
+mas:
+  hardenedRuntime: false
+  entitlements: build/entitlements.mas.plist
+  entitlementsInherit: build/entitlements.mas.inherit.plist
+  # Provided by CI from a secret; never committed.
+  provisioningProfile: build/embedded.provisionprofile
+
+dmg:
+  sign: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: appx
+      arch: [x64]
+
+nsis:
+  oneClick: true
+  perMachine: false
+  deleteAppDataOnUninstall: false
+
+# Identity values come from Partner Center once the app name is reserved.
+# CI overrides them (-c.appx.identityName=… -c.appx.publisher=…).
+appx:
+  applicationId: Erwin
+  identityName: KaitoSoeno.Erwin
+  publisher: CN={{MS_STORE_PUBLISHER_ID}}
+  publisherDisplayName: Kaito Soeno
+  displayName: Erwin
+  backgroundColor: "#14130d"
+  languages: [en-US, ja-JP]
+
+linux:
+  executableName: erwin
+  category: Office
+  synopsis: Your calendar, courses and goals, and the one thing to do next
+  description: >-
+    Erwin reads your calendar, your Canvas courses and your goals, then tells
+    you the one thing to do next. Local-first: your data stays in a database on
+    your own machine.
+  maintainer: Kaito Soeno <contact@kaitosoeno.com>
+  vendor: Kaito Soeno
+  desktop:
+    entry:
+      StartupWMClass: Erwin
+      Keywords: tasks;calendar;canvas;planner;focus;todo;
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+    - target: deb
+      arch: [x64, arm64]
+    - target: rpm
+      arch: [x64, arm64]
+    - target: tar.gz
+      arch: [x64, arm64]
+    - target: snap
+      arch: [x64]
+
+snap:
+  grade: stable
+  confinement: strict
+  summary: Your calendar, courses and goals, and the one thing to do next
+  # network-bind: the app's own server listens on 127.0.0.1.
+  plugs: [default, network-bind]

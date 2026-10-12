@@ -1,0 +1,33 @@
+{
+  "name": "erwin-desktop",
+  "productName": "Erwin",
+  "version": "0.1.0",
+  "description": "Erwin reads your calendar, your courses and your goals, then tells you the one thing to do next.",
+  "homepage": "https://kaitosoeno.com/erwin",
+  "repository": "github:pockanoodles/erwin",
+  "license": "MIT",
+  "author": {
+    "name": "Kaito Soeno",
+    "email": "contact@kaitosoeno.com",
+    "url": "https://kaitosoeno.com"
+  },
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "dist": "npm run build && electron-builder --config electron-builder.yml",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-socket": "0.2.11",
+    "electron-updater": "6.8.10"
+  },
+  "devDependencies": {
+    "@types/node": "^24.9.0",
+    "electron": "44.4.5",
+    "electron-builder": "26.16.1",
+    "typescript": "^5.8.2"
+  }
+}

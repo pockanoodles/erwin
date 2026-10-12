@@ -1,0 +1,7 @@
+node_modules/
+dist/
+release/
+# The staged Next server and migrations, rebuilt by `npm run build:desktop` at the repo root.
+.stage/
+# Written by CI from a secret for Mac App Store builds; never committed.
+build/embedded.provisionprofile
