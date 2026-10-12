@@ -944,3 +944,163 @@ a.channel__name:hover {
     display: none;
   }
 }
+
+/* ── Arriving from kaitosoeno.com/portfolio (components/ViewTransition.tsx) ──
+   The portfolio's row grows into this page's ground, its hairline the edge of
+   the growing field, and the name rises into the wordmark as it turns into
+   this face. The page then comes up on the field in one series: the dial,
+   the words, the plate. Nothing turns: the seconds hand stays the only
+   ornament that moves (brand/BRAND.md). The curve and lengths are
+   kaitosoeno.com's, so the move reads as the site's, not this page's. */
+@view-transition {
+  navigation: auto;
+}
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+}
+:root {
+  --vt-ease: cubic-bezier(0.62, 0.04, 0.06, 1);
+  --vt-move: 700ms;
+}
+.vt-surface {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: var(--er-stage);
+  pointer-events: none;
+}
+html[data-vt] .vt-surface {
+  view-transition-name: vt-surface;
+}
+html[data-vt] .bar__brand span {
+  view-transition-name: vt-name;
+  /* Trimmed to the caps, as the portfolio's names are, so the two boxes the
+     name moves between are both the letters and nothing else. */
+  text-box: trim-both cap alphabetic;
+}
+html[data-vt] .site-menu {
+  view-transition-name: vt-menu;
+}
+/* kaitosoeno.com's black behind the move, so the field is seen to open
+   rather than this page's ground showing through from the first frame. */
+html[data-vt="in"]::view-transition {
+  background: #000;
+}
+html[data-vt="in"]::view-transition-group(*) {
+  animation-duration: var(--vt-move);
+  animation-timing-function: var(--vt-ease);
+}
+/* Named layers paint above the page, so the page is moved over the field
+   once the field is nearly full and fades in on top of it, on the same ground.
+   Until then it sits beneath, where the portfolio dissolves around the row. */
+html[data-vt="in"]::view-transition-group(root) {
+  animation: vt-root-over var(--vt-move) linear both;
+}
+html[data-vt="in"]::view-transition-group(vt-name),
+html[data-vt="in"]::view-transition-group(vt-menu) {
+  z-index: 3;
+}
+html[data-vt="in"]::view-transition-old(root) {
+  animation: vt-fade 180ms var(--er-ease) both reverse;
+}
+html[data-vt="in"]::view-transition-new(root) {
+  animation: vt-fade var(--er-dur-ui) var(--er-ease) 480ms both;
+}
+html[data-vt="in"]::view-transition-image-pair(vt-surface) {
+  animation: vt-edge var(--vt-move) var(--vt-ease) both;
+}
+html[data-vt="in"]::view-transition-old(vt-surface),
+html[data-vt="in"]::view-transition-new(vt-surface) {
+  width: 100%;
+  height: 100%;
+}
+html[data-vt="in"]::view-transition-old(vt-surface) {
+  animation: vt-fade 180ms var(--er-ease) both reverse;
+}
+html[data-vt="in"]::view-transition-new(vt-surface) {
+  animation: vt-fade var(--er-dur-ui) var(--er-ease) both;
+}
+/* The name changes face by rolling over inside its own box, the portfolio's
+   rise above the line carried on: the old face leaves up and out, the new one
+   comes up from below, as the flight settles. Each keeps its own proportions
+   on a shared left edge; stretched to the box, one face would be squeezed
+   into the other's shape. */
+html[data-vt="in"]::view-transition-image-pair(vt-name) {
+  overflow-y: clip;
+}
+html[data-vt="in"]::view-transition-old(vt-name),
+html[data-vt="in"]::view-transition-new(vt-name) {
+  width: auto;
+  height: 100%;
+  mix-blend-mode: normal;
+}
+html[data-vt="in"]::view-transition-old(vt-name) {
+  animation: vt-roll-out var(--er-dur-ui) var(--er-ease-inout) 400ms both;
+}
+html[data-vt="in"]::view-transition-new(vt-name) {
+  animation: vt-roll-in var(--er-dur-ui) var(--er-ease-inout) 400ms both;
+}
+@keyframes vt-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes vt-root-over {
+  from,
+  67% {
+    z-index: 0;
+  }
+  68%,
+  to {
+    z-index: 2;
+  }
+}
+@keyframes vt-roll-out {
+  to {
+    transform: translateY(-110%);
+    opacity: 0;
+  }
+}
+@keyframes vt-roll-in {
+  from {
+    transform: translateY(110%);
+  }
+}
+@keyframes vt-edge {
+  from {
+    outline: 1px solid var(--er-line-strong);
+  }
+  to {
+    outline: 1px solid transparent;
+  }
+}
+/* The hero's own boxes drift on the scroll timeline, so the entrance runs on
+   their children and the two never fight over one transform. */
+@media (prefers-reduced-motion: no-preference) {
+  html[data-vt-arrived] .hero__visual > :first-child {
+    animation: vt-rise var(--er-dur-enter) var(--er-ease) 460ms both;
+  }
+  html[data-vt-arrived] .hero__words > * {
+    animation: vt-rise var(--er-dur-enter) var(--er-ease) calc(520ms + var(--i, 0) * 60ms) both;
+  }
+  html[data-vt-arrived] .hero__words > :nth-child(2) {
+    --i: 1;
+  }
+  html[data-vt-arrived] .hero__words > :nth-child(3) {
+    --i: 2;
+  }
+  html[data-vt-arrived] .hero__caption {
+    animation: vt-rise var(--er-dur-enter) var(--er-ease) 640ms both;
+  }
+  html[data-vt-arrived] .hero__action > * {
+    animation: vt-rise var(--er-dur-enter) var(--er-ease) 700ms both;
+  }
+}
+@keyframes vt-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+}

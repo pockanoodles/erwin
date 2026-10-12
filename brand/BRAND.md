@@ -73,6 +73,8 @@ Spacing follows ui-master Design 03, which Mahoraga uses too, so the three produ
 
 One curve, `cubic-bezier(0.2, 0.8, 0.2, 1)`, shared with Mahoraga. UI feedback takes 160 to 240ms and entrances take 700ms. The only ornament that moves is the dial's seconds hand on the landing page, and under reduced motion it stops at the current time.
 
+One exception, decided 2026-10-12: the move in from kaitosoeno.com/portfolio is the site's, not this page's. The portfolio row grows into the page and its name rolls into the wordmark on kaitosoeno.com's curve, `cubic-bezier(0.62, 0.04, 0.06, 1)` over 700ms, the same in every product it opens. The page's own entrance after it follows the rules above (`site/app/globals.css`, "Arriving from kaitosoeno.com/portfolio").
+
 ## Voice
 
 Copy is plain and specific. A screen names one thing to do, a control says what it does ("Start focus", "Defer"), and every number on the landing page comes from the product itself and says what it means. Web copy is one short sentence per idea, with no fragments, no em dashes and no "it's not X, it's Y" turns.
