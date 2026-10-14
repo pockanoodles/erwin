@@ -1,6 +1,7 @@
-import { isSaasEnabled } from "@/lib/config";
+import { brand } from "@/lib/brand";
 import { logger } from "@/lib/logger";
 
+import { EmailService } from "./email-service";
 import { getPasswordResetTemplate } from "./templates/password-reset";
 
 const LOG_SOURCE = "PasswordResetEmail";
@@ -29,16 +30,9 @@ export async function sendPasswordResetEmail({
     // Get the email template
     const html = getPasswordResetTemplate(name, resetLink, expirationDate);
 
-    // Dynamically import the correct email service based on SAAS flag
-    const { EmailService } = await import(
-      `./email-service${isSaasEnabled ? ".saas" : ".open"}`
-    );
-
-    // Send the email using the appropriate service
     const { jobId } = await EmailService.sendEmail({
-      from: EmailService.formatSender("FluidCalendar"),
       to: email,
-      subject: "Reset Your FluidCalendar Password",
+      subject: `Reset Your ${brand.name} Password`,
       html,
     });
 
