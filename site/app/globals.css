@@ -7,7 +7,7 @@
 @import "../generated/tokens.css";
 
 :root {
-  /* The personal site's fluid rem, for the shared MENU pill only. */
+  /* The personal site's viewport-scaled rem, for the shared MENU pill only. */
   --site-rem: 12px;
   --lift: max(4.5rem, calc(env(safe-area-inset-bottom) + 3.5rem));
 }

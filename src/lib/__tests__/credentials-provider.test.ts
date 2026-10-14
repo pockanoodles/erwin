@@ -4,7 +4,7 @@ import { authenticateUser } from "@/lib/auth/credentials-provider";
 import { prisma } from "@/lib/prisma";
 
 /**
- * Password sign-in reads `User.passwordHash`. Upstream FluidCalendar kept that
+ * Password sign-in reads `User.passwordHash`. The upstream project kept that
  * hash in `Account.id_token` — an OAuth column on a synthetic
  * `provider = 'credentials'` row — and these tests pin the replacement: the
  * hash is read from the user, a user without one cannot sign in, and the hash

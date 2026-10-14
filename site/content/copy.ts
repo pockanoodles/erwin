@@ -104,7 +104,7 @@ const en: Dict = {
   open: {
     eyebrow: "Open source",
     title: "Erwin is free and open source.",
-    body: "The code is MIT licensed on GitHub. Erwin started as a fork of FluidCalendar, an open-source alternative to Motion.",
+    body: "The code is MIT licensed on GitHub.",
     cta: "View the source on GitHub",
     by: "Made by Kaito Soeno.",
     more: "See more of my work",

@@ -104,7 +104,7 @@ const LOG_SOURCE = "OutlookTaskProvider";
 
 /**
  * Task provider implementation for Microsoft Outlook Tasks
- * This provider enables synchronization between FluidCalendar tasks and Outlook tasks
+ * This provider enables synchronization between Erwin tasks and Outlook tasks
  */
 export class OutlookTaskProvider implements TaskProviderInterface {
   private client: Client;

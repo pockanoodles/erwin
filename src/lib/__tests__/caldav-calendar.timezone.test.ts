@@ -8,7 +8,7 @@ import { CalendarEventWithFeed } from "@/types/calendar";
 
 /**
  * Regression tests for GitHub issue #135: CalDAV events created/updated by
- * FluidCalendar were serialized with a *floating* DTSTART/DTEND (no `Z` and no
+ * the upstream project were serialized with a *floating* DTSTART/DTEND (no `Z` and no
  * `TZID`), so other clients (Thunderbird, Home Assistant) re-interpreted them in
  * their own timezone and showed the event shifted by the server/client UTC
  * offset. Timed instants must serialize as UTC (`...Z`).

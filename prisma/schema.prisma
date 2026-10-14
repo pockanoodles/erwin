@@ -256,7 +256,7 @@ model Task {
   source         String?
   lastSyncedAt   DateTime?
 
-  // Erwin: Canvas LMS + ranking (optional; legacy FluidCalendar tasks omit these)
+  // Erwin: Canvas LMS + ranking (optional; tasks that predate Canvas sync omit these)
   lockAt              DateTime?
   unlockAt            DateTime?
   taskProviderId      String?

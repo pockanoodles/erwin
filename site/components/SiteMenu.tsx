@@ -5,9 +5,9 @@
 // personal-website/components/menu.tsx as of 348652e ("the menu pill grows
 // into its drawer"): one surface whose width and height animate from the pill
 // into the drawer, with the button as its bottom row. Its sizes are in the
-// site's fluid rem (--site-rem in globals.css), except the button row, which
+// site's viewport-scaled rem (--site-rem in globals.css), except the button row, which
 // is a true 44px: the site's own comment and BAR constant say 44, but its
-// `h-11` is 2.75rem on a fluid root and renders 33-35px below 1920px wide.
+// `h-11` is 2.75rem on a viewport-scaled root and renders 33-35px below 1920px wide.
 // If the site's menu changes shape, change this copy and Mahoraga's together
 // (mahoraga/site/components/SiteMenu.tsx is the twin).
 //
