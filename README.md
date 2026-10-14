@@ -176,13 +176,15 @@ npm run dev:local -- --seed demo
 To use Erwin from several devices, run the server with Postgres.
 
 ```bash
-cp .env.example .env    # then set NEXTAUTH_SECRET and ERWIN_SECRET_KEY
+cp .env.example .env    # then set NEXTAUTH_SECRET, ERWIN_SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d
 ```
 
-Generate each secret with `openssl rand -base64 32`. Open http://localhost:3000, and the first account you create is the admin. `ERWIN_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
+Generate the two secrets with `openssl rand -base64 32` and the database password with `openssl rand -hex 24`, then put the same password in `DATABASE_URL`. Open http://localhost:3000, and the first account you create is the admin. `ERWIN_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
 
-Docker Compose publishes the Postgres and Redis ports and sets the example database password `fluid`, so on a machine other people can reach, change that password and remove the `ports` entries for `db` and `redis`.
+Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. It publishes Postgres and Redis on 127.0.0.1 only, so other machines cannot reach them. The user and database name (`erwin` by default) apply only when the database volume is first created, so changing them later means a new volume.
+
+Password reset email needs `RESEND_API_KEY` and `EMAIL_FROM`, an address on a domain you have verified in Resend. Without `EMAIL_FROM` the server logs an error and sends nothing. The desktop app sends no email.
 
 Background sync runs in the `worker` service (BullMQ on Redis). A single container without Redis can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same sync on a timer inside the app.
 

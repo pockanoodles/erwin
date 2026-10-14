@@ -13,7 +13,7 @@ services:
     environment:
       # Inside the compose network, Postgres/Redis live at service hostnames —
       # these override the host-oriented localhost values from .env.
-      - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
       - REDIS_URL=redis://redis:6379
       # Next standalone binds this host; without it the server can bind
       # localhost-only inside the container and break the port mapping.
@@ -45,7 +45,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://fluid:fluid@db:5432/fluid_calendar
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
       - REDIS_URL=redis://redis:6379
     depends_on:
       db:
@@ -64,15 +64,18 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=fluid
-      - POSTGRES_PASSWORD=fluid
-      - POSTGRES_DB=fluid_calendar
+      - POSTGRES_USER=${POSTGRES_USER:-erwin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      - POSTGRES_DB=${POSTGRES_DB:-erwin}
+    # Loopback only: reachable from this machine for `npm run dev` and Prisma,
+    # not from the network. The app and worker reach it as `db` on the compose
+    # network and do not need the published port.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fluid -d fluid_calendar"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -81,7 +84,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

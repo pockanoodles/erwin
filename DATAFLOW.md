@@ -53,7 +53,7 @@ CalDAV uses a username and password on every request instead of a revocable toke
 
 ## Resend
 
-The only email Erwin sends is a password reset. When you ask for one, Erwin asks Resend to deliver a message to your email address with a link that holds a one-time reset token. This runs only on a self-hosted server that has a Resend API key (`RESEND_API_KEY`) set. The desktop app signs you in with a token that is made on each launch, so it has no password reset and sends no email. The notification preferences in the database look like they could send daily summaries, but no code sends them today.
+The only email Erwin sends is a password reset. When you ask for one, Erwin asks Resend to deliver a message to your email address with a link that holds a one-time reset token. This runs only on a self-hosted server that has a Resend API key (`RESEND_API_KEY`) and a sender address (`EMAIL_FROM`) set. With the key but no address, the server logs an error and sends nothing. The desktop app signs you in with a token that is made on each launch, so it has no password reset and sends no email. The notification preferences in the database look like they could send daily summaries, but no code sends them today.
 
 ---
 
@@ -114,7 +114,7 @@ When a CalDAV connection succeeds or fails, the server address and username are 
 
 These are kept here so they are not rediscovered later.
 
-- **External calls do not all go through one module per service.** Canvas goes through `src/lib/canvas/canvas-client.ts` and CalDAV through `src/lib/caldav/client.ts`. Google reaches out from several places (`google-calendar.ts`, `google.ts`, the Google task provider, the token manager and the `calendar/google` routes), Microsoft the same way (`outlook-calendar.ts`, `outlook-sync.ts`, `outlook-utils.ts`, the Outlook task provider, the token manager and the Outlook route), and email from two modules (`resend.ts` and `email-service.open.ts`). This makes "what exactly do we send?" harder to answer for those services than it should be, which is the reason the rule exists.
-- **The two email modules read the Resend key differently.** `email-service.open.ts`, which sends the password reset, reads `RESEND_API_KEY` from the environment, and `resend.ts` reads the key stored in settings. The sender name it uses is still "FluidCalendar".
+- **External calls do not all go through one module per service.** Canvas goes through `src/lib/canvas/canvas-client.ts` and CalDAV through `src/lib/caldav/client.ts`. Google reaches out from several places (`google-calendar.ts`, `google.ts`, the Google task provider, the token manager and the `calendar/google` routes), Microsoft the same way (`outlook-calendar.ts`, `outlook-sync.ts`, `outlook-utils.ts`, the Outlook task provider, the token manager and the Outlook route), and email from one module (`email-service.ts`). This makes "what exactly do we send?" harder to answer for those services than it should be, which is the reason the rule exists.
+- **The Resend key in System settings does nothing.** `email-service.ts` reads `RESEND_API_KEY` from the environment only. The System settings page still stores a key in the database, and nothing reads it.
 - **Logging is disabled but the batch path writes anyway.** There is no settings row, so the configured level is "none". The single-entry path respects that, but the batch path, which is where logs sent from the browser land, writes every entry regardless. Logging is therefore not fully off.
 - **Dormant webhook fields.** The database has columns for registering a Google Calendar push channel, but no code registers one, so Google never calls in.

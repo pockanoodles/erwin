@@ -18,7 +18,9 @@ import { ensureCurrentHex } from "../../src/lib/erwin/hex";
 import { prisma } from "../../src/lib/prisma";
 
 const url = process.env.DATABASE_URL ?? "";
-if (!/@(127\.0\.0\.1|localhost)[:/]/.test(url) || /fluid_calendar/.test(url)) {
+// `fluid_calendar` is the database name installs made before the rename keep, and
+// `erwin` is the self-host default: both are someone's real data, never a demo.
+if (!/@(127\.0\.0\.1|localhost)[:/]/.test(url) || /\/(fluid_calendar|erwin)(\?|$)/.test(url)) {
   throw new Error(`Refusing to seed ${url.replace(/\/\/[^@]*@/, "//…@")}: not a local database`);
 }
 
