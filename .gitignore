@@ -62,9 +62,6 @@ node_modules/
 diff.txt
 data/*
 
-# Upstream ignored /src/saas/ because its SaaS code was private. Here that
-# directory holds only Erwin's own BullMQ sync worker, which is product source
-# and belongs in the repo.
 /dist
 scripts/test-outlook-task-api.sh
 

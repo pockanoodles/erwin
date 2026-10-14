@@ -442,8 +442,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         await get().loadFromDatabase();
 
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -463,8 +463,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         await get().loadFromDatabase();
 
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -484,8 +484,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         await get().loadFromDatabase();
 
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -521,8 +521,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         // Reload from database to get the latest state
         await get().loadFromDatabase();
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -541,8 +541,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         // Reload from database to get the latest state
         await get().loadFromDatabase();
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -561,8 +561,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         // Reload from database to get the latest state
         await get().loadFromDatabase();
         // Trigger auto-scheduling after event is created
-        const { triggerScheduleAllTasks } = useTaskStore.getState();
-        await triggerScheduleAllTasks();
+        const { scheduleAllTasks } = useTaskStore.getState();
+        await scheduleAllTasks();
         return;
       }
 
@@ -629,8 +629,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
       // Reload from database to get the latest state
       await get().loadFromDatabase();
       // Trigger auto-scheduling after event is created
-      const { triggerScheduleAllTasks } = useTaskStore.getState();
-      await triggerScheduleAllTasks();
+      const { scheduleAllTasks } = useTaskStore.getState();
+      await scheduleAllTasks();
     } catch (error) {
       console.error("Failed to remove event:", error);
       throw error;
@@ -681,8 +681,8 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
       // Reload events from database
       await get().loadFromDatabase();
       // Trigger auto-scheduling after event is created
-      const { triggerScheduleAllTasks } = useTaskStore.getState();
-      await triggerScheduleAllTasks();
+      const { scheduleAllTasks } = useTaskStore.getState();
+      await scheduleAllTasks();
     } catch (error) {
       console.error("Failed to sync feed:", error);
       // Update feed with error

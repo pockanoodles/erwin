@@ -33,7 +33,6 @@ const buildEnv = {
   NEXT_TELEMETRY_DISABLED: "1",
   ERWIN_STANDALONE: "1",
   ERWIN_DIST_DIR: distDir,
-  NEXT_PUBLIC_ENABLE_SAAS_FEATURES: "false",
   NEXT_PUBLIC_APP_URL: "",
   NEXT_PUBLIC_SITE_URL: "",
   DATABASE_URL: "postgresql://build:build@127.0.0.1:1/no_database_at_build_time",

@@ -35,7 +35,7 @@ services:
 
   # BullMQ scheduler + worker: periodic Canvas + CalDAV sync for all eligible
   # users/feeds. Shares the app image (development stage) so the sync logic in
-  # src/lib/erwin/* and the queue wrapper in src/saas/jobs/* are already present.
+  # src/lib/erwin/* and the queue wrapper in src/worker/* are already present.
   # Separate process by design (see package.json start:worker / start:worker:prod).
   worker:
     build:

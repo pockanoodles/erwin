@@ -11,7 +11,7 @@
     "noEmit": false
   },
   "include": [
-    "src/saas/jobs/**/*.ts",
+    "src/worker/**/*.ts",
     "src/lib/erwin/job-sync-runner.ts",
     "src/lib/canvas/**/*.ts",
     "src/lib/caldav-calendar.ts",

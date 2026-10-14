@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { isSaasEnabled } from "@/lib/config";
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import {
@@ -53,7 +52,6 @@ interface TaskState {
 
   // Auto-scheduling actions
   scheduleAllTasks: () => Promise<void>;
-  triggerScheduleAllTasks: () => Promise<void>;
 }
 
 export const useTaskStore = create<TaskState>()(
@@ -117,7 +115,7 @@ export const useTaskStore = create<TaskState>()(
           if (!response.ok) throw new Error("Failed to create task");
           const newTask = await response.json();
           set((state) => ({ tasks: [...state.tasks, newTask] }));
-          await get().triggerScheduleAllTasks();
+          await get().scheduleAllTasks();
           return newTask;
         } catch (error) {
           set({ error: error as Error });
@@ -147,7 +145,7 @@ export const useTaskStore = create<TaskState>()(
               task.id === id ? updatedTask : task
             ),
           }));
-          await get().triggerScheduleAllTasks();
+          await get().scheduleAllTasks();
           return updatedTask;
         } catch (error) {
           set({ error: error as Error });
@@ -250,7 +248,7 @@ export const useTaskStore = create<TaskState>()(
               (task) => task.id !== id && task.parentTaskId !== id
             ),
           }));
-          await get().triggerScheduleAllTasks();
+          await get().scheduleAllTasks();
         } catch (error) {
           set({ error: error as Error });
           throw error;
@@ -353,7 +351,7 @@ export const useTaskStore = create<TaskState>()(
           set((state) => ({
             tasks: state.tasks.map((t) => (t.id === taskId ? updatedTask : t)),
           }));
-          await get().triggerScheduleAllTasks();
+          await get().scheduleAllTasks();
           return updatedTask;
         } catch (error) {
           set({ error: error as Error });
@@ -379,78 +377,7 @@ export const useTaskStore = create<TaskState>()(
             )
           );
           await get().fetchTasks(); // Refresh task list
-          await get().triggerScheduleAllTasks();
-        } catch (error) {
-          set({ error: error as Error });
-          throw error;
-        } finally {
-          set({ loading: false });
-        }
-      },
-
-      triggerScheduleAllTasks: async () => {
-        set({ loading: true, error: null });
-        try {
-          // For open source version, call scheduleAllTasks directly
-          if (!isSaasEnabled) {
-            await get().scheduleAllTasks();
-            return;
-          }
-
-          // For SAAS version, use the background job queue
-          const jobResponse = await fetch("/api/tasks/schedule-all/queue", {
-            method: "POST",
-          });
-
-          if (!jobResponse.ok) {
-            throw new Error("Failed to queue task scheduling job");
-          }
-
-          // Set up SSE connection if not already connected
-          if (
-            !window.taskScheduleSSE ||
-            window.taskScheduleSSE.readyState === 2
-          ) {
-            const setupSSE = () => {
-              // Close existing connection if it exists but is in a closed state
-              if (window.taskScheduleSSE) {
-                window.taskScheduleSSE.close();
-              }
-
-              const eventSource = new EventSource("/api/sse");
-
-              eventSource.onmessage = (event) => {
-                try {
-                  const data = JSON.parse(event.data);
-                  if (data.type === "TASK_SCHEDULE_COMPLETE") {
-                    get().fetchTasks();
-                    // Dispatch a custom event for the NotificationProvider
-                    window.dispatchEvent(
-                      new CustomEvent("task-schedule-complete", {
-                        detail: data,
-                      })
-                    );
-                  }
-                } catch (error) {
-                  console.error(
-                    "Error parsing SSE message in task store:",
-                    error
-                  );
-                }
-              };
-
-              eventSource.onerror = () => {
-                console.error("SSE connection error");
-                eventSource.close();
-                // Try to reconnect after a delay
-                setTimeout(setupSSE, 5000);
-              };
-
-              window.taskScheduleSSE = eventSource;
-            };
-
-            setupSSE();
-          }
+          await get().scheduleAllTasks();
         } catch (error) {
           set({ error: error as Error });
           throw error;

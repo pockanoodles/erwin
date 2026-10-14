@@ -1,5 +1,5 @@
 /**
- * Periodic Canvas + CalDAV sync invoked by the BullMQ worker (`src/saas/jobs/worker.ts`).
+ * Periodic Canvas + CalDAV sync invoked by the BullMQ worker (`src/worker/worker.ts`).
  */
 
 import { CalDAVCalendarService } from "@/lib/caldav-calendar";

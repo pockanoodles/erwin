@@ -1,6 +1,6 @@
 /**
  * How often background sync ticks, shared by both schedulers: the BullMQ
- * worker (`src/saas/jobs/worker.ts`, server installs with Redis) and the
+ * worker (`src/worker/worker.ts`, server installs with Redis) and the
  * in-process scheduler (`inprocess-scheduler.ts`, the desktop app and
  * single-container installs without Redis).
  *

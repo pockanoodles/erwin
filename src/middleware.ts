@@ -10,11 +10,6 @@ const publicRoutes = [
   "/auth/reset-password",
   "/auth/error",
   "/api/auth/register",
-  "/beta",
-  "/terms",
-  "/privacy",
-  "/subscription/lifetime/success",
-  "/subscription/lifetime/setup-password",
 ];
 
 // Routes that only admins can access

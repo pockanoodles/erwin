@@ -2,8 +2,6 @@
 
 import { useEffect } from "react";
 
-import dynamic from "next/dynamic";
-
 import { DndProvider } from "@/components/dnd/DndProvider";
 import { AppNav } from "@/components/navigation/AppNav";
 import { AppTopBar } from "@/components/navigation/AppTopBar";
@@ -20,22 +18,6 @@ import { useCommandPaletteStore } from "@/store/commandPalette";
 import { useShortcutsStore } from "@/store/shortcuts";
 
 import "../globals.css";
-
-// Dynamically import the NotificationProvider based on SAAS flag
-const NotificationProvider = dynamic<{ children: React.ReactNode }>(
-  () =>
-    import(
-      `@/components/providers/NotificationProvider${
-        process.env.NEXT_PUBLIC_ENABLE_SAAS_FEATURES === "true"
-          ? ".saas"
-          : ".open"
-      }`
-    ).then((mod) => mod.NotificationProvider),
-  {
-    ssr: false,
-    loading: () => <>{/* Render nothing while loading */}</>,
-  }
-);
 
 export default function RootLayout({
   children,
@@ -90,7 +72,7 @@ export default function RootLayout({
             <div className="flex min-h-0 flex-1">
               <AppNav />
               <main className="relative min-w-0 flex-1 overflow-y-auto">
-                <NotificationProvider>{children}</NotificationProvider>
+                {children}
               </main>
             </div>
             <Toaster />
