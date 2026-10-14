@@ -20,6 +20,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 
 ### Changed
 
+- `PATCH /api/system-settings` accepts only the real settings fields and answers 400 for a bad value, instead of passing the request body to the database.
 - Password reset email sends from the address in `EMAIL_FROM`. With `RESEND_API_KEY` set and no `EMAIL_FROM`, the server logs an error and sends nothing.
 - Docker Compose needs `POSTGRES_PASSWORD`, has no default password, and publishes Postgres and Redis on 127.0.0.1 only. The default database user and name are now `erwin`.
 - The background worker moved from `src/saas/jobs` to `src/worker`.
@@ -28,3 +29,5 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 
 - The hosted-service code inherited from upstream: the `.open` and `.saas` file split, the feature flags, the waitlist and beta settings, the lifetime-access banner and the queue-based auto-schedule path.
 - The SQLite import script (`migrate.js`) and the second Resend module.
+- The Resend API key field in System settings, which nothing read, and the Daily Email Updates toggle, which promised an email nothing sends.
+- The database tables and columns behind them, in migration `20261014120000_drop_upstream_saas`: `PendingWaitlist`, `Waitlist`, `BetaSettings`, `JobRecord`, `Subscription`, `SystemSettings.resendApiKey` and `NotificationSettings.dailyEmailEnabled`.
