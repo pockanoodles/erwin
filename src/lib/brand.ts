@@ -18,7 +18,7 @@ export const brand = {
   repoUrl: "https://github.com/pockanoodles/erwin",
   issuesUrl: "https://github.com/pockanoodles/erwin/issues",
   privacyUrl: "https://kaitosoeno.com/privacy",
-  supportEmail: "contact@kaitosoeno.com",
+  supportEmail: "soenokaito1@gmail.com",
 } as const;
 
 /** "Settings | Erwin" for a page, plain "Erwin" for none. */
