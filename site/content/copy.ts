@@ -190,7 +190,7 @@ const ja: Dict = {
   open: {
     eyebrow: "オープンソース",
     title: "Erwin は無料のオープンソースです。",
-    body: "コードは MIT ライセンスで GitHub に公開しています。Erwin は、Motion のオープンソース代替である FluidCalendar のフォークから始まりました。",
+    body: "コードは MIT ライセンスで GitHub に公開しています。",
     cta: "GitHub でソースを見る",
     by: "制作は Kaito Soeno です。",
     more: "ほかの作品を見る",
