@@ -2,21 +2,143 @@
 
 <h1 align="center">Erwin</h1>
 
-<p align="center">Your calendar, your courses and your goals, and the one thing to do next.</p>
+<p align="center">
+Erwin reads your calendar, your Canvas courses and your goals, ranks everything you have
+to do with a score you can read, and shows you the one thing to start next.
+</p>
 
-<p align="center"><a href="https://kaitosoeno.com/erwin">kaitosoeno.com/erwin</a> · <a href="LICENSE">MIT License</a></p>
+<p align="center">
+  <a href="https://kaitosoeno.com/erwin">kaitosoeno.com/erwin</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#how-the-ranking-works">Ranking</a> ·
+  <a href="DATAFLOW.md">Data flow</a> ·
+  <a href="https://kaitosoeno.com/privacy">Privacy</a> ·
+  <a href="LICENSE">MIT License</a>
+</p>
 
 ![Erwin's Today screen, with example data](site/public/shots/today.webp)
 
-Erwin reads your calendar, your Canvas courses and your goals, then ranks everything you have to do, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
-
 ## What it does
+
+A student's week is spread across a calendar, a learning management system and a pile of personal goals, and no one of them knows how the others compare. Erwin pulls them into one local database and ranks every task on one scale, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
 
 - **It ranks by what is at stake.** Due dates, Canvas grade weights and goal importance feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`), so the order never changes for a reason you cannot read.
 - **It shows one thing at a time.** Focus mode puts the next task, its course materials and its deadline on one screen, with done, skip and later on the D, S and L keys.
 - **It holds your week.** Google, Outlook and CalDAV calendars sit beside your classes, and tasks drag into the open time or schedule themselves.
 - **It mirrors your courses.** Canvas assignments arrive with their grade weights, and course pages and files are kept locally so a task's materials open from the task.
 - **It plans in two-month cycles.** Goals belong to a cycle with a dated deliverable, and tasks linked to a goal rank higher.
+
+## How it fits together
+
+Every source is read into the local database first, and the ranker and every screen read only from that database. This means Today and Focus keep working when a service is slow or offline, and the only code that talks to the outside is the sync layer.
+
+```mermaid
+flowchart LR
+    subgraph Sources
+        G["Google Calendar and Tasks"]
+        O["Outlook Calendar and To Do"]
+        C["CalDAV (iCloud, Fastmail, Nextcloud)"]
+        V["Canvas"]
+        M["Goals and tasks you type"]
+    end
+
+    S["Sync layer"]
+    DB[("Local database")]
+    R["Ranker"]
+    T["Today"]
+    F["Focus"]
+    K["Calendar and Tasks"]
+
+    G <--> S
+    O <--> S
+    C <--> S
+    V --> S
+    M --> DB
+    S <--> DB
+    DB --> R
+    R --> T
+    R --> F
+    DB --> K
+```
+
+Canvas is read-only, and Google, Outlook and CalDAV sync in both directions, so an event you move in Erwin moves in the calendar it came from. Canvas and CalDAV also sync in the background on a timer (every 15 minutes by default), while Google and Outlook sync when you use them in the app.
+
+## How the ranking works
+
+Erwin's ranker is deterministic arithmetic, with no model and no learned weights, so you can work out why a task is on top. Each open task gets a base score between 0 and 2, built from three weighted terms plus a boost and a penalty.
+
+```mermaid
+flowchart LR
+    I["Impact<br/>weight 0.35"]
+    D["Deadline pressure<br/>weight 0.45"]
+    E["Effort fit<br/>weight 0.20"]
+    B["Visibility boost<br/>plus 0.15"]
+    P["Skip penalty<br/>up to minus 0.20"]
+    SC(["Base score"])
+
+    I --> SC
+    D --> SC
+    E --> SC
+    B --> SC
+    P --> SC
+```
+
+| Input | How it is computed |
+|---|---|
+| **Impact (0.35)** | The larger of the task's grade impact and its goal importance (0 to 100, divided by 100), then divided by the largest value in the current pool so grade-driven and goal-driven tasks compete on one 0 to 1 scale. Grade impact comes from the assignment's points and its group's weight in Canvas, and it falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
+| **Deadline pressure (0.45)** | A sigmoid of the hours left, `1 / (1 + e^(0.15 × (hours - 48)))`, which is 0.5 at 48 hours out, rises toward 1 as the due date nears, and stays at 1 once a task is overdue. A task with no due date scores 0. |
+| **Effort fit (0.20)** | How well the task's estimate (30 minutes when none is set) matches the open slot (240 minutes when no slot is known), as `1 - abs(estimate - slot) / max(estimate, slot)`. |
+| **Visibility boost (+0.15)** | Added to a Canvas task due in more than 7 days whose points sit above the 80th percentile of that course's open work, so a large far-off assignment is not invisible until it is urgent. |
+| **Skip penalty (up to -0.20)** | 0.05 for each time you skipped the task (capped at 0.20), halving every 48 hours since the last skip, so repeated avoidance costs a task its lead and one skip is forgotten by the weekend. |
+
+The score alone does not set the order. Tasks are sorted by the keys below in turn, so the base score orders only the tasks that match on every earlier key, and the due date and then the title break exact ties.
+
+```mermaid
+flowchart TD
+    A["Open tasks"] --> B["Drop done, locked, deferred and subtasks"]
+    B --> C{"Skipped in the last 4 hours?"}
+    C -- yes --> Z["Sorted last"]
+    C -- no --> D{"Personal task while Canvas has a danger or high task?"}
+    D -- yes --> Y["Demoted below the Canvas work"]
+    D -- no --> E{"In danger?"}
+    E -- yes --> X["Sorted first"]
+    E -- no --> W["Sorted by base score, then due date, then title"]
+```
+
+A task is in danger when it is overdue, when less than three times its estimated effort remains before the due date, or when it has been skipped three times, has a grade impact above 0.5 and is due within five days. A personal task is any non-Canvas task that is not marked high priority and is not linked to a goal, so goal-linked tasks always compete in the main pool.
+
+## The two-month goal cycle
+
+The year is six fixed two-month blocks (January and February, March and April, and so on), and the current block always exists. A goal belongs to a cycle, carries an importance from 0 to 100 and a definition of done, and can be marked as the cycle's dated deliverable.
+
+```mermaid
+flowchart LR
+    Y["Year"] --> H["Two-month cycle<br/>one active at a time"]
+    H --> GL["Goals<br/>importance 0 to 100"]
+    GL --> BG["Dated deliverable<br/>optional"]
+    GL --> TK["Linked tasks"]
+    TK --> RK["Ranker<br/>goal importance feeds the impact term"]
+```
+
+Linking a task to a goal gives it an impact signal beside its grade impact, which is why a personal goal can outrank coursework once the coursework is far enough from its deadline.
+
+## A sync, step by step
+
+```mermaid
+sequenceDiagram
+    participant T as Timer
+    participant S as Sync layer
+    participant X as Canvas or CalDAV
+    participant DB as Local database
+    participant R as Ranker
+
+    T->>S: tick (every 15 minutes by default)
+    S->>X: read courses, assignments and events
+    X-->>S: current data
+    S->>DB: upsert tasks and events
+    R->>DB: read open tasks and goals
+    R-->>R: score and sort
+```
 
 ## Install
 
@@ -60,17 +182,46 @@ docker compose up -d
 
 Generate each secret with `openssl rand -base64 32`. Open http://localhost:3000, and the first account you create is the admin. `ERWIN_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
 
+Docker Compose publishes the Postgres and Redis ports and sets the example database password `fluid`, so on a machine other people can reach, change that password and remove the `ports` entries for `db` and `redis`.
+
 Background sync runs in the `worker` service (BullMQ on Redis). A single container without Redis can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same sync on a timer inside the app.
+
+## Deployment modes
+
+The desktop app and the self-hosted server run the same Next.js code, and they differ in where the database lives and who can reach it.
+
+```mermaid
+flowchart TB
+    subgraph Desktop["Desktop app, one machine"]
+        direction TB
+        EL["Electron window"] --> NX1["Next.js server<br/>loopback only"]
+        NX1 --> PG1[("PGlite<br/>in the app's data folder")]
+        NX1 --- SC1["Timer sync"]
+    end
+
+    subgraph Server["Self-hosted server, Docker Compose"]
+        direction TB
+        BR["Browser on any device"] --> NX2["Next.js app"]
+        NX2 --> PG2[("Postgres")]
+        WK["Sync worker"] --> PG2
+        WK --- RD[("Redis")]
+    end
+
+    Desktop --> EXT["Canvas, Google, Microsoft, CalDAV"]
+    Server --> EXT
+```
+
+Pick the desktop app if you want a download that works offline with no account. Pick the server if you want the same data on a phone and a laptop, or if you want Google and Outlook sign-in today.
 
 ## Connecting services
 
-**Canvas.** In Settings, open Task Sync and add your Canvas URL with a personal access token (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date.
+**Canvas.** In Settings, open Task Sync and add your Canvas URL with a personal access token (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
 
 **CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose Connect CalDAV Calendar, and enter the server URL with an app-specific password.
 
 **Google Calendar** needs your own OAuth app.
 
-1. In the [Google Cloud Console](https://console.cloud.google.com), create a project and enable the Google Calendar API and the Google People API.
+1. In the [Google Cloud Console](https://console.cloud.google.com), create a project and enable the Google Calendar API and the Google Tasks API.
 2. Configure the OAuth consent screen as External, add the scopes `calendar`, `calendar.events`, `userinfo.email` and `openid` (and `tasks` for Google Tasks), and add yourself as a test user.
 3. Create an OAuth client ID of type Web application, with `http://localhost:3000` as an origin and `http://localhost:3000/api/calendar/google` as a redirect URI (and the same pair for your own domain).
 4. Enter the client ID and secret in Settings, under System, or set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
@@ -102,10 +253,18 @@ The desktop app is Electron around the same Next.js server. On launch it opens a
 
 The repository holds the app (`src/`, `prisma/`), the desktop shell (`desktop/`), the landing page (`site/`), the brand (`brand/`, see `brand/BRAND.md`), and the release setup (`packaging/`, whose README is the release runbook).
 
+## Privacy
+
+Your tasks, notes, goals and course materials stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+
 ## Credits
 
-Erwin began as a fork of [FluidCalendar](https://github.com/dotnetfactory/fluid-calendar) by Emad Ibrahim, an open-source alternative to Motion, and keeps its MIT license.
+Erwin began as a fork of [FluidCalendar](https://github.com/dotnetfactory/fluid-calendar) by Emad Ibrahim, an open-source alternative to Motion, and keeps its MIT license. Erwin is not affiliated with or endorsed by FluidCalendar or its author.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. The license carries two copyright lines, Copyright (c) 2024 Emad Ibrahim and Copyright (c) 2026 Kaito Soeno. See [LICENSE](LICENSE).
+
+## Name
+
+Erwin is unrelated to erwin Data Modeler (Quest Software) and to any fictional character.
