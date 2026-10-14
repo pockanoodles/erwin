@@ -1,3 +1,4 @@
+import { brand } from "@/lib/brand";
 import { useCallback, useEffect, useState } from "react";
 
 import {
@@ -738,7 +739,7 @@ export function TaskSyncSettings() {
     return (
       <SettingRow
         label="Task Lists"
-        description="Map external task lists to FluidCalendar projects"
+        description={`Map external task lists to ${brand.name} projects`}
       >
         <div className="space-y-4">
           {error && (

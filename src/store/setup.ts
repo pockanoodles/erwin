@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { brand } from "@/lib/brand";
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 interface SetupStore {
@@ -43,7 +44,7 @@ export const useSetupStore = create<SetupStore>()(
         }),
     }),
     {
-      name: "fluid-calendar-setup-storage",
+      name: `${brand.slug}-setup-storage`,
       storage: ssrSafeJsonStorage,
     }
   )

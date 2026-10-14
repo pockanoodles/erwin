@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { CanvasHtml, PacketStatus, TaskPacketPane } from "@/components/packet/TaskPacket";
 import { kindLabel, openTarget, sizeLabel, statusLabel } from "@/components/packet/material-meta";
 
@@ -130,7 +131,7 @@ function File({ m, moduleName }: { m: LibraryMaterial; moduleName: string | null
           {m.cached
             ? `${kindLabel(m)} files don't preview here — open the file to read it.`
             : m.downloadError
-              ? `Erwin couldn't save this file: ${m.downloadError}.`
+              ? `${brand.name} couldn't save this file: ${m.downloadError}.`
               : "Not saved locally yet."}
         </p>
       )}
@@ -154,7 +155,7 @@ function Assignment({ m, moduleName }: { m: LibraryMaterial; moduleName: string 
         actions={m.htmlUrl ? <ActionLink href={m.htmlUrl}>Open in Canvas</ActionLink> : null}
       />
       <p className="px-4 py-4 text-[13px] text-muted-foreground">
-        Not an Erwin task — ungraded, or outside the current term.
+        Not tracked by {brand.name} — ungraded, or outside the current term.
       </p>
     </>
   );
@@ -172,7 +173,7 @@ function Outbound({ m, moduleName }: { m: LibraryMaterial; moduleName: string | 
       />
       <p className="px-4 py-4 text-[13px] text-muted-foreground">
         {m.kind === "EXTERNAL_TOOL"
-          ? "Publisher tools only open through Canvas, so Erwin can't mirror them."
+          ? `Publisher tools only open through Canvas, so ${brand.name} can't mirror them.`
           : "An outside link — nothing to mirror."}
       </p>
     </>

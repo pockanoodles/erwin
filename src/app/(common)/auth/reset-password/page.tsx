@@ -1,8 +1,9 @@
+import { brand, pageTitle } from "@/lib/brand";
 import { PasswordResetForm } from "@/components/auth/PasswordResetForm";
 
 export const metadata = {
-  title: "Reset Password - Erwin",
-  description: "Reset your Erwin account password",
+  title: pageTitle("Reset Password"),
+  description: `Reset your ${brand.name} account password`,
 };
 
 export default function ResetPasswordPage() {

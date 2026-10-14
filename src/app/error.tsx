@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useEffect, useState } from "react";
 
 import Link from "next/link";
@@ -21,7 +22,7 @@ export default function Error({
   useEffect(() => {
     setMounted(true);
     // Set document title on the client side
-    document.title = "Error - FluidCalendar";
+    document.title = `Error | ${brand.name}`;
     // Log the error to an error reporting service
     console.error(error);
   }, [error]);

@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useEffect, useState } from "react";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +46,7 @@ export default function ProgressPage() {
           Progress
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Honest stats — no streak guilt. More detail will land here as Erwin grows.
+          Honest stats — no streak guilt. More detail will land here as {brand.name} grows.
         </p>
       </div>
 

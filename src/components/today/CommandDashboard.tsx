@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Link from "next/link";
@@ -115,7 +116,7 @@ export function CommandDashboard() {
             <div className="max-w-xl space-y-5 p-6 md:p-10">
               <p className="er-label">Nothing to rank yet</p>
               <p className="text-lg leading-relaxed text-foreground">
-                Erwin ranks what you have to do, so give it something to rank.
+                {brand.name} ranks what you have to do, so give it something to rank.
                 Connect your courses or a calendar, or add a task by hand.
               </p>
               <div className="flex flex-wrap items-center gap-3">

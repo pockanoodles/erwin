@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useCallback, useEffect, useState } from "react";
 
 import { Loader2, RefreshCw, ShieldCheck } from "lucide-react";
@@ -150,8 +151,8 @@ export function CanvasLmsSettings() {
 
   return (
     <SettingsSection
-      title="Canvas LMS (Erwin)"
-      description="Read-only sync from Canvas into Erwin tasks. Use a personal access token from your Canvas account settings."
+      title={`Canvas LMS (${brand.name})`}
+      description={`Read-only sync from Canvas into ${brand.name} tasks. Use a personal access token from your Canvas account settings.`}
     >
       <Card>
         <CardHeader>

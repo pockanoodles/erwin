@@ -1,13 +1,13 @@
+import { brand } from "@/lib/brand";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Erwin",
-  description:
-    "Your calendar, your courses and your goals, and the one thing to do next.",
+  title: brand.name,
+  description: brand.description,
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
-    title: "Erwin",
+    title: brand.name,
     statusBarStyle: "black-translucent",
   },
   // src/app/icon.svg (theme-aware) and src/app/favicon.ico are picked up by

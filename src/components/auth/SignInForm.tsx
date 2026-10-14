@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useState } from "react";
 import { useEffect } from "react";
 
@@ -138,7 +139,7 @@ export function SignInForm() {
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
         <CardTitle className="text-2xl font-bold">
-          Welcome to Erwin
+          Welcome to {brand.name}
         </CardTitle>
         <CardDescription>Sign in to your account to continue</CardDescription>
       </CardHeader>

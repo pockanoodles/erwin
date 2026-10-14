@@ -1,3 +1,4 @@
+import { brand } from "@/lib/brand";
 import { newDate } from "@/lib/date-utils";
 
 import {
@@ -9,6 +10,9 @@ import {
   LogStorageConfig,
 } from "./types";
 
+/** The log buffer key before the product was renamed. Read once, then removed. */
+const LEGACY_STORAGE_KEY = "fluid_calendar_logs";
+
 /**
  * Client-side logger that buffers logs in memory and localStorage,
  * then sends them to the server in batches.
@@ -17,7 +21,7 @@ export class ClientLogger {
   private buffer: BufferedLogEntry[] = [];
   private config: LogStorageConfig;
   private flushTimer: NodeJS.Timeout | null = null;
-  private storageKey = "fluid_calendar_logs";
+  private storageKey = `${brand.slug}_logs`;
   private enableDBLogging = false;
   private errorCache: Record<
     string,
@@ -52,8 +56,11 @@ export class ClientLogger {
     if (!this.isClient) return;
 
     try {
-      const stored = localStorage.getItem(this.storageKey);
-      if (stored) {
+      // Buffers written before the rename sit under the old key. Read them
+      // once, then clear them like any other restored buffer.
+      for (const key of [this.storageKey, LEGACY_STORAGE_KEY]) {
+        const stored = localStorage.getItem(key);
+        if (!stored) continue;
         const logs = JSON.parse(stored) as BufferedLogEntry[];
 
         // Convert date strings back to Date objects
@@ -64,7 +71,7 @@ export class ClientLogger {
 
         this.buffer.push(...logs);
         // Clear storage after successful restore
-        localStorage.removeItem(this.storageKey);
+        localStorage.removeItem(key);
       }
     } catch (error) {
       console.error("Failed to restore log buffer:", error);

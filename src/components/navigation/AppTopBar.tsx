@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import type { ComponentType } from "react";
 
 import { usePathname } from "next/navigation";
@@ -132,7 +133,7 @@ export function AppTopBar() {
         {/* Michroma caps: the page's name reads like the plate on a piece of
             equipment, the same size on every route. */}
         <span className="er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground">
-          {route?.title ?? "Erwin"}
+          {route?.title ?? brand.name}
         </span>
 
         {Views ? (

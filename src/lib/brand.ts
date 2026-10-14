@@ -1,0 +1,27 @@
+/**
+ * The product's identity, in one place. Rename the product here and every
+ * title, email, menu and heading follows. This file must stay free of imports:
+ * the desktop build copies it into the Electron shell (scripts/desktop/sync-brand.mjs).
+ *
+ * What does not follow, because tools read it before any code runs: the
+ * Electron builder config, package names, the store manifests in packaging/,
+ * the Dockerfile, and the persisted identifiers (database name, storage keys)
+ * that existing installs already hold.
+ */
+export const brand = {
+  name: "Erwin",
+  /** Lowercase, safe in filenames and storage keys. */
+  slug: "erwin",
+  description:
+    "Your calendar, your courses and your goals, and the one thing to do next.",
+  siteUrl: "https://kaitosoeno.com/erwin",
+  repoUrl: "https://github.com/pockanoodles/erwin",
+  issuesUrl: "https://github.com/pockanoodles/erwin/issues",
+  privacyUrl: "https://kaitosoeno.com/privacy",
+  supportEmail: "contact@kaitosoeno.com",
+} as const;
+
+/** "Settings | Erwin" for a page, plain "Erwin" for none. */
+export function pageTitle(page?: string): string {
+  return page ? `${page} | ${brand.name}` : brand.name;
+}

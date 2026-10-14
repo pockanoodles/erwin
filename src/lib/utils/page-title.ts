@@ -1,28 +1,18 @@
-export const getTitleFromPathname = (pathname: string) => {
-  switch (pathname) {
-    case "/calendar":
-      return "Calendar | Erwin";
-    case "/tasks":
-      return "Tasks | Erwin";
-    case "/focus":
-      return "Focus | Erwin";
-    case "/progress":
-      return "Progress | Erwin";
-    case "/courses":
-      return "Courses | Erwin";
-    case "/goals":
-      return "Ladder | Erwin";
-    case "/settings":
-      return "Settings | Erwin";
-    case "/setup":
-      return "Setup | Erwin";
-    case "/auth/signin":
-      return "Sign In | Erwin";
-    case "/auth/signup":
-      return "Sign Up | Erwin";
-    case "/auth/reset-password":
-      return "Reset Password | Erwin";
-    default:
-      return "Erwin";
-  }
+import { brand, pageTitle } from "@/lib/brand";
+
+const PAGE_NAMES: Record<string, string> = {
+  "/calendar": "Calendar",
+  "/tasks": "Tasks",
+  "/focus": "Focus",
+  "/progress": "Progress",
+  "/courses": "Courses",
+  "/goals": "Ladder",
+  "/settings": "Settings",
+  "/setup": "Setup",
+  "/auth/signin": "Sign In",
+  "/auth/signup": "Sign Up",
+  "/auth/reset-password": "Reset Password",
 };
+
+export const getTitleFromPathname = (pathname: string) =>
+  pathname in PAGE_NAMES ? pageTitle(PAGE_NAMES[pathname]) : brand.name;

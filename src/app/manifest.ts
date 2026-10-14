@@ -1,3 +1,4 @@
+import { brand } from "@/lib/brand";
 import type { MetadataRoute } from "next";
 
 // PWA manifest so erwin installs as a standalone app (macOS "Add to Dock",
@@ -5,9 +6,9 @@ import type { MetadataRoute } from "next";
 // it is the field-at-night ground from brand/tokens.css (--er-stage, --er-bg).
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Erwin",
-    short_name: "Erwin",
-    description: "Your calendar, your courses and your goals, and the one thing to do next.",
+    name: brand.name,
+    short_name: brand.name,
+    description: brand.description,
     start_url: "/focus",
     display: "standalone",
     background_color: "#0e0d08",

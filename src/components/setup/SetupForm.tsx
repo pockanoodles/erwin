@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useState } from "react";
 
 import { useRouter } from "next/navigation";
@@ -98,7 +99,7 @@ export function SetupForm() {
   return (
     <Card className="mx-auto w-full max-w-md">
       <CardHeader>
-        <CardTitle className="text-2xl">Welcome to FluidCalendar</CardTitle>
+        <CardTitle className="text-2xl">Welcome to {brand.name}</CardTitle>
         <CardDescription>
           Set up your admin account to get started with the multi-user version.
         </CardDescription>

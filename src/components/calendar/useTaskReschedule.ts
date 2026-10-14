@@ -1,5 +1,6 @@
 "use client";
 
+import { brand } from "@/lib/brand";
 import { useCallback } from "react";
 
 import type { EventDropArg } from "@fullcalendar/core";
@@ -89,7 +90,7 @@ export function useTaskReschedule() {
       } catch {
         info.revert();
         toast.error("Couldn't move that task", {
-          description: "The time was put back. Check that Erwin is reachable.",
+          description: `The time was put back. Check that ${brand.name} is reachable.`,
         });
       }
     },
