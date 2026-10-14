@@ -32,7 +32,7 @@ export interface Dict {
     groups: Record<"mac" | "windows" | "linux" | "server", string>;
   };
   open: { eyebrow: string; title: string; body: string; cta: string; by: string; more: string };
-  footer: { rights: string; license: string; source: string; portfolio: string; product: string; maker: string };
+  footer: { rights: string; license: string; source: string; privacy: string; portfolio: string; product: string; maker: string };
   menu: { menu: string; close: string; items: { href: string; label: string }[] };
 }
 
@@ -109,7 +109,7 @@ const en: Dict = {
     by: "Made by Kaito Soeno.",
     more: "See more of my work",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", portfolio: "Portfolio", product: "Erwin", maker: "Kaito Soeno" },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", privacy: "Privacy", portfolio: "Portfolio", product: "Erwin", maker: "Kaito Soeno" },
   menu: {
     menu: "Menu",
     close: "Close",
@@ -195,7 +195,7 @@ const ja: Dict = {
     by: "制作は Kaito Soeno です。",
     more: "ほかの作品を見る",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", portfolio: "作品", product: "Erwin", maker: "Kaito Soeno" },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", privacy: "プライバシー", portfolio: "作品", product: "Erwin", maker: "Kaito Soeno" },
   menu: {
     menu: "メニュー",
     close: "閉じる",

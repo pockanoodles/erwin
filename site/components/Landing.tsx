@@ -167,6 +167,9 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
               <li>
                 <a href={REPO_URL}>{t.footer.source}</a>
               </li>
+              <li>
+                <a href={locale === "en" ? "https://kaitosoeno.com/privacy" : "https://kaitosoeno.com/ja/privacy"}>{t.footer.privacy}</a>
+              </li>
             </ul>
           </div>
           <div>
