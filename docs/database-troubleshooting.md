@@ -1,6 +1,6 @@
 # Database and Schema Troubleshooting Guide
 
-This guide covers common database issues you might encounter when using Fluid Calendar and how to resolve them.
+This guide covers common database issues you might encounter when running Erwin and how to resolve them.
 
 ## Table of Contents
 
