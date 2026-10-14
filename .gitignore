@@ -73,3 +73,21 @@ docs/v*-cleanup.md
 docs/focus-mode.md
 docs/weekly-checkin.md
 docs/superpowers/
+docs/ERWIN-SPEC.md
+docs/task-sync.md
+docs/tasklist-enhancements.md
+/TODO.md
+/@TODO.md
+/main-rule.mdc
+/.cursor/
+
+# Local runtime state and caches
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+.cache/
+
+# Any other env file stays local, the example is the only one tracked
+.env.*
+!.env.example
