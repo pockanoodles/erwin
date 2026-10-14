@@ -27,7 +27,7 @@ const TARGETS = [
   { model: "TaskProvider", fields: ["accessToken", "refreshToken"] },
   {
     model: "SystemSettings",
-    fields: ["googleClientSecret", "outlookClientSecret", "resendApiKey"],
+    fields: ["googleClientSecret", "outlookClientSecret"],
   },
 ] as const;
 

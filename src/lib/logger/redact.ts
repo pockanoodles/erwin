@@ -41,7 +41,6 @@ const SENSITIVE_KEYS = new Set([
   "googleclientsecret",
   "outlookclientsecret",
   "apikey",
-  "resendapikey",
   "authorization",
   "cookie",
   "credentials",

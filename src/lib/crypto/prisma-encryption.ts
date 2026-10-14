@@ -37,11 +37,7 @@ import { decryptSecret, encryptSecret } from "./secret-box";
 const ENCRYPTED_FIELDS: Record<string, readonly string[]> = {
   ConnectedAccount: ["accessToken", "refreshToken"],
   TaskProvider: ["accessToken", "refreshToken"],
-  SystemSettings: [
-    "googleClientSecret",
-    "outlookClientSecret",
-    "resendApiKey",
-  ],
+  SystemSettings: ["googleClientSecret", "outlookClientSecret"],
 };
 
 /**

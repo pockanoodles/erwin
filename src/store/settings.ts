@@ -64,7 +64,6 @@ const defaultSettings: Settings & { accounts: ConnectedAccount[] } = {
   },
   notifications: {
     emailNotifications: true,
-    dailyEmailEnabled: true,
     notifyFor: {
       eventInvites: true,
       eventUpdates: true,
@@ -194,7 +193,6 @@ export const useSettingsStore = create<SettingsStore>()(
             },
             body: JSON.stringify({
               emailNotifications: newSettings.emailNotifications,
-              dailyEmailEnabled: newSettings.dailyEmailEnabled,
               eventInvites: newSettings.notifyFor.eventInvites,
               eventUpdates: newSettings.notifyFor.eventUpdates,
               eventCancellations: newSettings.notifyFor.eventCancellations,
@@ -414,7 +412,6 @@ export const useSettingsStore = create<SettingsStore>()(
 
           get().updateNotificationSettings({
             emailNotifications: notificationSettings.emailNotifications,
-            dailyEmailEnabled: notificationSettings.dailyEmailEnabled,
             notifyFor: {
               eventInvites: notificationSettings.eventInvites,
               eventUpdates: notificationSettings.eventUpdates,
@@ -492,7 +489,6 @@ export const useSettingsStore = create<SettingsStore>()(
           outlookClientId: undefined,
           outlookClientSecret: undefined,
           outlookTenantId: undefined,
-          resendApiKey: undefined,
         },
       }),
     }

@@ -29,7 +29,6 @@ export interface CalendarSettings {
 
 export interface NotificationSettings {
   emailNotifications: boolean;
-  dailyEmailEnabled: boolean; // Controls whether the user receives daily email updates
   notifyFor: {
     eventInvites: boolean;
     eventUpdates: boolean;
@@ -92,7 +91,6 @@ export interface SystemSettings {
   logDestination?: string; // "db", "file", or "both"
   disableHomepage?: boolean; // Whether to disable the homepage and redirect to login/calendar
   publicSignup?: boolean; // Whether public signup is enabled
-  resendApiKey?: string; // API key for Resend email service
 }
 
 export interface Settings {

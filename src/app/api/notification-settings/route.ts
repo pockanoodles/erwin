@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
       create: {
         userId,
         emailNotifications: true,
-        dailyEmailEnabled: true,
         eventInvites: true,
         eventUpdates: true,
         eventCancellations: true,
@@ -34,7 +33,6 @@ export async function GET(request: NextRequest) {
     // Transform the response to match the store's structure
     return NextResponse.json({
       emailNotifications: settings.emailNotifications,
-      dailyEmailEnabled: settings.dailyEmailEnabled,
       notifyFor: {
         eventInvites: settings.eventInvites,
         eventUpdates: settings.eventUpdates,
@@ -69,7 +67,6 @@ export async function PATCH(request: NextRequest) {
     // Transform the updates to match the database schema
     const dbUpdates = {
       emailNotifications: updates.emailNotifications,
-      dailyEmailEnabled: updates.dailyEmailEnabled,
       eventInvites: updates.eventInvites,
       eventUpdates: updates.eventUpdates,
       eventCancellations: updates.eventCancellations,
@@ -91,7 +88,6 @@ export async function PATCH(request: NextRequest) {
     // Transform the response to match the store's structure
     return NextResponse.json({
       emailNotifications: settings.emailNotifications,
-      dailyEmailEnabled: settings.dailyEmailEnabled,
       notifyFor: {
         eventInvites: settings.eventInvites,
         eventUpdates: settings.eventUpdates,

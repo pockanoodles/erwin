@@ -147,7 +147,6 @@ export async function POST(request: Request) {
               debug: 3,
             },
             publicSignup: false,
-            resendApiKey: process.env.RESEND_API_KEY || null,
           },
         });
       }),

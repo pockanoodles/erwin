@@ -44,7 +44,7 @@ describe("redaction by key", () => {
   it("matches by suffix, so a prefixed key is still caught", () => {
     const result = redactMetadata({
       googleClientSecret: "gcs",
-      resendApiKey: "rk",
+      stripeApiKey: "rk",
       caldavPassword: "pw",
     });
 
