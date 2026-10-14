@@ -23,6 +23,7 @@ import {
   type UtilityProcess,
 } from "electron";
 
+import { brand } from "./brand";
 import { buildMenu } from "./menu";
 import type { MainToRuntime, RuntimeToMain } from "./protocol";
 import { loadInstallKeys } from "./secrets";
@@ -87,7 +88,7 @@ async function onReady(): Promise<void> {
   const p = paths();
   fs.mkdirSync(p.logs, { recursive: true });
   logStream = fs.createWriteStream(path.join(p.logs, "runtime.log"), { flags: "a" });
-  log(`--- Erwin ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
+  log(`--- ${brand.name} ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
 
   Menu.setApplicationMenu(buildMenu({ openSettings: () => navigate("/settings"), openLogs: () => shell.openPath(p.logs) }));
   ipcMain.handle("erwin:boot:restart", () => restartRuntime());
@@ -105,7 +106,7 @@ function createWindow(): void {
     minWidth: 960,
     minHeight: 600,
     show: false,
-    title: "Erwin",
+    title: brand.name,
     backgroundColor: "#14130d",
     // On macOS the app's own 44px top bar is the title bar: the traffic
     // lights sit inset in it, centred on its height (see globals.css,
@@ -157,7 +158,7 @@ function startRuntime(): void {
   expectingExit = false;
 
   runtime = utilityProcess.fork(path.join(__dirname, "runtime.js"), [], {
-    serviceName: "Erwin Runtime",
+    serviceName: `${brand.name} Runtime`,
     stdio: "pipe",
     env: {
       PATH: process.env.PATH ?? "",
@@ -192,7 +193,7 @@ function startRuntime(): void {
   runtime.on("exit", (code) => {
     log(`runtime exited with ${code}`);
     runtime = null;
-    if (!quitting && !expectingExit) void showFailure(`Erwin's background process stopped (exit code ${code}).`);
+    if (!quitting && !expectingExit) void showFailure(`${brand.name}'s background process stopped (exit code ${code}).`);
   });
 
   const locale = new Intl.Locale(app.getLocale());

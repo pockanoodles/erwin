@@ -1,7 +1,6 @@
 import { app, Menu, shell, type MenuItemConstructorOptions } from "electron";
 
-const SITE = "https://kaitosoeno.com/erwin";
-const ISSUES = "https://github.com/pockanoodles/erwin/issues";
+import { brand } from "./brand";
 
 /**
  * The OS menu bar. Standard roles do the work (copy and paste, zoom, window
@@ -59,8 +58,8 @@ export function buildMenu(actions: { openSettings: () => void; openLogs: () => v
     {
       role: "help",
       submenu: [
-        { label: "Erwin website", click: () => void shell.openExternal(SITE) },
-        { label: "Report a problem", click: () => void shell.openExternal(ISSUES) },
+        { label: `${brand.name} website`, click: () => void shell.openExternal(brand.siteUrl) },
+        { label: "Report a problem", click: () => void shell.openExternal(brand.issuesUrl) },
         { type: "separator" },
         { label: "Show logs", click: actions.openLogs },
       ],

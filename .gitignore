@@ -20,6 +20,8 @@
 /.next-dev/
 # `npm run build:desktop` builds here, so it never replaces the served build.
 /.next-desktop/
+# Copied from src/lib/brand.ts by scripts/desktop/sync-brand.mjs.
+/desktop/src/brand.ts
 # `npm run dev:local`: its build directory, and its database and keys.
 /.next-local/
 /.local/

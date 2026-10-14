@@ -14,9 +14,11 @@
   "private": true,
   "main": "dist/main.js",
   "scripts": {
+    "prebuild": "node ../scripts/desktop/sync-brand.mjs",
     "build": "tsc -p tsconfig.json",
     "start": "npm run build && electron .",
     "dist": "npm run build && electron-builder --config electron-builder.yml",
+    "pretypecheck": "node ../scripts/desktop/sync-brand.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
