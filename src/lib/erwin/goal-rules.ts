@@ -2,7 +2,7 @@ import type { Db, DbTransaction } from "@/lib/prisma";
 
 /**
  * Files tasks under the goals the vault says they serve. Both rules are
- * declared in ~/Brain and projected by pump 7; Erwin only applies them.
+ * declared in ~/brain and projected by pump 7; Erwin only applies them.
  *
  *  - A Lord claims every task whose source it names: its own
  *    "venture:<slug>" (tasks pump 2 decomposed from it) or one of its
