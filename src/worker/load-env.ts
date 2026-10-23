@@ -1,5 +1,5 @@
 /**
- * Loads `.env` from the project cwd before Prisma / Redis clients initialize.
+ * Loads `.env` from the project cwd before the Prisma client initializes.
  * `node dist/...` does not load env files automatically (unlike `next dev`).
  */
 

@@ -1,115 +1,31 @@
 /**
- * BullMQ worker: periodic Canvas + CalDAV sync for all eligible users/feeds.
+ * The sync worker: Erwin's background Canvas + CalDAV sync in its own
+ * process, so it runs outside the web server and through app restarts.
  *
- * Requires `REDIS_URL`. Interval: `ERWIN_BACKGROUND_SYNC_INTERVAL_MS` (default 15 minutes).
+ * It runs the same loop as `ERWIN_SCHEDULER=inprocess` (`lib/erwin/sync-loop.ts`),
+ * every `ERWIN_BACKGROUND_SYNC_INTERVAL_MS` (default 15 minutes). Run this or
+ * the in-process loop, not both.
  */
 
 import "./load-env";
 import "./register-alias";
 
-import { Queue, Worker } from "bullmq";
-import IORedis from "ioredis";
-
-import { runAllPeriodicErwinSyncs } from "@/lib/erwin/job-sync-runner";
-import { getBackgroundIntervalMs } from "@/lib/erwin/sync-interval";
+import { startSyncLoop } from "@/lib/erwin/sync-loop";
 import { logger } from "@/lib/logger";
+import { prisma } from "@/lib/prisma";
 
-const LOG_SOURCE = "ErwinBullWorker";
+const LOG_SOURCE = "ErwinWorker";
 
-const QUEUE_NAME = "erwin-periodic-sync";
-const SCHEDULER_ID = "erwin-periodic-sync-scheduler";
-const JOB_NAME = "run-erwin-syncs";
+// The first tick waits a moment so a machine waking up has its network back.
+startSyncLoop({ where: "worker", firstTickDelayMs: 5_000 });
 
-function redisPreview(url: string | undefined): string {
-  if (!url) {
-    return "(unset)";
-  }
-  if (url.includes("@")) {
-    return url.split("@").slice(-1)[0] ?? "(hidden)";
-  }
-  try {
-    const u = new URL(url);
-    return `${u.hostname}:${u.port || "6379"}`;
-  } catch {
-    return "(configured)";
-  }
-}
+const shutdown = async (signal: string) => {
+  logger.info(`Erwin worker ${signal}, exiting`, {}, LOG_SOURCE);
+  // A sync cut short loses nothing: each step's writes and its activity land
+  // together, and the next tick picks up from what Canvas returns.
+  await prisma.$disconnect().catch(() => {});
+  process.exit(0);
+};
 
-function createConnection(): IORedis {
-  const url = process.env.REDIS_URL;
-  if (!url) {
-    throw new Error(
-      "REDIS_URL is not set (required for BullMQ Erwin worker)"
-    );
-  }
-  return new IORedis(url, { maxRetriesPerRequest: null });
-}
-
-async function main(): Promise<void> {
-  const connection = createConnection();
-  const intervalMs = getBackgroundIntervalMs();
-
-  const queue = new Queue(QUEUE_NAME, { connection });
-
-  await queue.upsertJobScheduler(
-    SCHEDULER_ID,
-    { every: intervalMs },
-    {
-      name: JOB_NAME,
-      data: {},
-      opts: {
-        removeOnComplete: { count: 50 },
-        removeOnFail: { count: 20 },
-      },
-    }
-  );
-
-  logger.info(
-    "Erwin BullMQ worker starting",
-    {
-      queue: QUEUE_NAME,
-      intervalMs,
-      redisHostPreview: redisPreview(process.env.REDIS_URL),
-    },
-    LOG_SOURCE
-  );
-
-  const worker = new Worker(
-    QUEUE_NAME,
-    async () => {
-      await runAllPeriodicErwinSyncs();
-    },
-    { connection }
-  );
-
-  worker.on("failed", (job, err) => {
-    logger.error(
-      "Erwin periodic job failed",
-      {
-        jobId: job?.id ?? "",
-        error: err instanceof Error ? err.message : String(err),
-      },
-      LOG_SOURCE
-    );
-  });
-
-  const shutdown = async (signal: string) => {
-    logger.info(`Erwin worker ${signal}, closing…`, {}, LOG_SOURCE);
-    await worker.close();
-    await queue.close();
-    await connection.quit();
-    process.exit(0);
-  };
-
-  process.on("SIGTERM", () => void shutdown("SIGTERM"));
-  process.on("SIGINT", () => void shutdown("SIGINT"));
-}
-
-main().catch((err) => {
-  logger.error(
-    "Erwin worker fatal",
-    { error: err instanceof Error ? err.message : String(err) },
-    LOG_SOURCE
-  );
-  process.exit(1);
-});
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

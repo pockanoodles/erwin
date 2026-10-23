@@ -7,17 +7,15 @@
 export async function register(): Promise<void> {
   patchBrokenNodeLocalStorage();
 
-  // Installs without Redis (the desktop app, a single-container self-host)
-  // run background sync on a timer in this process instead of the BullMQ
-  // worker. Imported lazily so the edge build never sees Prisma.
+  // Installs with no worker process (the desktop app, a single-container
+  // self-host) run the background sync loop in this process instead.
+  // Imported lazily so the edge build never sees Prisma.
   if (
     process.env.NEXT_RUNTIME === "nodejs" &&
     process.env.ERWIN_SCHEDULER === "inprocess"
   ) {
-    const { startInProcessScheduler } = await import(
-      "@/lib/erwin/inprocess-scheduler"
-    );
-    startInProcessScheduler();
+    const { startSyncLoop } = await import("@/lib/erwin/sync-loop");
+    startSyncLoop({ where: "in-process", firstTickDelayMs: 20_000 });
   }
 }
 

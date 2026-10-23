@@ -11,17 +11,14 @@ services:
     env_file:
       - .env
     environment:
-      # Inside the compose network, Postgres/Redis live at service hostnames —
-      # these override the host-oriented localhost values from .env.
+      # Inside the compose network, Postgres lives at its service hostname —
+      # this overrides the host-oriented localhost value from .env.
       - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
-      - REDIS_URL=redis://redis:6379
       # Next standalone binds this host; without it the server can bind
       # localhost-only inside the container and break the port mapping.
       - HOSTNAME=0.0.0.0
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     # Migrations run in this container's entrypoint, then `next dev` binds :3000.
     # Once the port is listening the schema is up — the worker gates on this.
@@ -33,10 +30,11 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # BullMQ scheduler + worker: periodic Canvas + CalDAV sync for all eligible
-  # users/feeds. Shares the app image (development stage) so the sync logic in
-  # src/lib/erwin/* and the queue wrapper in src/worker/* are already present.
-  # Separate process by design (see package.json start:worker / start:worker:prod).
+  # The sync worker: periodic Canvas + CalDAV sync for all eligible
+  # users/feeds on a timer (src/lib/erwin/sync-loop.ts). Shares the app image
+  # (development stage) so src/lib/erwin/* and src/worker/* are present.
+  # A separate process so sync runs outside the web server; a single
+  # container can set ERWIN_SCHEDULER=inprocess and drop this service.
   worker:
     build:
       context: .
@@ -46,11 +44,8 @@ services:
       - .env
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
-      - REDIS_URL=redis://redis:6379
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       # Wait for the app so migrations have applied before the worker queries.
       app:
@@ -76,17 +71,6 @@ services:
       - postgres_dev_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "127.0.0.1:6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5

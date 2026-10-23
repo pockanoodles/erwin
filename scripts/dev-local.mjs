@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Erwin with nothing installed: no Postgres, no Redis, no Docker.
+ * Erwin with nothing installed: no Postgres, no Docker.
  *
  *   npm run dev:local                 → http://localhost:3000, signed in
  *   npm run dev:local -- --port 3100
@@ -78,7 +78,6 @@ const env = {
   ERWIN_DESKTOP_BOOT_TOKEN: bootToken,
   ERWIN_DESKTOP_TIME_ZONE: Intl.DateTimeFormat().resolvedOptions().timeZone,
   ERWIN_DIST_DIR: ".next-local",
-  REDIS_URL: "",
   PRISMA_HIDE_UPDATE_MESSAGE: "1",
 };
 
