@@ -30,6 +30,17 @@ async function hasOpenTaskDueWithinHours(
   return n > 0;
 }
 
+/**
+ * Ticks and syncs drift by seconds. Without slack, a 15-minute interval on a
+ * 15-minute tick sees 14m59s since the last sync, skips, and really syncs
+ * every other tick.
+ */
+const DUE_SLACK_MS = 2 * 60_000;
+
+function isDue(last: Date | null, now: Date, intervalMs: number): boolean {
+  return !last || now.getTime() - last.getTime() >= intervalMs - DUE_SLACK_MS;
+}
+
 function caldavPollIntervalMs(): number {
   const raw = process.env.ERWIN_CALDAV_POLL_INTERVAL_MINUTES;
   const mins = raw ? Number.parseInt(raw, 10) : 15;
@@ -73,13 +84,11 @@ export async function runPeriodicCanvasSyncs(): Promise<CanvasSyncRunStats> {
 
   for (const p of providers) {
     const baseIntervalMin = p.syncIntervalMinutes ?? DEFAULT_CANVAS_SYNC_MINUTES;
+    // Something due soon can only speed sync up: with the 15-minute default,
+    // a flat 30 here slowed it down exactly when a deadline was close.
     const urgent48h = await hasOpenTaskDueWithinHours(p.userId, now, 48);
-    const intervalMin = urgent48h ? 30 : baseIntervalMin;
-    const last = p.lastSyncedAt;
-    if (
-      last &&
-      now.getTime() - last.getTime() < intervalMin * 60_000
-    ) {
+    const intervalMin = urgent48h ? Math.min(baseIntervalMin, 30) : baseIntervalMin;
+    if (!isDue(p.lastSyncedAt, now, intervalMin * 60_000)) {
       skipped += 1;
       continue;
     }
@@ -139,11 +148,7 @@ export async function runPeriodicCaldavSyncs(): Promise<CaldavSyncRunStats> {
       continue;
     }
 
-    const last = feed.lastSync;
-    if (
-      last &&
-      now.getTime() - last.getTime() < pollMs
-    ) {
+    if (!isDue(feed.lastSync, now, pollMs)) {
       skipped += 1;
       continue;
     }
