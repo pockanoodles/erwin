@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import { format } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
+import { GradeBlock } from "./GradeBlock";
 import { kindLabel, openTarget, sizeLabel, statusLabel } from "./material-meta";
 import type { PacketMaterial, RubricCriterion, TaskPacket } from "@/types/course-materials";
 import { useResource } from "@/hooks/use-resource";
@@ -192,6 +193,43 @@ export function PacketStatus({ loading, error }: { loading: boolean; error: stri
   return null;
 }
 
+/**
+ * How the assignment went, or the rules for taking it — shown once there's
+ * something to say: a submission, a grade, feedback, or quiz settings.
+ */
+export function PacketGrade({ packet, className }: { packet: TaskPacket; className?: string }) {
+  const g = packet.grade;
+  if (!g || (g.state === "unsubmitted" && !g.quiz && g.comments.length === 0)) return null;
+  return (
+    <GradeBlock
+      className={className}
+      data={{ ...g, pointsPossible: packet.pointsPossible, dueAt: packet.dueDate, rubric: packet.rubric }}
+    />
+  );
+}
+
+/** Instructions, rubric and materials — the packet without its header, for a pane that has its own. */
+export function TaskPacketBody({ taskId }: { taskId: string }) {
+  const { data, loading, error } = useTaskPacket(taskId, "CANVAS");
+  if (!data) {
+    return (
+      <div className="p-4">
+        <PacketStatus loading={loading} error={error} />
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-6 p-4">
+      <div>
+        <SectionLabel>Instructions</SectionLabel>
+        <PacketInstructions html={data.instructionsHtml} />
+      </div>
+      <PacketRubric rubric={data.rubric} />
+      <PacketMaterials materials={data.materials} />
+    </div>
+  );
+}
+
 /** The whole packet stacked in one column — the Tasks sheet's side pane. */
 export function TaskPacketPane({
   taskId,
@@ -244,6 +282,7 @@ export function TaskPacketPane({
           </a>
         ) : null}
       </div>
+      <PacketGrade packet={data} />
       <div>
         <SectionLabel>Instructions</SectionLabel>
         <PacketInstructions html={data.instructionsHtml} />

@@ -52,6 +52,23 @@ export interface TaskPacket {
   instructionsHtml: string | null;
   rubric: RubricCriterion[] | null;
   materials: PacketMaterial[];
+  /** The gradebook row behind a Canvas task: how it went, or the rules for taking it. */
+  grade: PacketGrade | null;
+}
+
+export interface PacketGrade {
+  assignmentId: string;
+  state: string;
+  score: number | null;
+  grade: string | null;
+  submittedAt: string | null;
+  gradedAt: string | null;
+  late: boolean;
+  pointsDeducted: number | null;
+  scoreStatistics: { mean?: number; median?: number; min?: number; max?: number } | null;
+  comments: Array<{ id: string; author: string | null; body: string; createdAt: string | null; mine: boolean }>;
+  rubricAssessment: Record<string, { points?: number | null; rating_id?: string | null; comments?: string | null }> | null;
+  quiz: { timeLimit: number | null; allowedAttempts: number | null; questionCount: number | null; lockdownBrowser: boolean } | null;
 }
 
 export interface LibraryMaterial extends MaterialSummary {

@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 
 import {
+  PacketGrade,
   PacketInstructions,
   PacketMaterials,
   PacketRubric,
@@ -202,6 +203,9 @@ export function FocusDesk({
           {isCanvas ? (
             packet.data ? (
               <>
+                {/* Quiz rules before the instructions: a timed, one-attempt
+                    LockDown exam changes how you start it. */}
+                <PacketGrade packet={packet.data} className="mt-4 max-w-[68ch]" />
                 <PacketInstructions html={packet.data.instructionsHtml} className="mt-4" />
                 <PacketRubric rubric={packet.data.rubric} className="mt-6 max-w-[68ch]" />
               </>
