@@ -1,15 +1,24 @@
 /**
  * Thin Canvas LMS REST client (read-only). Uses a personal access token.
+ *
+ * Erwin's one egress to Canvas: everything it reads — courses and grades,
+ * assignments and submissions, modules, files, announcements, inbox — comes
+ * through here, and nothing here writes. Inbox threads are fetched with
+ * `auto_mark_as_read=false` so reading them never marks them read in Canvas.
  */
 
 import type {
+  CanvasAnnouncement,
   CanvasAssignment,
   CanvasAssignmentGroup,
+  CanvasConversation,
   CanvasCourse,
   CanvasFile,
   CanvasModule,
   CanvasModuleItem,
   CanvasPage,
+  CanvasQuiz,
+  CanvasSubmission,
 } from "@/lib/canvas/types";
 
 export interface CanvasClientConfig {
@@ -77,10 +86,11 @@ async function canvasFetchAll<T>(
 
 export function createCanvasClient(config: CanvasClientConfig) {
   return {
+    /** Active enrollments with this student's course grade, the term and the letter scheme. */
     async listActiveCourses(): Promise<CanvasCourse[]> {
       return canvasFetchAll<CanvasCourse>(
         config,
-        "/api/v1/courses?enrollment_state=active"
+        "/api/v1/courses?enrollment_state=active&include[]=total_scores&include[]=term&include[]=grading_scheme"
       );
     },
 
@@ -92,12 +102,67 @@ export function createCanvasClient(config: CanvasClientConfig) {
     },
 
     /**
-     * Assignments including the current user's submission object when available.
+     * Assignments with the current user's submission and, where the instructor
+     * shares them, class score statistics.
      */
     async listAssignments(courseId: number): Promise<CanvasAssignment[]> {
       return canvasFetchAll<CanvasAssignment>(
         config,
-        `/api/v1/courses/${courseId}/assignments?include[]=submission`
+        `/api/v1/courses/${courseId}/assignments?include[]=submission&include[]=score_statistics`
+      );
+    },
+
+    /**
+     * This student's submissions with grader comments and rubric marks — what
+     * the assignment list's embedded submission leaves out.
+     */
+    async listSubmissions(courseId: number): Promise<CanvasSubmission[]> {
+      return canvasFetchAll<CanvasSubmission>(
+        config,
+        `/api/v1/courses/${courseId}/students/submissions?student_ids[]=self&include[]=submission_comments&include[]=rubric_assessment`
+      );
+    },
+
+    /** Classic quizzes: time limit, attempts, LockDown Browser. */
+    async listQuizzes(courseId: number): Promise<CanvasQuiz[]> {
+      return canvasFetchAll<CanvasQuiz>(config, `/api/v1/courses/${courseId}/quizzes`);
+    },
+
+    /**
+     * Announcements for several courses in one call. Canvas only returns the
+     * last two weeks unless given a window, so the caller passes one.
+     */
+    async listAnnouncements(
+      courseIds: number[],
+      window: { start: Date; end: Date }
+    ): Promise<CanvasAnnouncement[]> {
+      if (courseIds.length === 0) {
+        return [];
+      }
+      const day = (d: Date) => d.toISOString().slice(0, 10);
+      const contexts = courseIds.map((id) => `context_codes[]=course_${id}`).join("&");
+      return canvasFetchAll<CanvasAnnouncement>(
+        config,
+        `/api/v1/announcements?${contexts}&start_date=${day(window.start)}&end_date=${day(window.end)}`
+      );
+    },
+
+    /**
+     * The newest Inbox threads, newest first. One page is plenty for a
+     * sync that runs every few minutes.
+     */
+    async listConversations(): Promise<CanvasConversation[]> {
+      return canvasFetch<CanvasConversation[]>(
+        config,
+        "/api/v1/conversations?scope=inbox&per_page=50"
+      );
+    },
+
+    /** One Inbox thread with its messages. Never marks it read. */
+    async getConversation(conversationId: number): Promise<CanvasConversation> {
+      return canvasFetch<CanvasConversation>(
+        config,
+        `/api/v1/conversations/${conversationId}?auto_mark_as_read=false`
       );
     },
 
