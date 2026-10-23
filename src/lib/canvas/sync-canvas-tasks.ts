@@ -1,27 +1,20 @@
 /**
- * One-way Canvas → Erwin Task upsert. Read-only relative to Canvas.
+ * Canvas → Erwin tasks for one course, projected from the gradebook the same
+ * sync just wrote (`sync-canvas-gradebook.ts`). Read-only relative to Canvas.
+ *
+ * One task per actionable assignment (`isActionable`), whatever its
+ * submission state: work handed in before Erwin first saw it is a completed
+ * task, not a gap in the record. Tasks whose assignment Canvas no longer has,
+ * or that are no longer actionable, are deleted — unless someone added
+ * subtasks to them.
  */
 
-import type {
-  CanvasAssignment,
-  CanvasAssignmentGroup,
-  CanvasCourse,
-} from "@/lib/canvas/types";
-import { createCanvasClient } from "@/lib/canvas/canvas-client";
-import {
-  hasLiveAssignment,
-  isTermNamedCourse,
-} from "@/lib/canvas/course-term-filter";
-import {
-  type MaterialsSyncStats,
-  syncCanvasMaterials,
-} from "@/lib/canvas/sync-canvas-materials";
 import { Prisma } from "@prisma/client";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
-import { logger } from "@/lib/logger";
-import { prisma } from "@/lib/prisma";
 
-const LOG_SOURCE = "CanvasSync";
+import { DONE_STATES, isActionable } from "@/lib/canvas/gradebook-plan";
+import type { GradebookSyncResult } from "@/lib/canvas/sync-canvas-gradebook";
+import type { CanvasAssignment, CanvasCourse } from "@/lib/canvas/types";
+import { prisma } from "@/lib/prisma";
 
 function estimateDurationMinutes(types: string[] | undefined): number {
   if (!types?.length) {
@@ -76,23 +69,6 @@ function computeGradeImpactRaw(params: {
   return Math.min(1, base);
 }
 
-export function mapStatusFromSubmission(
-  assignment: CanvasAssignment
-): { taskStatus: string; submissionStatus: string | null } {
-  const sub = assignment.submission;
-  const ws = sub?.workflow_state;
-
-  if (ws === "graded" || ws === "submitted") {
-    return { taskStatus: "completed", submissionStatus: ws };
-  }
-  if (ws === "unsubmitted" || ws === "pending_review") {
-    return { taskStatus: "todo", submissionStatus: ws };
-  }
-  // Not `has_submitted_submissions`: that flag is course-wide (true once any
-  // student submits), so it says nothing about this user.
-  return { taskStatus: "todo", submissionStatus: ws ?? "unsubmitted" };
-}
-
 function maxPointsInGroup(
   assignments: CanvasAssignment[],
   groupId: number | null
@@ -112,255 +88,124 @@ function maxPointsInGroup(
   return max || 1;
 }
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-/**
- * Returns true if this assignment should be skipped during sync.
- * isNew = true when no existing DB row found for this assignment.
- */
-export function shouldSkipAssignment(
-  a: CanvasAssignment,
-  now: Date,
-  isNew: boolean
-): boolean {
-  // Skip assignments that unlock more than 7 days from now
-  if (a.unlock_at && new Date(a.unlock_at).getTime() - now.getTime() > SEVEN_DAYS_MS) {
-    return true;
-  }
-  // Skip zero-credit surveys/optionals
-  if (Boolean(a.omit_from_final_grade) && (a.points_possible ?? 0) === 0) {
-    return true;
-  }
-  // Don't create new tasks for already-submitted assignments; existing tasks get updated to completed
-  if (isNew) {
-    // Only this user's submission counts — `has_submitted_submissions` is
-    // course-wide, and trusting it dropped assignments a classmate had
-    // already turned in.
-    const ws = a.submission?.workflow_state;
-    if (ws === "graded" || ws === "submitted") {
-      return true;
-    }
-  }
-  return false;
+export interface TaskProjectionStats {
+  upserted: number;
+  removed: number;
 }
 
-/**
- * Pulls active courses and assignments from Canvas and upserts rows in `Task` for the user.
- */
-export async function syncCanvasTasksForUser(
+export async function projectCourseTasks(
   userId: string,
-  options: { forceMaterials?: boolean } = {}
-): Promise<{
-  upserted: number;
-  courseCount: number;
-  purged: number;
-  /** null when the materials mirror threw; task sync still succeeded. */
-  materials: MaterialsSyncStats | null;
-}> {
-  const provider = await prisma.taskProvider.findFirst({
-    where: { userId, type: "CANVAS" },
+  providerId: string,
+  course: CanvasCourse,
+  gradebook: GradebookSyncResult,
+  now: Date
+): Promise<TaskProjectionStats> {
+  const { assignments } = gradebook;
+  const groupById = new Map(gradebook.groups.map((g) => [g.id, g]));
+
+  const existing = await prisma.task.findMany({
+    where: { userId, taskProviderId: providerId, source: "CANVAS", courseId: String(course.id) },
+    select: {
+      id: true,
+      externalTaskId: true,
+      status: true,
+      completedAt: true,
+      _count: { select: { subtasks: true } },
+    },
   });
-
-  if (!provider?.accessToken || !provider.serverUrl) {
-    throw new Error("Canvas provider is not configured (missing token or base URL)");
-  }
-
-  const client = createCanvasClient({
-    baseUrl: provider.serverUrl,
-    accessToken: provider.accessToken,
-  });
-
-  const now = new Date();
-  const courses = await client.listActiveCourses();
-
-  // NEU never concludes enrollments, so `enrollment_state=active` alone
-  // returns every course ever taken. Keep term-named current courses; keep
-  // undated instructor shells only if something is due recently/in future.
-  const assignmentsByCourse = new Map<number, CanvasAssignment[]>();
-  const liveCourses: CanvasCourse[] = [];
-  for (const course of courses) {
-    if (isTermNamedCourse(course, now)) {
-      liveCourses.push(course);
-      continue;
-    }
-    const assignments = await client.listAssignments(course.id);
-    if (hasLiveAssignment(assignments, now)) {
-      assignmentsByCourse.set(course.id, assignments);
-      liveCourses.push(course);
-    }
-  }
-
-  const activeCourseIds = liveCourses.map((c) => String(c.id));
+  const byExternal = new Map(existing.map((t) => [t.externalTaskId, t]));
+  const kept = new Set<string>();
   let upserted = 0;
 
-  for (const course of liveCourses) {
-    const groups = await client.listAssignmentGroups(course.id);
-    const groupById = new Map<number, CanvasAssignmentGroup>();
-    for (const g of groups) {
-      groupById.set(g.id, g);
+  for (const a of assignments) {
+    const plan = gradebook.planned.get(String(a.id));
+    if (!plan || !isActionable(a)) {
+      continue;
     }
+    const extId = plan.canvasId;
+    const prev = byExternal.get(extId);
 
-    const assignments =
-      assignmentsByCourse.get(course.id) ??
-      (await client.listAssignments(course.id));
-    assignmentsByCourse.set(course.id, assignments);
+    const gid = a.assignment_group_id ?? null;
+    const group = gid != null ? groupById.get(gid) : undefined;
+    const weight = group?.group_weight ?? null;
+    const gradeImpactScore = computeGradeImpactRaw({
+      points: a.points_possible,
+      maxInGroup: maxPointsInGroup(assignments, gid),
+      groupWeightPercent: weight,
+      omitFromFinalGrade: plan.omitFromFinalGrade,
+      gradingType: plan.gradingType,
+    });
 
-    for (const a of assignments) {
-      const extId = String(a.id);
+    // todo: apply assignment group drop_lowest rules when adjusting gradeImpactScore (spec §5.2.7 / §8.1)
 
-      const existing = await prisma.task.findFirst({
-        where: {
-          userId,
-          taskProviderId: provider.id,
-          externalTaskId: extId,
-        },
-      });
-
-      if (shouldSkipAssignment(a, now, !existing)) {
-        continue;
-      }
-
-      const gid = a.assignment_group_id ?? null;
-      const group = gid != null ? groupById.get(gid) : undefined;
-      const maxPts = maxPointsInGroup(assignments, gid);
-      const weight = group?.group_weight ?? null;
-
-      const rawGradeImpact = computeGradeImpactRaw({
-        points: a.points_possible,
-        maxInGroup: maxPts,
-        groupWeightPercent: weight,
-        omitFromFinalGrade: Boolean(a.omit_from_final_grade),
-        gradingType: a.grading_type,
-      });
-      const gradeImpactScore = rawGradeImpact;
-      const gradeWeightPercent = Math.min(100, Math.max(0, rawGradeImpact * 100));
-
-      const { taskStatus, submissionStatus } = mapStatusFromSubmission(a);
-
-      // todo: apply assignment group drop_lowest rules when adjusting gradeImpactScore (spec §5.2.7 / §8.1)
-      // todo: normalize gradeImpactScore across all pending tasks in pool after full sync (spec §5.2.3)
-
-      const payload = {
-        title: a.name,
-        description: a.description ?? null,
-        // A hand-marked completion stands: group and external submissions
-        // never show up in Canvas, so "unsubmitted" can't reopen the task.
-        status: existing?.status === "completed" ? "completed" : taskStatus,
-        dueDate: a.due_at ? new Date(a.due_at) : null,
-        lockAt: a.lock_at ? new Date(a.lock_at) : null,
-        unlockAt: a.unlock_at ? new Date(a.unlock_at) : null,
-        duration: estimateDurationMinutes(a.submission_types),
-        source: "CANVAS",
-        externalTaskId: extId,
-        lastSyncedAt: now,
-        syncStatus: "SYNCED",
-        userId,
-        taskProviderId: provider.id,
-        gradeImpactScore,
-        gradeWeightPercent,
-        courseId: String(course.id),
-        courseName: course.name,
-        assignmentGroupName: group?.name ?? null,
-        pointsPossible: a.points_possible ?? null,
-        groupWeight: weight,
-        submissionTypes: a.submission_types
-          ? (JSON.parse(JSON.stringify(a.submission_types)) as object)
-          : undefined,
-        gradingType: a.grading_type ?? null,
-        submissionStatus,
-        omitFromFinalGrade: Boolean(a.omit_from_final_grade),
-        category: "SCHOOL",
-        externalUrl: a.html_url ?? null,
-        urgencyTier: "NONE",
-        rubric: a.rubric?.length
-          ? (JSON.parse(JSON.stringify(a.rubric)) as object)
-          : Prisma.DbNull,
-      };
-
-      if (existing) {
-        await prisma.task.update({
-          where: { id: existing.id },
-          data: payload,
-        });
-      } else {
-        await prisma.task.create({
-          data: payload,
-        });
-      }
-      upserted += 1;
-    }
-  }
-
-  // Purge tasks from courses no longer in the active enrollment list
-  const { count: purged } = await prisma.task.deleteMany({
-    where: {
-      userId,
+    // A hand-marked completion stands: group and external submissions never
+    // show up in Canvas, so "unsubmitted" can't reopen the task.
+    const done = prev?.status === "completed" || DONE_STATES.has(plan.state);
+    const payload = {
+      title: plan.name,
+      description: a.description ?? null,
+      status: done ? "completed" : "todo",
+      // Completed by this sync: when it was handed in, not when Erwin noticed.
+      completedAt: done
+        ? (prev?.completedAt ?? plan.submittedAt ?? plan.gradedAt ?? now)
+        : undefined,
+      dueDate: plan.dueAt,
+      lockAt: plan.lockAt,
+      unlockAt: plan.unlockAt,
+      duration: estimateDurationMinutes(plan.submissionTypes),
       source: "CANVAS",
-      courseId: { notIn: activeCourseIds },
-    },
-  });
-  if (purged > 0) {
-    logger.info(
-      "Purged stale Canvas tasks from inactive courses",
-      { userId, purged, activeCourseCount: activeCourseIds.length },
-      LOG_SOURCE
-    );
-  }
-
-  await prisma.taskProvider.update({
-    where: { id: provider.id },
-    data: {
+      externalTaskId: extId,
       lastSyncedAt: now,
-      error: null,
-    },
-  });
-
-  await normalizeGradeImpactScoresForUser(userId);
-
-  // File new assignments under School (the vault's `sources: [CANVAS]`) and
-  // refresh bound bosses' dates now, not at the next morning's projection.
-  await applyGoalRules(prisma, userId);
-
-  logger.info(
-    "Canvas sync completed",
-    {
+      syncStatus: "SYNCED",
       userId,
-      upserted,
-      purged,
-      courseCount: liveCourses.length,
-      enrolledCourseCount: courses.length,
-    },
-    LOG_SOURCE
-  );
+      taskProviderId: providerId,
+      gradeImpactScore,
+      gradeWeightPercent: Math.min(100, Math.max(0, gradeImpactScore * 100)),
+      courseId: String(course.id),
+      courseName: course.name,
+      assignmentGroupName: group?.name ?? null,
+      pointsPossible: plan.pointsPossible,
+      groupWeight: weight,
+      submissionTypes: plan.submissionTypes,
+      gradingType: plan.gradingType,
+      submissionStatus: plan.state,
+      omitFromFinalGrade: plan.omitFromFinalGrade,
+      category: "SCHOOL",
+      externalUrl: plan.htmlUrl,
+      urgencyTier: "NONE",
+      rubric: a.rubric?.length
+        ? (JSON.parse(JSON.stringify(a.rubric)) as Prisma.InputJsonValue)
+        : Prisma.DbNull,
+    };
 
-  // Materials ride along, but never at the task sync's expense: tasks are
-  // already committed, so a materials failure is logged, not thrown.
-  let materials: MaterialsSyncStats | null = null;
-  try {
-    materials = await syncCanvasMaterials(
-      client,
-      userId,
-      provider.id,
-      liveCourses,
-      assignmentsByCourse,
-      now,
-      { force: options.forceMaterials }
-    );
-  } catch (error) {
-    logger.error(
-      "Canvas materials sync failed",
-      { userId, error: error instanceof Error ? error.message : String(error) },
-      LOG_SOURCE
-    );
+    const task = prev
+      ? await prisma.task.update({ where: { id: prev.id }, data: payload, select: { id: true } })
+      : await prisma.task.create({ data: payload, select: { id: true } });
+    kept.add(extId);
+    upserted += 1;
+
+    const rowId = gradebook.rowIds.get(extId);
+    if (rowId) {
+      await prisma.courseAssignment.update({ where: { id: rowId }, data: { taskId: task.id } });
+    }
   }
 
-  return { upserted, courseCount: liveCourses.length, purged, materials };
+  // Gone from Canvas, or never work to begin with. Subtasks are someone's own
+  // notes, so a task carrying them stays.
+  const stale = existing.filter(
+    (t) => t.externalTaskId && !kept.has(t.externalTaskId) && t._count.subtasks === 0
+  );
+  if (stale.length > 0) {
+    await prisma.task.deleteMany({ where: { id: { in: stale.map((t) => t.id) } } });
+  }
+
+  return { upserted, removed: stale.length };
 }
 
 /**
  * Spec §5.2.3: normalize Canvas grade impact to 0–1 across the user's active Canvas pool.
  */
-async function normalizeGradeImpactScoresForUser(userId: string): Promise<void> {
+export async function normalizeGradeImpactScoresForUser(userId: string): Promise<void> {
   const tasks = await prisma.task.findMany({
     where: {
       userId,

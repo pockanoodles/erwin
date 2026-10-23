@@ -3,8 +3,9 @@
  */
 
 import { CalDAVCalendarService } from "@/lib/caldav-calendar";
-import { syncCanvasTasksForUser } from "@/lib/canvas/sync-canvas-tasks";
+import { syncCanvasForUser } from "@/lib/canvas/sync-canvas";
 import { newDate } from "@/lib/date-utils";
+import { DEFAULT_CANVAS_SYNC_MINUTES } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -51,7 +52,8 @@ export interface CaldavSyncRunStats {
 }
 
 /**
- * Syncs Canvas tasks for each user whose CANVAS provider is due (see `syncIntervalMinutes`).
+ * Syncs Canvas (gradebook, tasks, announcements, inbox, materials) for each
+ * user whose CANVAS provider is due (see `syncIntervalMinutes`).
  */
 export async function runPeriodicCanvasSyncs(): Promise<CanvasSyncRunStats> {
   const now = newDate();
@@ -70,7 +72,7 @@ export async function runPeriodicCanvasSyncs(): Promise<CanvasSyncRunStats> {
   let failed = 0;
 
   for (const p of providers) {
-    const baseIntervalMin = p.syncIntervalMinutes ?? 120;
+    const baseIntervalMin = p.syncIntervalMinutes ?? DEFAULT_CANVAS_SYNC_MINUTES;
     const urgent48h = await hasOpenTaskDueWithinHours(p.userId, now, 48);
     const intervalMin = urgent48h ? 30 : baseIntervalMin;
     const last = p.lastSyncedAt;
@@ -83,7 +85,7 @@ export async function runPeriodicCanvasSyncs(): Promise<CanvasSyncRunStats> {
     }
 
     try {
-      await syncCanvasTasksForUser(p.userId);
+      await syncCanvasForUser(p.userId);
       synced += 1;
       logger.info(
         "Canvas periodic sync OK",

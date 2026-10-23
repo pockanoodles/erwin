@@ -1,7 +1,7 @@
 import {
   type MaterialForLinking,
   assignmentIdMaps,
-  descriptionRefs,
+  linkedRefs,
   planModuleItem,
   planTaskLinks,
 } from "@/lib/canvas/materials-plan";
@@ -53,21 +53,25 @@ describe("planModuleItem", () => {
   });
 });
 
-describe("descriptionRefs", () => {
+describe("linkedRefs", () => {
   it("finds this course's file and page links, deduplicated", () => {
     const html = `
       <a href="https://nu.instructure.com/courses/101/files/555/download?wrap=1">slides</a>
       <img src="/courses/101/files/555/preview">
       <a href="/courses/101/pages/week-3%20reading">page</a>
       <a href="/courses/999/files/777">other course</a>`;
-    expect(descriptionRefs(html, COURSE)).toEqual({
+    expect(linkedRefs(html, COURSE)).toEqual({
       fileIds: ["555"],
       pageSlugs: ["week-3 reading"],
     });
   });
 
+  it("ignores images embedded in the body", () => {
+    expect(linkedRefs(`<p><img src="/courses/101/files/888/preview" alt=""></p>`, COURSE).fileIds).toEqual([]);
+  });
+
   it("handles an empty description", () => {
-    expect(descriptionRefs(null, COURSE)).toEqual({ fileIds: [], pageSlugs: [] });
+    expect(linkedRefs(null, COURSE)).toEqual({ fileIds: [], pageSlugs: [] });
   });
 });
 

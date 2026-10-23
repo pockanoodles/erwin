@@ -4,7 +4,8 @@ import { z } from "zod";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { createCanvasClient } from "@/lib/canvas/canvas-client";
-import { syncCanvasTasksForUser } from "@/lib/canvas/sync-canvas-tasks";
+import { syncCanvasForUser } from "@/lib/canvas/sync-canvas";
+import { DEFAULT_CANVAS_SYNC_MINUTES } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
           syncEnabled: true,
           serverUrl: baseUrl,
           accessToken: body.accessToken,
-          syncIntervalMinutes: 120,
+          syncIntervalMinutes: DEFAULT_CANVAS_SYNC_MINUTES,
         },
         update: {
           name: body.name ?? "Canvas LMS",
@@ -165,7 +166,7 @@ export async function POST(request: NextRequest) {
             syncEnabled: true,
             serverUrl: creds.data.baseUrl.replace(/\/+$/, ""),
             accessToken: creds.data.accessToken,
-            syncIntervalMinutes: 120,
+            syncIntervalMinutes: DEFAULT_CANVAS_SYNC_MINUTES,
           },
           update: {
             serverUrl: creds.data.baseUrl.replace(/\/+$/, ""),
@@ -176,9 +177,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // A hand-pressed sync refreshes materials too, skipping the 6h cadence
-    // (unchanged files still aren't re-downloaded).
-    const result = await syncCanvasTasksForUser(userId, { forceMaterials: true });
+    // A hand-pressed sync gives materials their full pass, skipping the 6h
+    // cadence (unchanged files still aren't re-downloaded).
+    const result = await syncCanvasForUser(userId, { forceMaterials: true });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     logger.error(

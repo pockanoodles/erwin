@@ -1,11 +1,11 @@
 /**
  * On-disk cache for Canvas course files. Local runtime state, outside the
  * repo: `ERWIN_MATERIALS_DIR` (default ~/.erwin/materials), one folder per
- * Canvas course, one file per Canvas file id — shared by every module item
- * that points at it.
+ * Canvas course (plus a course-code alias beside it), one file per Canvas file
+ * id — shared by every module item that points at it.
  */
 import { createWriteStream } from "node:fs";
-import { mkdir, rename, rm } from "node:fs/promises";
+import { lstat, mkdir, readdir, readlink, rename, rm, symlink } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
@@ -52,6 +52,53 @@ export async function writeDownload(
     await rm(tmp, { force: true });
     throw error;
   }
+}
+
+/**
+ * A readable name beside each course's numeric folder — `MISM2301 → 265615` —
+ * so a person or a shell session can find a course's files without looking up
+ * its Canvas id. Best effort: a name already taken by something else is left alone.
+ */
+export async function linkCourseFolder(courseCanvasId: string, courseCode: string | null): Promise<void> {
+  const alias = courseCode?.match(/^[A-Z]{2,5}\s?\d{4}/)?.[0].replace(/\s/, "");
+  if (!alias) {
+    return;
+  }
+  const link = path.join(materialsRoot(), alias);
+  try {
+    const existing = await lstat(link).catch(() => null);
+    if (existing && (!existing.isSymbolicLink() || (await readlink(link)) === courseCanvasId)) {
+      return;
+    }
+    await mkdir(materialsRoot(), { recursive: true });
+    if (existing) {
+      await rm(link);
+    }
+    await symlink(courseCanvasId, link);
+  } catch {
+    // A missing alias costs a lookup, never a sync.
+  }
+}
+
+/**
+ * Delete cached files in a course's folder that no material points at any
+ * more: files Canvas dropped, versions a renamed file left behind, and
+ * `.partial` leftovers from an interrupted download. Only Erwin's own
+ * `<file id>-<name>` entries are touched. Returns how many were removed.
+ */
+export async function pruneCourseFolder(courseCanvasId: string, keep: ReadonlySet<string>): Promise<number> {
+  const dir = path.join(materialsRoot(), courseCanvasId);
+  const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
+  let removed = 0;
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (!entry.isFile() || !/^\d+-/.test(entry.name) || keep.has(full)) {
+      continue;
+    }
+    await rm(full, { force: true });
+    removed += 1;
+  }
+  return removed;
 }
 
 /** Only serve paths inside the cache root — a stored path is data, not trust. */

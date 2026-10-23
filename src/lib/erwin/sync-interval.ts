@@ -16,3 +16,10 @@ export function getBackgroundIntervalMs(): number {
   }
   return v;
 }
+
+/**
+ * How often a Canvas provider syncs unless its row says otherwise. Every
+ * background tick, by default: a new announcement, file or grade shouldn't wait
+ * hours to show up. Matches the schema default on `TaskProvider`.
+ */
+export const DEFAULT_CANVAS_SYNC_MINUTES = 15;

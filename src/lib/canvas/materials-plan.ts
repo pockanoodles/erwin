@@ -90,24 +90,39 @@ export function planModuleItem(
   };
 }
 
-export interface DescriptionRefs {
+export interface LinkedRefs {
   fileIds: string[];
   pageSlugs: string[];
 }
 
+/**
+ * Files and pages an HTML body links to: an assignment description, a page,
+ * an announcement or the syllabus. Links only — an `<img>` embedded in the
+ * body is decoration, not a reading.
+ */
 // Canvas rewrites embedded links to course-relative paths:
 // /courses/123/files/456/download?..., /courses/123/pages/week-3-reading.
 // Anchored to this course so a cross-course link isn't misattributed.
-export function descriptionRefs(html: string | null | undefined, courseId: number): DescriptionRefs {
+export function linkedRefs(html: string | null | undefined, courseId: number): LinkedRefs {
   if (!html) {
     return { fileIds: [], pageSlugs: [] };
   }
   const fileIds = new Set<string>();
   const pageSlugs = new Set<string>();
-  const files = new RegExp(`/courses/${courseId}/files/(\\d+)`, "g");
-  const pages = new RegExp(`/courses/${courseId}/pages/([A-Za-z0-9_\\-%.]+)`, "g");
-  for (const m of html.matchAll(files)) fileIds.add(m[1]);
-  for (const m of html.matchAll(pages)) pageSlugs.add(decodeURIComponent(m[1]));
+  const file = new RegExp(`/courses/${courseId}/files/(\\d+)`);
+  const page = new RegExp(`/courses/${courseId}/pages/([A-Za-z0-9_\\-%.]+)`);
+  for (const [, href] of html.matchAll(/\bhref\s*=\s*["']([^"']+)["']/gi)) {
+    const f = href.match(file);
+    if (f) fileIds.add(f[1]);
+    const p = href.match(page);
+    if (p) {
+      try {
+        pageSlugs.add(decodeURIComponent(p[1]));
+      } catch {
+        pageSlugs.add(p[1]);
+      }
+    }
+  }
   return { fileIds: [...fileIds], pageSlugs: [...pageSlugs] };
 }
 
@@ -166,7 +181,7 @@ export function planTaskLinks(
       seen.add(materialId);
       links.push({ taskExternalId, materialId, reason });
     };
-    const refs = descriptionRefs(a.description, courseId);
+    const refs = linkedRefs(a.description, courseId);
     for (const fileId of refs.fileIds) for (const id of byFile.get(fileId) ?? []) add(id, "DESCRIPTION");
     for (const slug of refs.pageSlugs) for (const id of byPage.get(slug) ?? []) add(id, "DESCRIPTION");
     for (const moduleId of modulesByAssignment.get(taskExternalId) ?? []) {
