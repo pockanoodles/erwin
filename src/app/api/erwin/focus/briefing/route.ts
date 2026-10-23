@@ -5,7 +5,7 @@ import {
   getBriefingCalendarHints,
   getBriefingProgressStats,
 } from "@/lib/erwin/briefing-extras";
-import { fetchGradeProjectionsForDangerTasks } from "@/lib/erwin/fetch-canvas-grade-projections";
+import { loadGradeProjectionsForDangerTasks } from "@/lib/erwin/load-grade-projections";
 import { buildFocusQueueCore } from "@/lib/erwin/focus-queue-core";
 import { humanCountdown } from "@/lib/erwin/human-countdown";
 import { isDangerResolved } from "@/lib/erwin/rank-stage1";
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
       isDangerResolved(t, now)
     );
 
-    const projections = await fetchGradeProjectionsForDangerTasks(
+    const projections = await loadGradeProjectionsForDangerTasks(
       userId,
       core.rows,
       core.meta

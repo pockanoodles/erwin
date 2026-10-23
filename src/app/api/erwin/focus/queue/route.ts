@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { enrichFocusTaskDisplay } from "@/lib/erwin/enrich-focus-task";
-import { fetchGradeProjectionsForDangerTasks } from "@/lib/erwin/fetch-canvas-grade-projections";
+import { loadGradeProjectionsForDangerTasks } from "@/lib/erwin/load-grade-projections";
 import {
   buildFocusQueueCore,
   computeBriefingStripFromCore,
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     const core = await buildFocusQueueCore(userId);
 
-    const projections = await fetchGradeProjectionsForDangerTasks(
+    const projections = await loadGradeProjectionsForDangerTasks(
       userId,
       core.rows,
       core.meta
