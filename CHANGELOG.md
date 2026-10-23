@@ -39,6 +39,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - The background worker resolved `@/` imports one directory too high after it moved to `src/worker`, so a fresh build crashed on start.
 - A 15-minute sync interval on a 15-minute tick skipped every other tick.
 - BullMQ's job scheduler could stop scheduling for good after a worker restart that landed within one interval of the last run, which ended background sync without an error.
+- Unit tests used the database named in `.env`, and the logger wrote test errors into its `Log` table. `jest.setup.js` now points Prisma at no database and stubs the logger.
 
 ### Removed
 

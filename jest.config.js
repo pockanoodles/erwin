@@ -5,6 +5,8 @@ const config = {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
   testMatch: ["<rootDir>/src/**/__tests__/**/*.test.ts"],
+  // No database and no log writes: see the file.
+  setupFiles: ["<rootDir>/jest.setup.js"],
 
   // Transpile only. The full type-check runs once via `npm run type-check`;
   // doing it per worker made every worker instantiate Prisma's 2.6 MB
