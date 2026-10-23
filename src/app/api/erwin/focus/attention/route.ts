@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
 import { type AttentionGoal, computeAttention } from "@/lib/erwin/attention";
+import { openWorkWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -32,8 +33,9 @@ function toAttentionGoal(
  *
  * Open top-level tasks the Focus ranker can't surface on its own: overdue
  * ones (most late first) and goal-linked ones with no due date (nearest goal
- * horizon first). Same candidate pool as the focus queue — not completed, not
- * a subtask, not postponed into the future. Feeds the ops morning brief.
+ * horizon first). Same candidate pool as the focus queue (`openWorkWhere`):
+ * not done or closed by Canvas, not a subtask, not postponed, already
+ * unlocked. Feeds the ops morning brief.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -51,12 +53,7 @@ export async function GET(request: NextRequest) {
     } as const;
 
     const rows = await prisma.task.findMany({
-      where: {
-        userId: auth.userId,
-        status: { not: "completed" },
-        parentTaskId: null,
-        OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }],
-      },
+      where: openWorkWhere(auth.userId, now),
       select: {
         id: true,
         title: true,

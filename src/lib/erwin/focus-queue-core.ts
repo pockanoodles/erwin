@@ -9,6 +9,7 @@ import {
   filterTasksByAvailabilityCapacity,
 } from "@/lib/erwin/availability";
 import { computeFocusBriefing } from "@/lib/erwin/briefing";
+import { openWorkWhere } from "@/lib/erwin/open-work";
 import {
   type TaskForRanking,
   filterTasksForRanking,
@@ -101,12 +102,7 @@ export async function buildFocusQueueCore(
   const now = newDate();
 
   const rows = await prisma.task.findMany({
-    where: {
-      userId,
-      status: { not: "completed" },
-      parentTaskId: null,
-      OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }],
-    },
+    where: openWorkWhere(userId, now),
     include: {
       tags: true,
       project: true,

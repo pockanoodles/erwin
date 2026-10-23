@@ -4,6 +4,8 @@
  */
 import type { Task } from "@prisma/client";
 
+import { CLOSED_STATES } from "@/lib/canvas/gradebook-plan";
+
 const W_IMPACT = 0.35;
 const W_DEADLINE = 0.45;
 const W_EFFORT = 0.2;
@@ -72,7 +74,6 @@ export type TaskForRanking = Pick<
 };
 
 const COMPLETED_STATUSES = new Set(["completed"]);
-const DONE_SUBMISSION = new Set(["submitted", "graded"]);
 
 function hoursUntilDueDate(task: TaskForRanking, now: Date): number | null {
   if (!task.dueDate) {
@@ -422,7 +423,8 @@ export function filterTasksForRanking(
     if (COMPLETED_STATUSES.has(t.status)) {
       return false;
     }
-    if (t.submissionStatus && DONE_SUBMISSION.has(t.submissionStatus)) {
+    // Handed in, graded, excused, or closed by Canvas without a submission.
+    if (t.submissionStatus && CLOSED_STATES.has(t.submissionStatus)) {
       return false;
     }
     if (t.unlockAt && new Date(t.unlockAt) > now) {

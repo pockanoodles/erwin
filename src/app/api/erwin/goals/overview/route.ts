@@ -5,6 +5,7 @@ import { newDate } from "@/lib/date-utils";
 import { ensureCurrentHex, hexForDate, hexLabel } from "@/lib/erwin/hex";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { notClosedWhere } from "@/lib/erwin/open-work";
 
 const LOG_SOURCE = "ErwinGoalsOverviewAPI";
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
     // sync, so the page shows them read-only. Hand-made goals stay editable.
     const [openTasks, goals, projectedGoals] = await Promise.all([
       prisma.task.findMany({
-        where: { userId, status: { not: "completed" } },
+        where: { userId, ...notClosedWhere() },
         select: {
           id: true,
           title: true,
@@ -73,10 +74,7 @@ export async function GET(request: NextRequest) {
           taskLinks: {
             where: {
               task: {
-                OR: [
-                  { status: { not: "completed" } },
-                  { completedAt: { gte: windowStart } },
-                ],
+                OR: [notClosedWhere(), { completedAt: { gte: windowStart } }],
               },
             },
             select: {

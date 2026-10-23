@@ -4,6 +4,7 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { startOfDay, newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+import { notClosedWhere } from "@/lib/erwin/open-work";
 
 const LOG_SOURCE = "ErwinProgressSummaryAPI";
 
@@ -41,10 +42,7 @@ export async function GET(request: NextRequest) {
           },
         }),
         prisma.task.count({
-          where: {
-            userId,
-            status: { not: "completed" },
-          },
+          where: { userId, ...notClosedWhere() },
         }),
         prisma.taskInteraction.count({
           where: {
