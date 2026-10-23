@@ -25,7 +25,8 @@ A student's week is spread across a calendar, a learning management system and a
 - **It ranks by what is at stake.** Due dates, Canvas grade weights and goal importance feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`), so the order never changes for a reason you cannot read.
 - **It shows one thing at a time.** Focus mode puts the next task, its course materials and its deadline on one screen, with done, skip and later on the D, S and L keys.
 - **It holds your week.** Google, Outlook and CalDAV calendars sit beside your classes, and tasks drag into the open time or schedule themselves.
-- **It mirrors your courses.** Canvas assignments arrive with their grade weights, and course pages and files are kept locally so a task's materials open from the task.
+- **It mirrors your courses.** Canvas assignments arrive with their grade weights, your grades and feedback land in a gradebook, announcements and Inbox messages are kept, and course pages and files are stored locally so a task's materials open from the task.
+- **It tells you what changed.** Every sync records what's new in Canvas (an announcement, a file, a moved due date, a posted grade, work gone missing) in one Activity feed, with an unseen count in the top bar on every page.
 - **It plans in two-month cycles.** Goals belong to a cycle with a dated deliverable, and tasks linked to a goal rank higher.
 
 ## How it fits together
@@ -169,7 +170,7 @@ npm install
 npm run dev:local -- --seed demo
 ```
 
-`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres, Redis or Docker, keeps its database in `.local/`, and prints a link that signs you in. `--seed demo` fills a fresh database with one example week of classes, assignments and goals, and `--reset` starts over.
+`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker, keeps its database in `.local/`, and prints a link that signs you in. `--seed demo` fills a fresh database with one example week of classes, assignments and goals, and `--reset` starts over.
 
 ## Self-host
 
@@ -182,11 +183,11 @@ docker compose up -d
 
 Generate the two secrets with `openssl rand -base64 32` and the database password with `openssl rand -hex 24`, then put the same password in `DATABASE_URL`. Open http://localhost:3000, and the first account you create is the admin. `ERWIN_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
 
-Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. It publishes Postgres and Redis on 127.0.0.1 only, so other machines cannot reach them. The user and database name (`erwin` by default) apply only when the database volume is first created, so changing them later means a new volume.
+Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. It publishes Postgres on 127.0.0.1 only, so other machines cannot reach it. The user and database name (`erwin` by default) apply only when the database volume is first created, so changing them later means a new volume.
 
 Password reset email needs `RESEND_API_KEY` and `EMAIL_FROM`, an address on a domain you have verified in Resend. Without `EMAIL_FROM` the server logs an error and sends nothing. The desktop app sends no email.
 
-Background sync runs in the `worker` service (BullMQ on Redis). A single container without Redis can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same sync on a timer inside the app.
+Background sync runs on a timer in the `worker` service, every 15 minutes by default. A single container can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same loop inside the app. Run one or the other, not both.
 
 ## Deployment modes
 
@@ -205,8 +206,7 @@ flowchart TB
         direction TB
         BR["Browser on any device"] --> NX2["Next.js app"]
         NX2 --> PG2[("Postgres")]
-        WK["Sync worker"] --> PG2
-        WK --- RD[("Redis")]
+        WK["Sync worker<br/>timer"] --> PG2
     end
 
     Desktop --> EXT["Canvas, Google, Microsoft, CalDAV"]

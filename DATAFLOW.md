@@ -4,7 +4,7 @@ Erwin is a personal calendar and task assistant. It runs either as a desktop app
 
 This document answers three questions in plain language: what leaves this machine, where it goes, and why. It is written to be read by someone who does not work on the code. It is kept by hand, so a change to how Erwin talks to the outside world should change this file in the same commit.
 
-Last verified against the code on **2026-10-14**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Last verified against the code on **2026-10-22**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
 
 ---
 
@@ -12,7 +12,7 @@ Last verified against the code on **2026-10-14**. For the privacy policy that si
 
 | Where | What Erwin sends | Can Erwin change anything there? | Why |
 | --- | --- | --- | --- |
-| **Canvas** (the address of your school's Canvas, which you enter) | Your access token, and the address of each page or file it asks for | No, every request is a read | Import assignments, grade weights and course materials |
+| **Canvas** (the address of your school's Canvas, which you enter) | Your access token, and the address of each page or file it asks for | No, every request is a read | Mirror your courses: assignments, your grades and feedback, announcements, Inbox messages and course materials |
 | **Google** (`accounts.google.com`, `oauth2.googleapis.com`, `www.googleapis.com`) | Event and task titles, notes, locations and times, plus the OAuth tokens that prove it is you | Yes | Two-way Google Calendar and Google Tasks sync |
 | **Microsoft** (`login.microsoftonline.com`, `graph.microsoft.com`) | Event and task titles, notes, locations and times, plus the OAuth tokens that prove it is you | Yes | Two-way Outlook Calendar and Microsoft To Do sync |
 | **A CalDAV server you choose** (Fastmail, iCloud, Nextcloud) | Event titles, descriptions, locations and times, plus your CalDAV username and password | Yes | Two-way calendar sync |
@@ -27,11 +27,13 @@ The landing page at kaitosoeno.com/erwin collects nothing, which is covered in [
 
 ## Canvas
 
-Erwin asks Canvas for your current courses, their assignment groups and their assignments, and it can fetch the syllabus, modules, course pages and files. Each request carries only the access token (a Canvas personal access token that you create and paste into Erwin's settings) and the path of what it wants. No task you write in Erwin, no note and no personal detail is sent to Canvas, and that includes your email address.
+Erwin asks Canvas for your current courses and your grade in each, their assignment groups and assignments, your own submissions (score, grader comments, rubric marks, and the class statistics when the instructor shares them), quiz settings, course announcements, and the Canvas Inbox threads that were sent in one of your current courses. It also fetches the syllabus, modules, course pages and files. Each request carries only the access token (a Canvas personal access token that you create and paste into Erwin's settings) and the path of what it wants. No task you write in Erwin, no note and no personal detail is sent to Canvas, and that includes your email address.
 
-Canvas cannot be changed by Erwin. The Canvas client only issues GET requests, so there is no code path that creates, edits or deletes anything in Canvas. Marking an assignment complete in Erwin stays in Erwin.
+Canvas cannot be changed by Erwin. The Canvas client only issues GET requests, so there is no code path that creates, edits or deletes anything in Canvas. Marking an assignment complete in Erwin stays in Erwin. Reading does not count as a change either: Inbox threads are fetched with `auto_mark_as_read=false`, so Erwin opening a message never marks it read in Canvas, and the read flags Erwin shows are copied from Canvas, never written back.
 
 Course materials move toward you. Page text goes into the local database, and files are saved on this computer's disk, in `~/.erwin/materials` unless `ERWIN_MATERIALS_DIR` says otherwise. A file is downloaded from the signed link that Canvas hands back for it, and files over 100 MB (adjustable with `ERWIN_MATERIALS_MAX_FILE_MB`) are listed but not downloaded. When a course stops being current, its database rows are removed and its files stay on disk until you delete them.
+
+Each sync compares what Canvas returns with what it stored last time and records what changed (a new announcement or file, a moved due date, a posted grade, new feedback, work gone missing) as course activity in the local database. That feed is what the Courses page's Activity view shows. Erwin itself sends it nowhere. A tool you run on the same machine can read it through Erwin's API (`/api/erwin/activity`) and pass it on, for example to a chat app, and whatever it sends is that tool's data flow rather than Erwin's.
 
 Canvas and CalDAV are also polled in the background, about every 15 minutes by default, and each poll makes the same kinds of requests.
 
@@ -75,7 +77,7 @@ Both run the same server code, and they differ in where it lives and what is swi
 | --- | --- | --- |
 | Database | PGlite in the app's data folder, with no network port | Your own Postgres (Docker Compose starts one) |
 | Who can reach it | The loopback interface only, signed in with a token made on each launch | Whoever can reach the port you expose, with accounts and passwords |
-| Background sync | A timer inside the app | A BullMQ worker on Redis, or a timer when `ERWIN_SCHEDULER=inprocess` |
+| Background sync | A timer inside the app | A timer in the worker process, or inside the app when `ERWIN_SCHEDULER=inprocess` |
 | Where the encryption key comes from | Made on first launch and sealed by the operating system | `ERWIN_SECRET_KEY` in your environment |
 | Update check | Yes for GitHub downloads, none for store and package-manager builds | None, you update the image |
 | Password reset email | None | Through Resend, if you configure it |
