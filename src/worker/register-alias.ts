@@ -7,6 +7,7 @@ import path from "path";
 
 import { addAliases } from "module-alias";
 
+// Compiled to dist/worker/, so `dist/` is one level up.
 addAliases({
-  "@": path.resolve(__dirname, "..", ".."),
+  "@": path.resolve(__dirname, ".."),
 });
