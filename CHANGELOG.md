@@ -40,6 +40,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - A 15-minute sync interval on a 15-minute tick skipped every other tick.
 - BullMQ's job scheduler could stop scheduling for good after a worker restart that landed within one interval of the last run, which ended background sync without an error.
 - Unit tests used the database named in `.env`, and the logger wrote test errors into its `Log` table. `jest.setup.js` now points Prisma at no database and stubs the logger.
+- Part of a Canvas sync could fail while the sync looked healthy: a course's materials pass, the announcements or Inbox read, or a course's submissions or quiz list. The materials failure was only logged, and the rest only as warnings, which the default log level drops. Each now lands in the Canvas provider's error, which the Courses top bar shows and a health check can watch. A page a course hides from students (Canvas's 404 "disabled for this course") doesn't count, and a failed submissions or quiz read no longer blanks the feedback and quiz rules already stored.
 
 ### Removed
 

@@ -8,8 +8,11 @@
  * step's changes go into the activity feed (`activity.ts`) as soon as the step
  * has written them.
  *
- * One course failing is logged and skipped; the others still sync. Runs from
- * the background scheduler (`job-sync-runner.ts`) and the Sync Canvas button.
+ * One course failing is logged and skipped; the others still sync. Anything a
+ * step couldn't do (a course, its materials, the inbox, a submissions list)
+ * goes into the provider's error (`sync-problems.ts`), which the Courses top
+ * bar shows and ops' health check pages on. Runs from the background
+ * scheduler (`job-sync-runner.ts`) and the Sync Canvas button.
  */
 import { Prisma } from "@prisma/client";
 
@@ -34,6 +37,7 @@ import {
   normalizeGradeImpactScoresForUser,
   projectCourseTasks,
 } from "@/lib/canvas/sync-canvas-tasks";
+import { courseLabel, syncErrorText, syncProblem } from "@/lib/canvas/sync-problems";
 import type { CanvasAssignment, CanvasCourse } from "@/lib/canvas/types";
 import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
@@ -54,8 +58,10 @@ export interface CanvasSyncStats {
   conversations: number;
   /** Activity rows written. */
   activity: number;
-  /** Course codes that failed this sync. */
+  /** Course codes whose gradebook failed this sync. */
   failedCourses: string[];
+  /** Everything this sync couldn't do, one line each; joined into the provider's error. */
+  problems: string[];
   /** null when every course's materials pass threw. */
   materials: MaterialsSyncStats | null;
 }
@@ -176,6 +182,7 @@ export async function syncCanvasForUser(
     conversations: 0,
     activity: 0,
     failedCourses: [],
+    problems: [],
     materials: null,
   };
   // Each step's activity is written right after its own writes, never batched
@@ -191,7 +198,6 @@ export async function syncCanvasForUser(
   // Courses whose every part synced; only these may leave their first-sync baseline.
   const complete = new Set<number>();
   const gradebooks = new Map<number, GradebookSyncResult>();
-  const label = (c: CanvasCourse) => c.course_code?.split(".")[0] ?? String(c.id);
 
   for (const course of liveCourses) {
     const row = rows.get(course.id)!;
@@ -209,9 +215,11 @@ export async function syncCanvasForUser(
       const tasks = await projectCourseTasks(userId, provider.id, course, gradebook, now);
       stats.upserted += tasks.upserted;
       stats.removed += tasks.removed;
-      complete.add(course.id);
+      stats.problems.push(...gradebook.problems);
+      if (gradebook.problems.length === 0) complete.add(course.id);
     } catch (error) {
-      stats.failedCourses.push(label(course));
+      stats.failedCourses.push(courseLabel(course));
+      stats.problems.push(syncProblem(`${courseLabel(course)} gradebook failed`, error));
       logger.error("Canvas gradebook sync failed for course", { userId, courseId: course.id, error: errorText(error) }, LOG_SOURCE);
     }
   }
@@ -235,6 +243,10 @@ export async function syncCanvasForUser(
   stats.announcements = news.announcements;
   stats.conversations = news.conversations;
   for (const [rowId, list] of news.activity) await record(rowId, list);
+  stats.problems.push(...news.problems);
+  for (const course of liveCourses) {
+    if (news.incomplete.has(rows.get(course.id)!.id)) complete.delete(course.id);
+  }
 
   // Materials ride along, but never at the gradebook's expense: tasks are
   // already committed, so a materials failure is logged, not thrown.
@@ -260,6 +272,7 @@ export async function syncCanvasForUser(
     } catch (error) {
       materials.failedCourses += 1;
       complete.delete(course.id);
+      stats.problems.push(syncProblem(`${courseLabel(course)} materials failed`, error));
       logger.error("Canvas materials sync failed for course", { userId, courseId: course.id, error: errorText(error) }, LOG_SOURCE);
     }
   }
@@ -283,7 +296,7 @@ export async function syncCanvasForUser(
     where: { id: provider.id },
     data: {
       lastSyncedAt: now,
-      error: stats.failedCourses.length > 0 ? `Sync failed for ${stats.failedCourses.join(", ")}` : null,
+      error: syncErrorText(stats.problems),
     },
   });
 

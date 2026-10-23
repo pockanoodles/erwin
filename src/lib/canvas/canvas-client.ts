@@ -27,6 +27,31 @@ export interface CanvasClientConfig {
   accessToken: string;
 }
 
+/** A call Canvas refused; `status` tells a hidden page apart from a failure. */
+export class CanvasApiError extends Error {
+  constructor(
+    readonly status: number,
+    detail: string
+  ) {
+    super(`Canvas API ${status}: ${detail}`);
+    this.name = "CanvasApiError";
+  }
+}
+
+/**
+ * Whether Canvas refused because the course hides this from students (SCHM
+ * and INTB answer 404 "That page has been disabled for this course" for their
+ * quiz lists) rather than because something broke. Throttling also answers
+ * 403, so that one is a failure.
+ */
+export function isHiddenFromStudents(error: unknown): boolean {
+  return (
+    error instanceof CanvasApiError &&
+    (error.status === 401 || error.status === 403 || error.status === 404) &&
+    !/rate limit/i.test(error.message)
+  );
+}
+
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, "");
 }
@@ -49,9 +74,7 @@ async function canvasFetch<T>(
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(
-      `Canvas API ${res.status}: ${text.slice(0, 200) || res.statusText}`
-    );
+    throw new CanvasApiError(res.status, text.slice(0, 200) || res.statusText);
   }
 
   return res.json() as Promise<T>;

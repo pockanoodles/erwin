@@ -8,7 +8,7 @@
 import { Prisma } from "@prisma/client";
 
 import type { ActivityDraft } from "@/lib/canvas/activity-plan";
-import type { CanvasClient } from "@/lib/canvas/canvas-client";
+import { type CanvasClient, isHiddenFromStudents } from "@/lib/canvas/canvas-client";
 import {
   type PlannedAssignment,
   assignmentActivity,
@@ -17,6 +17,7 @@ import {
   planAssignment,
   storedComments,
 } from "@/lib/canvas/gradebook-plan";
+import { courseLabel, syncProblem } from "@/lib/canvas/sync-problems";
 import type {
   CanvasAssignment,
   CanvasAssignmentGroup,
@@ -38,19 +39,34 @@ export interface GradebookSyncResult {
   /** CourseAssignment row id by Canvas id. */
   rowIds: Map<string, string>;
   activity: ActivityDraft[];
+  /** Reads that failed this sync (not ones the course hides); the sync reports them. */
+  problems: string[];
 }
 
-/** Extras a course may hide from students; losing one must not cost the gradebook. */
-async function optional<T>(label: string, courseId: number, read: () => Promise<T[]>): Promise<T[]> {
+/**
+ * A read the gradebook can do without. One the course hides from students
+ * reads as empty. Any other failure is a problem the sync reports, and null
+ * tells the caller to leave what this read would have written as stored.
+ */
+async function extra<T>(
+  what: string,
+  course: CanvasCourse,
+  problems: string[],
+  read: () => Promise<T[]>
+): Promise<T[] | null> {
   try {
     return await read();
   } catch (error) {
-    logger.warn(
-      `Canvas ${label} unavailable`,
-      { courseId, error: error instanceof Error ? error.message : String(error) },
+    if (isHiddenFromStudents(error)) {
+      return [];
+    }
+    problems.push(syncProblem(`${courseLabel(course)} ${what} unavailable`, error));
+    logger.error(
+      `Canvas ${what} unavailable`,
+      { courseId: course.id, error: error instanceof Error ? error.message : String(error) },
       LOG_SOURCE
     );
-    return [];
+    return null;
   }
 }
 
@@ -72,20 +88,21 @@ export async function syncCourseGradebook(
   }
 ): Promise<GradebookSyncResult> {
   const { now } = options;
+  const problems: string[] = [];
   const [groups, listed, submissions, quizzes] = await Promise.all([
     client.listAssignmentGroups(course.id),
     options.prefetched ? Promise.resolve(options.prefetched) : client.listAssignments(course.id),
-    optional<CanvasSubmission>("submissions", course.id, () => client.listSubmissions(course.id)),
-    optional<CanvasQuiz>("quizzes", course.id, () => client.listQuizzes(course.id)),
+    extra<CanvasSubmission>("submissions", course, problems, () => client.listSubmissions(course.id)),
+    extra<CanvasQuiz>("quizzes", course, problems, () => client.listQuizzes(course.id)),
   ]);
 
-  const submissionFor = new Map(submissions.map((s) => [s.assignment_id, s]));
+  const submissionFor = new Map((submissions ?? []).map((s) => [s.assignment_id, s]));
   const assignments = listed.map((a) => ({
     ...a,
     submission: mergeSubmission(a.submission, submissionFor.get(a.id)),
   }));
   const quizFor = new Map(
-    quizzes.flatMap((q) => (q.assignment_id != null ? [[q.assignment_id, q] as const] : []))
+    (quizzes ?? []).flatMap((q) => (q.assignment_id != null ? [[q.assignment_id, q] as const] : []))
   );
 
   const groupRowIds = new Map<string, string>();
@@ -130,19 +147,35 @@ export async function syncCourseGradebook(
       )
     );
 
-    const { canvasId, groupCanvasId, comments, scoreStatistics, rubricAssessment, ...fields } = plan;
+    const {
+      canvasId,
+      groupCanvasId,
+      comments,
+      scoreStatistics,
+      rubricAssessment,
+      quizTimeLimit,
+      quizAllowedAttempts,
+      quizQuestionCount,
+      lockdownBrowser,
+      ...fields
+    } = plan;
     const data = {
       ...fields,
       groupId: groupCanvasId ? (groupRowIds.get(groupCanvasId) ?? null) : null,
-      comments: comments.length > 0 ? json(comments) : Prisma.DbNull,
       scoreStatistics: json(scoreStatistics),
-      rubricAssessment: json(rubricAssessment),
       lastSyncedAt: now,
     };
+    // What the extras supply. A failed read would blank it, so an update
+    // leaves it as stored.
+    const fromSubmissions = {
+      comments: comments.length > 0 ? json(comments) : Prisma.DbNull,
+      rubricAssessment: json(rubricAssessment),
+    };
+    const fromQuiz = { quizTimeLimit, quizAllowedAttempts, quizQuestionCount, lockdownBrowser };
     const row = await prisma.courseAssignment.upsert({
       where: { courseId_canvasId: { courseId: courseRowId, canvasId } },
-      create: { courseId: courseRowId, canvasId, ...data },
-      update: data,
+      create: { courseId: courseRowId, canvasId, ...data, ...fromSubmissions, ...fromQuiz },
+      update: { ...data, ...(submissions ? fromSubmissions : {}), ...(quizzes ? fromQuiz : {}) },
       select: { id: true },
     });
     rowIds.set(canvasId, row.id);
@@ -155,5 +188,5 @@ export async function syncCourseGradebook(
     where: { courseId: courseRowId, canvasId: { notIn: [...groupRowIds.keys()] } },
   });
 
-  return { assignments, groups, planned, rowIds, activity };
+  return { assignments, groups, planned, rowIds, activity, problems };
 }

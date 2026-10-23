@@ -6,7 +6,8 @@
  * for a semester (Canvas returns two weeks without one). Inbox threads are
  * read newest first, one page, and only threads sent in a live course are
  * kept; a thread is re-fetched only when it has new messages. Canvas's own
- * read flags are mirrored, never written back.
+ * read flags are mirrored, never written back. A read that fails leaves what's
+ * stored alone and comes back as a problem for the sync to report.
  */
 import {
   type ActivityDraft,
@@ -15,6 +16,7 @@ import {
   oneLine,
 } from "@/lib/canvas/activity-plan";
 import type { CanvasClient } from "@/lib/canvas/canvas-client";
+import { syncProblem } from "@/lib/canvas/sync-problems";
 import type { CanvasAnnouncement, CanvasConversation, CanvasCourse } from "@/lib/canvas/types";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -42,14 +44,14 @@ export interface NewsSyncResult {
   conversations: number;
   /** Drafts by course row id. */
   activity: Map<string, ActivityDraft[]>;
+  /** Reads that failed; the sync reports them. */
+  problems: string[];
+  /** Course rows whose news didn't fully sync, so they keep their first-sync baseline. */
+  incomplete: Set<string>;
 }
 
 function storedMessages(value: unknown): StoredMessage[] {
   return Array.isArray(value) ? (value as StoredMessage[]) : [];
-}
-
-function warn(message: string, error: unknown): void {
-  logger.warn(message, { error: error instanceof Error ? error.message : String(error) }, LOG_SOURCE);
 }
 
 export async function syncCanvasNews(
@@ -67,6 +69,16 @@ export async function syncCanvasNews(
   const byContext = new Map(courses.map((c) => [`course_${c.course.id}`, c]));
   let announcementCount = 0;
   let conversationCount = 0;
+  const problems: string[] = [];
+  const incomplete = new Set<string>();
+  const everyCourse = courses.map((c) => c.rowId);
+  // A failed read says so: the problem reaches the provider's error, and the
+  // courses it covers keep their baseline.
+  const fail = (what: string, error: unknown, rowIds: string[]) => {
+    problems.push(syncProblem(what, error));
+    for (const rowId of rowIds) incomplete.add(rowId);
+    logger.error(`Canvas ${what}`, { error: error instanceof Error ? error.message : String(error) }, LOG_SOURCE);
+  };
 
   const window = { start: new Date(now.getTime() - ANNOUNCEMENT_WINDOW_MS), end: new Date(now.getTime() + 86_400_000) };
   let announcements: CanvasAnnouncement[] | null = null;
@@ -76,7 +88,7 @@ export async function syncCanvasNews(
       window
     );
   } catch (error) {
-    warn("Canvas announcements unavailable", error);
+    fail("announcements unavailable", error, everyCourse);
   }
 
   // A failed read leaves what's stored alone; only a successful one prunes.
@@ -148,7 +160,7 @@ export async function syncCanvasNews(
   try {
     threads = await client.listConversations();
   } catch (error) {
-    warn("Canvas inbox unavailable", error);
+    fail("inbox unavailable", error, everyCourse);
   }
   for (const thread of threads) {
     const owner = thread.context_code ? byContext.get(thread.context_code) : undefined;
@@ -173,7 +185,7 @@ export async function syncCanvasNews(
       try {
         full = await client.getConversation(thread.id);
       } catch (error) {
-        warn("Canvas inbox thread unavailable", error);
+        fail(`inbox thread ${thread.id} unavailable`, error, [owner.rowId]);
         continue;
       }
       const names = new Map((full.participants ?? thread.participants ?? []).map((p) => [p.id, p.name ?? null]));
@@ -222,5 +234,5 @@ export async function syncCanvasNews(
     }
   }
 
-  return { announcements: announcementCount, conversations: conversationCount, activity };
+  return { announcements: announcementCount, conversations: conversationCount, activity, problems, incomplete };
 }
