@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { notClosedWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -16,7 +17,11 @@ const LOG_SOURCE = "ErwinCoursesAPI";
  *
  * Each material also says what it's for: `task` is the Erwin task behind an
  * assignment/quiz/discussion row, and `nextTask` is the soonest open task the
- * material is linked to (with `openTaskCount` in total).
+ * material is linked to (with `openTaskCount` in total). `parentId` nests a
+ * file under the page that links to it, and `unseen` flags a material that's
+ * new or changed since it was last opened.
+ *
+ * Each course carries Canvas's current grade and its count of unseen activity.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -40,8 +45,10 @@ export async function GET(request: NextRequest) {
       downloadError: true,
       assignmentCanvasId: true,
       moduleId: true,
+      parentId: true,
+      activity: { where: { seenAt: null }, select: { id: true }, take: 1 },
       taskLinks: {
-        where: { task: { status: { not: "completed" } } },
+        where: { task: notClosedWhere() },
         select: { task: { select: { id: true, title: true, dueDate: true } } },
       },
     } as const;
@@ -57,6 +64,10 @@ export async function GET(request: NextRequest) {
         termName: true,
         lastSyncedAt: true,
         syllabusHtml: true,
+        currentScore: true,
+        currentGrade: true,
+        finalScore: true,
+        _count: { select: { activity: { where: { seenAt: null } } } },
         modules: {
           orderBy: { position: "asc" },
           select: {
@@ -92,7 +103,7 @@ export async function GET(request: NextRequest) {
     type Row = (typeof courses)[number]["materials"][number];
     const toMaterial =
       (courseCanvasId: string) =>
-      ({ localPath, taskLinks, ...rest }: Row) => {
+      ({ localPath, taskLinks, activity, ...rest }: Row) => {
         const open = taskLinks
           .map((l) => l.task)
           .sort(
@@ -106,6 +117,7 @@ export async function GET(request: NextRequest) {
         return {
           ...rest,
           cached: Boolean(localPath),
+          unseen: activity.length > 0,
           task: task ? { id: task.id, dueDate: task.dueDate, status: task.status } : null,
           nextTask: open[0] ?? null,
           openTaskCount: open.length,
@@ -113,8 +125,9 @@ export async function GET(request: NextRequest) {
       };
 
     return NextResponse.json(
-      courses.map(({ syllabusHtml, materials, modules, ...course }) => ({
+      courses.map(({ syllabusHtml, materials, modules, _count, ...course }) => ({
         ...course,
+        unseenCount: _count.activity,
         hasSyllabus: Boolean(syllabusHtml),
         modules: modules.map((m) => ({
           ...m,

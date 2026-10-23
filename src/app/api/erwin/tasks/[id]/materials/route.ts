@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { storedComments } from "@/lib/canvas/gradebook-plan";
 import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -14,8 +15,9 @@ const REASON_ORDER: Record<string, number> = { DESCRIPTION: 0, MODULE: 1 };
  * GET /api/erwin/tasks/[id]/materials
  *
  * A task's packet: its instructions (Canvas description, sanitized and with
- * links re-pointed at the local mirror), rubric, Canvas link, and linked
- * materials with why each is linked. The one read both Focus and the Tasks
+ * links re-pointed at the local mirror), rubric, Canvas link, linked
+ * materials with why each is linked, and — for Canvas work — the gradebook
+ * row: score, feedback, quiz rules. The one read both Focus and the Tasks
  * packet pane use.
  */
 export async function GET(
@@ -43,6 +45,25 @@ export async function GET(
         submissionStatus: true,
         courseId: true,
         courseName: true,
+        courseAssignment: {
+          select: {
+            id: true,
+            state: true,
+            score: true,
+            grade: true,
+            submittedAt: true,
+            gradedAt: true,
+            late: true,
+            pointsDeducted: true,
+            scoreStatistics: true,
+            comments: true,
+            rubricAssessment: true,
+            quizTimeLimit: true,
+            quizAllowedAttempts: true,
+            quizQuestionCount: true,
+            lockdownBrowser: true,
+          },
+        },
         materialLinks: {
           select: {
             reason: true,
@@ -70,7 +91,7 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const { materialLinks, description, ...rest } = task;
+    const { materialLinks, description, courseAssignment: ca, ...rest } = task;
     const materials = materialLinks
       .map(({ reason, material: { localPath, ...m } }) => ({ ...m, reason, cached: Boolean(localPath) }))
       .sort(
@@ -85,7 +106,32 @@ export async function GET(
     const instructionsHtml =
       task.source === "CANVAS" ? await cleanCourseHtml(auth.userId, task.courseId, description) : null;
 
-    return NextResponse.json({ ...rest, instructionsHtml, materials });
+    const grade = ca
+      ? {
+          assignmentId: ca.id,
+          state: ca.state,
+          score: ca.score,
+          grade: ca.grade,
+          submittedAt: ca.submittedAt,
+          gradedAt: ca.gradedAt,
+          late: ca.late,
+          pointsDeducted: ca.pointsDeducted,
+          scoreStatistics: ca.scoreStatistics,
+          comments: storedComments(ca.comments),
+          rubricAssessment: ca.rubricAssessment,
+          quiz:
+            ca.quizTimeLimit != null || ca.quizAllowedAttempts != null || ca.lockdownBrowser
+              ? {
+                  timeLimit: ca.quizTimeLimit,
+                  allowedAttempts: ca.quizAllowedAttempts,
+                  questionCount: ca.quizQuestionCount,
+                  lockdownBrowser: ca.lockdownBrowser,
+                }
+              : null,
+        }
+      : null;
+
+    return NextResponse.json({ ...rest, instructionsHtml, materials, grade });
   } catch (error) {
     logger.error(
       "Erwin task materials failed",
