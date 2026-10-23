@@ -75,6 +75,10 @@ export interface LibraryMaterial extends MaterialSummary {
   indent: number;
   assignmentCanvasId: string | null;
   moduleId: string | null;
+  /** The module page that links to this file; listed under it. */
+  parentId: string | null;
+  /** New or changed since it was last opened. */
+  unseen: boolean;
   /** The Erwin task behind an assignment, quiz or discussion row. */
   task: { id: string; dueDate: string | null; status: string } | null;
   /** The soonest open task this material is linked to. */
@@ -97,6 +101,12 @@ export interface LibraryCourse {
   name: string;
   termName: string | null;
   lastSyncedAt: string | null;
+  /** Canvas's current grade; null when the course hides it. */
+  currentScore: number | null;
+  currentGrade: string | null;
+  finalScore: number | null;
+  /** Activity in this course not yet seen. */
+  unseenCount: number;
   hasSyllabus: boolean;
   modules: LibraryModule[];
   unfiled: LibraryMaterial[];

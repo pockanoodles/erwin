@@ -5,6 +5,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useCourseActivityStore } from "@/store/courseActivity";
 import {
   countDanger,
   countDueToday,
@@ -13,9 +14,9 @@ import {
 
 /**
  * The always-on count of what's outstanding — the app top bar's status item,
- * in the sense the macOS menu bar means it: the same three numbers in the same
+ * in the sense the macOS menu bar means it: the same numbers in the same
  * place on every *route*, so "how bad is it right now" never costs a
- * navigation.
+ * navigation. The last one is unseen Canvas activity, linking to Courses.
  *
  * It used to be the second line of the Today page's header, which meant the
  * one number worth glancing at was the one you had to be on the right page to
@@ -34,11 +35,15 @@ export function ErwinStatus() {
   const status = useErwinStatusStore((s) => s.status);
   const load = useErwinStatusStore((s) => s.load);
 
-  // Refresh on navigation. The store throttles this, so moving between pages
+  const unseen = useCourseActivityStore((s) => s.unseenCount);
+  const loadActivity = useCourseActivityStore((s) => s.load);
+
+  // Refresh on navigation. The stores throttle this, so moving between pages
   // is free; it just means the counts can't go stale while you work.
   useEffect(() => {
     load();
-  }, [load, pathname]);
+    void loadActivity();
+  }, [load, loadActivity, pathname]);
 
   const danger = countDanger(tasks);
 
@@ -75,6 +80,19 @@ export function ErwinStatus() {
               </span>
             </>
           ) : null}
+        </Link>
+      ) : null}
+      {/* What changed in Canvas since it was last looked at — the one number
+          that exists so a posted exam rule or a moved due date isn't missed. */}
+      {unseen > 0 ? (
+        <Link
+          href="/courses?view=activity"
+          className="flex flex-none items-center gap-x-1.5 transition-colors duration-150 hover:text-foreground"
+          title="Open Courses → Activity"
+        >
+          <span aria-hidden>·</span>
+          <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-lume" />
+          <span>{unseen} new</span>
         </Link>
       ) : null}
     </div>

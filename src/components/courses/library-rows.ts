@@ -1,11 +1,13 @@
 /**
  * A course's library flattened into sheet rows, in Canvas order: the
- * syllabus, then each module as a band with its items, then anything only an
- * assignment description links to. Pure, so the filters can be tested.
+ * syllabus, then each module as a band with its items (a file a page links to
+ * right under that page), then anything only an assignment, announcement or
+ * the syllabus links to. Pure, so the filters can be tested.
  */
 import type { LibraryCourse, LibraryMaterial } from "@/types/course-materials";
 
 export type LibraryRow =
+  | { type: "course"; key: string; course: LibraryCourse }
   | { type: "syllabus"; key: string }
   | { type: "module"; key: string; name: string; count: number; unlockAt: string | null }
   | { type: "subheader"; key: string; title: string; indent: number }
@@ -41,7 +43,7 @@ export function buildRows(course: LibraryCourse, f: RowFilter): LibraryRow[] {
 
   const band = (key: string, name: string, unlockAt: string | null, materials: LibraryMaterial[]) => {
     const items: LibraryRow[] = [];
-    for (const m of materials) {
+    for (const m of underParents(materials)) {
       if (m.kind === "SUBHEADER") {
         // A subheader is Canvas's in-module heading; filtered views drop it
         // since the items it headed may be gone.
@@ -56,9 +58,46 @@ export function buildRows(course: LibraryCourse, f: RowFilter): LibraryRow[] {
   };
 
   for (const mod of course.modules) band(mod.id, mod.name, mod.unlockAt, mod.materials);
-  if (course.unfiled.length) band(`unfiled:${course.id}`, "Linked from assignments", null, course.unfiled);
+  if (course.unfiled.length) {
+    band(`unfiled:${course.id}`, "Linked from assignments and announcements", null, course.unfiled);
+  }
 
   return rows;
+}
+
+/** Module order, with each linked file moved to just after the page that links to it. */
+function underParents(materials: LibraryMaterial[]): LibraryMaterial[] {
+  const ids = new Set(materials.map((m) => m.id));
+  const children = new Map<string, LibraryMaterial[]>();
+  for (const m of materials) {
+    if (m.parentId && ids.has(m.parentId)) {
+      children.set(m.parentId, [...(children.get(m.parentId) ?? []), m]);
+    }
+  }
+  return materials
+    .filter((m) => !m.parentId || !ids.has(m.parentId))
+    .flatMap((m) => [m, ...(children.get(m.id) ?? [])]);
+}
+
+/** A row and the course it belongs to — the All tab mixes courses. */
+export interface CourseRow {
+  row: LibraryRow;
+  course: LibraryCourse;
+}
+
+/**
+ * Rows for one course, or for several under a band per course (the All tab;
+ * a course with nothing left after filtering drops out).
+ */
+export function buildLibraryRows(courses: LibraryCourse[], f: RowFilter): CourseRow[] {
+  if (courses.length === 1) {
+    return buildRows(courses[0], f).map((row) => ({ row, course: courses[0] }));
+  }
+  return courses.flatMap((course) => {
+    const rows = buildRows(course, f);
+    if (rows.length === 0) return [];
+    return [{ type: "course" as const, key: `course:${course.id}`, course }, ...rows].map((row) => ({ row, course }));
+  });
 }
 
 /** Row index of a material, or -1. */

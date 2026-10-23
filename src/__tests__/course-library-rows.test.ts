@@ -21,6 +21,8 @@ const material = (id: string, over: Partial<LibraryMaterial> = {}): LibraryMater
   cached: false,
   assignmentCanvasId: null,
   moduleId: "m1",
+  parentId: null,
+  unseen: false,
   task: null,
   nextTask: null,
   openTaskCount: 0,
@@ -34,6 +36,10 @@ const course: LibraryCourse = {
   name: "INTB 1203",
   termName: null,
   lastSyncedAt: null,
+  currentScore: null,
+  currentGrade: null,
+  finalScore: null,
+  unseenCount: 0,
   hasSyllabus: true,
   modules: [
     {
@@ -72,6 +78,28 @@ describe("buildRows", () => {
       "item:quiz",
       "module:unfiled:c1",
       "item:cited",
+    ]);
+  });
+
+  it("lists a file a page links to right under that page", () => {
+    const withLinked: LibraryCourse = {
+      ...course,
+      modules: [
+        {
+          ...course.modules[0],
+          materials: [
+            material("ch7 page"),
+            material("worksheet"),
+            material("ch7 slides", { kind: "FILE", parentId: "ch7 page", indent: 1 }),
+          ],
+        },
+      ],
+    };
+    expect(buildRows(withLinked, all).map((r) => r.key).slice(1, 5)).toEqual([
+      "m1",
+      "ch7 page",
+      "ch7 slides",
+      "worksheet",
     ]);
   });
 
