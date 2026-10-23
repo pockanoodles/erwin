@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" serves this machine and the Docker image. The rest are the query
   // engines the desktop builds ship (macOS both arches from one runner, glibc
   // Linux on Debian- and RHEL-family OpenSSL, arm64 Linux, Windows);
@@ -313,20 +313,24 @@ model Task {
   project   Project? @relation(fields: [projectId], references: [id])
 
   // Erwin v3: tasks link to any number of goals/subgoals through TaskGoalLink
-  goalLinks TaskGoalLink[]
+  goalLinks   TaskGoalLink[]
   /**
    * Set once a person picks this task's goal by hand; the goal rules (src/lib/erwin/goal-rules.ts) then leave its links alone.
    */
-  goalsPinned Boolean @default(false)
+  goalsPinned Boolean        @default(false)
 
   /**
    * Canvas rubric criteria as Canvas returns them (`assignment.rubric`); null when the assignment has none.
    */
-  rubric        Json?
+  rubric           Json?
   /**
    * Course materials this task needs — its module's files/pages and anything its description links to.
    */
-  materialLinks TaskMaterialLink[]
+  materialLinks    TaskMaterialLink[]
+  /**
+   * The gradebook row behind a Canvas task: score, feedback, quiz rules.
+   */
+  courseAssignment CourseAssignment?
 
   @@index([status])
   @@index([dueDate])
@@ -475,23 +479,55 @@ model TaskGoalLink {
 }
 
 /**
- * Erwin: a Canvas course mirrored for its materials. Canvas stays the source of
- * truth — every row here is rebuilt by sync and pruned when Canvas drops it.
- * Tasks keep their denormalized courseId/courseName (the Canvas id), which
- * matches `canvasId` here.
+ * Erwin: a mirrored Canvas course — its materials, gradebook, announcements and
+ * inbox. Canvas stays the source of truth — every row here is rebuilt by sync
+ * and pruned when Canvas drops it. Tasks keep their denormalized
+ * courseId/courseName (the Canvas id), which matches `canvasId` here.
  */
 model Course {
-  id           String    @id @default(cuid())
-  canvasId     String
-  code         String?
-  name         String
-  termName     String?
-  syllabusHtml String?
-  htmlUrl      String?
-  lastSyncedAt DateTime?
+  id                String    @id @default(cuid())
+  canvasId          String
+  code              String?
+  name              String
+  termName          String?
+  syllabusHtml      String?
+  htmlUrl           String?
+  /**
+   * Last sync of any kind: gradebook, announcements and module structure, every background tick.
+   */
+  lastSyncedAt      DateTime?
+  /**
+   * Last full materials pass, which re-reads every page body and file's metadata (a few times a day).
+   */
+  materialsSyncedAt DateTime?
 
-  modules   CourseModule[]
-  materials CourseMaterial[]
+  /**
+   * Canvas's own course grade for this student: `current` counts graded work only, `final` counts ungraded work as zero. Null when the course hides totals.
+   */
+  currentScore      Float?
+  currentGrade      String?
+  finalScore        Float?
+  finalGrade        String?
+  /**
+   * Letter cutoffs as Canvas sends them, [[letter, lowest fraction]] best first. Null unless Canvas shows this course in letters.
+   */
+  gradingScheme     Json?
+  /**
+   * Assignment groups are weighted (`weight` is % of the grade); otherwise the grade is total points.
+   */
+  applyGroupWeights Boolean   @default(false)
+  /**
+   * Set by the first sync that recorded this course. What existed before it is history, so it never becomes activity.
+   */
+  activitySince     DateTime?
+
+  modules          CourseModule[]
+  materials        CourseMaterial[]
+  assignmentGroups CourseAssignmentGroup[]
+  assignments      CourseAssignment[]
+  announcements    CourseAnnouncement[]
+  conversations    CourseConversation[]
+  activity         CourseActivity[]
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -520,11 +556,12 @@ model CourseModule {
 }
 
 /**
- * Erwin: one thing a student can open. A module item ("item:<id>"), or a file
- * or page reached only from an assignment description ("file:<id>",
- * "page:<slug>"). Keyed by item rather than content because Canvas reuses the
- * same file across modules; the on-disk cache is keyed by `fileCanvasId`, so
- * the bytes are stored once.
+ * Erwin: one thing a student can open. A module item ("item:<id>"), a file a
+ * module page links to ("file:<id>" with `parentId` = that page), or a file or
+ * page reached only from an assignment, announcement or the syllabus
+ * ("file:<id>", "page:<slug>", no module). Keyed by item rather than content
+ * because Canvas reuses the same file across modules; the on-disk cache is
+ * keyed by `fileCanvasId`, so the bytes are stored once.
  */
 model CourseMaterial {
   id        String  @id @default(cuid())
@@ -568,10 +605,18 @@ model CourseMaterial {
   course    Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
   moduleId  String?
   module    CourseModule?      @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  /**
+   * The module page this file was reached through (SCHM wraps its slides in pages). Listed under it.
+   */
+  parentId  String?
+  parent    CourseMaterial?    @relation("MaterialChildren", fields: [parentId], references: [id], onDelete: SetNull)
+  children  CourseMaterial[]   @relation("MaterialChildren")
   taskLinks TaskMaterialLink[]
+  activity  CourseActivity[]
 
   @@unique([courseId, canvasRef])
   @@index([moduleId])
+  @@index([parentId])
   @@index([assignmentCanvasId])
   @@index([fileCanvasId])
   @@index([pageSlug])
@@ -592,6 +637,191 @@ model TaskMaterialLink {
   material   CourseMaterial @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@unique([taskId, materialId])
+  @@index([materialId])
+}
+
+/**
+ * Erwin: a Canvas assignment group — a gradebook category, with its weight and drop rules.
+ */
+model CourseAssignmentGroup {
+  id          String             @id @default(cuid())
+  canvasId    String
+  name        String
+  position    Int
+  /**
+   * % of the course grade, when the course weights its groups.
+   */
+  weight      Float?
+  dropLowest  Int                @default(0)
+  dropHighest Int                @default(0)
+  /**
+   * Canvas assignment ids the drop rules never drop.
+   */
+  neverDrop   String[]           @default([])
+  courseId    String
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignments CourseAssignment[]
+
+  @@unique([courseId, canvasId])
+}
+
+/**
+ * Erwin: every assignment in a live course with this student's submission —
+ * the gradebook. Tasks are the actionable subset (`taskId`); this table also
+ * keeps what isn't a task: participation grades, posted final grades, work
+ * graded before Erwin first saw it.
+ */
+model CourseAssignment {
+  id                  String    @id @default(cuid())
+  canvasId            String
+  name                String
+  position            Int?
+  dueAt               DateTime?
+  unlockAt            DateTime?
+  lockAt              DateTime?
+  pointsPossible      Float?
+  gradingType         String?
+  submissionTypes     String[]  @default([])
+  omitFromFinalGrade  Boolean   @default(false)
+  htmlUrl             String?
+  /**
+   * Classic quiz settings: minutes (null = untimed), attempts (-1 = unlimited), and whether it needs Respondus LockDown Browser.
+   */
+  quizTimeLimit       Int?
+  quizAllowedAttempts Int?
+  quizQuestionCount   Int?
+  lockdownBrowser     Boolean   @default(false)
+
+  /**
+   * This student's submission as Erwin reads it: unsubmitted | missing (past due, Canvas still takes it) | missed (closed, never submitted) | submitted | pending_review | graded | excused
+   */
+  state            String    @default("unsubmitted")
+  submittedAt      DateTime?
+  attempt          Int?
+  late             Boolean   @default(false)
+  secondsLate      Int?
+  pointsDeducted   Float?
+  score            Float?
+  grade            String?
+  gradedAt         DateTime?
+  postedAt         DateTime?
+  /**
+   * Class statistics, when the instructor shares them: { mean, min, max, median, lower_q, upper_q }.
+   */
+  scoreStatistics  Json?
+  /**
+   * Comments on the submission, oldest first: [{ id, author, body, createdAt }].
+   */
+  comments         Json?
+  /**
+   * Rubric marks keyed by criterion id: { points, rating_id, comments }.
+   */
+  rubricAssessment Json?
+
+  lastSyncedAt DateTime
+  courseId     String
+  course       Course                 @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groupId      String?
+  group        CourseAssignmentGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  taskId       String?                @unique
+  task         Task?                  @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  activity     CourseActivity[]
+
+  @@unique([courseId, canvasId])
+  @@index([groupId])
+}
+
+/**
+ * Erwin: a course announcement. The body is raw Canvas HTML — sanitize it when rendering.
+ */
+model CourseAnnouncement {
+  id           String           @id @default(cuid())
+  canvasId     String
+  title        String
+  bodyHtml     String?
+  author       String?
+  postedAt     DateTime
+  htmlUrl      String?
+  /**
+   * Canvas's own read flag at the last sync. Erwin reads it and never writes it back.
+   */
+  readInCanvas Boolean          @default(false)
+  lastSyncedAt DateTime
+  courseId     String
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activity     CourseActivity[]
+
+  @@unique([courseId, canvasId])
+  @@index([courseId, postedAt])
+}
+
+/**
+ * Erwin: a Canvas Inbox thread sent in a live course — instructor messages
+ * like a schedule change.
+ */
+model CourseConversation {
+  id            String           @id @default(cuid())
+  canvasId      String
+  subject       String
+  lastMessageAt DateTime
+  messageCount  Int
+  /**
+   * Oldest first: [{ id, author, body, createdAt }]. Canvas stores message bodies as plain text.
+   */
+  messages      Json
+  lastSyncedAt  DateTime
+  courseId      String
+  course        Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  activity      CourseActivity[]
+
+  @@unique([courseId, canvasId])
+}
+
+/**
+ * Erwin: something that changed in a course since the last sync — a new
+ * announcement, file, grade or due date. The UI marks it seen; ops pushes it
+ * to the hub. Never written for what already existed at a course's first sync.
+ */
+model CourseActivity {
+  id             String              @id @default(cuid())
+  /**
+   * enum: ANNOUNCEMENT | MESSAGE | MATERIAL_NEW | MATERIAL_UPDATED | SYLLABUS_CHANGED | ASSIGNMENT_NEW | DUE_CHANGED | GRADE_POSTED | GRADE_CHANGED | FEEDBACK | MISSING
+   */
+  kind           String
+  /**
+   * The thing, named the way a person would: "Exam 1 Things to Know", "Chapter 7 slides.pptx".
+   */
+  title          String
+  /**
+   * What happened to it, when the kind alone doesn't say: "92 / 100", "Oct 24 → Oct 27".
+   */
+  detail         String?
+  /**
+   * One row per event, e.g. "announcement:<id>", "grade:<assignment id>:<graded at>".
+   */
+  dedupeKey      String
+  /**
+   * When it happened in Canvas, if Canvas says (posted, graded); otherwise when sync noticed.
+   */
+  occurredAt     DateTime
+  seenAt         DateTime?
+  createdAt      DateTime            @default(now())
+  courseId       String
+  course         Course              @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignmentId   String?
+  assignment     CourseAssignment?   @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  materialId     String?
+  material       CourseMaterial?     @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  announcementId String?
+  announcement   CourseAnnouncement? @relation(fields: [announcementId], references: [id], onDelete: SetNull)
+  conversationId String?
+  conversation   CourseConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@unique([courseId, dedupeKey])
+  @@index([courseId, createdAt])
+  @@index([createdAt])
+  @@index([seenAt])
+  @@index([assignmentId])
   @@index([materialId])
 }
 
@@ -798,9 +1028,9 @@ model TaskProvider {
   syncEnabled         Boolean           @default(true)
   syncInterval        String            @default("hourly") // 'hourly', 'daily', 'manual'
   /**
-   * Erwin: polling interval in minutes (Canvas default 120)
+   * Erwin: polling interval in minutes (Canvas default 15 — new announcements, files and grades shouldn't wait hours)
    */
-  syncIntervalMinutes Int?              @default(120)
+  syncIntervalMinutes Int?              @default(15)
   /**
    * Erwin: Canvas base URL or other provider base
    */
