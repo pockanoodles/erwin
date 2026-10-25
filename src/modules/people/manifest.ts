@@ -18,6 +18,7 @@ const people: ModuleManifest = {
     ],
   },
   sources: ["PEOPLE"],
+  linkLabels: { PEOPLE: "Open their profile" },
   adds: [
     'A "Reach out to" task when someone is due a check-in, ranked like any other work',
     "The People page, with who you know, when you last talked and what about",

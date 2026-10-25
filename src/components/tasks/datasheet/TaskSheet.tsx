@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { HiChevronDown, HiChevronUp, HiPencil, HiTrash } from "react-icons/hi";
 
-import { TaskPacketPane } from "@/components/packet/TaskPacket";
-
 import { cn } from "@/lib/utils";
+
+import { useTaskModule } from "@/modules/client";
 
 import { useLordStore, type Boss } from "@/store/lord";
 import { useMaterialCountsStore } from "@/store/materialCounts";
@@ -511,7 +511,7 @@ export function TaskSheet({
           ) : (
             <>
               {activeBoss ? <BossStrip boss={activeBoss} /> : null}
-              <TaskPacketPane taskId={activeTask?.id ?? null} source={activeTask?.source} />
+              <TaskReadingPane task={activeTask ?? null} />
             </>
           )}
         </aside>
@@ -751,5 +751,22 @@ function BossRow({
       <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
       <td className={cn(ROW, "border-b", rule, isActiveRow ? "bg-rust/5" : "group-hover:bg-muted/40")} />
     </tr>
+  );
+}
+
+/** The pane beside the sheet: the selected task as its module reads it
+ *  (Courses: the Canvas packet), or a note when there's nothing more. */
+function TaskReadingPane({ task }: { task: Task | null }) {
+  const owner = useTaskModule(task?.source);
+  if (!task) {
+    return <p className="p-4 text-[13px] text-muted-foreground">Select a task.</p>;
+  }
+  const Pane = owner?.TaskPane;
+  return Pane ? (
+    <Pane taskId={task.id} />
+  ) : (
+    <p className="p-4 text-[13px] text-muted-foreground">
+      Nothing more to read for this task.
+    </p>
   );
 }

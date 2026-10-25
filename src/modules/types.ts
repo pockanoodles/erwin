@@ -33,6 +33,8 @@ export interface ModuleManifest {
   page?: { href: string; keywords: string[] };
   /** The `Task.source` values it owns. When it's off, those tasks leave every list. */
   sources: string[];
+  /** What a task's link says, per source it owns ("Open in Canvas"). */
+  linkLabels?: Record<string, string>;
   /** What it adds to the core, one short line each. */
   adds: string[];
   /** What it stores, plainly. */

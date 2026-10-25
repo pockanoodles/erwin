@@ -85,13 +85,10 @@ const KNOWN = new Set([
   "src/lib/erwin/enrich-focus-task.ts -> courses",
   "src/app/api/erwin/focus/briefing/route.ts -> courses",
   "src/app/api/erwin/focus/queue/route.ts -> courses",
-  // Focus's desk and the task sheet's pane draw the Canvas packet. Removed
-  // by task slots in the client registry (TaskBody, TaskContext, TaskAside).
-  "src/components/focus/FocusDesk.tsx -> courses",
-  "src/components/tasks/datasheet/TaskSheet.tsx -> courses",
-  // The Tasks page's materials column. Removed by sheet columns as a
-  // module contribution.
+  // The Tasks page's materials column (counts of Canvas files per task).
+  // Removed by sheet columns as a module contribution.
   "src/app/(common)/tasks/page.tsx -> courses",
+  "src/components/tasks/datasheet/TaskSheet.tsx -> courses",
   "src/components/tasks/TaskList.tsx -> courses",
   "src/components/tasks/datasheet/columns.tsx -> courses",
   // Ladder settles bosses from Canvas's gradebook and names courses in the
@@ -114,8 +111,6 @@ const KNOWN = new Set([
   "src/components/tasks/datasheet/boss-cells.tsx -> ladder",
   "src/components/tasks/datasheet/columns.tsx -> ladder",
   "src/components/tasks/datasheet/sheet-rows.ts -> ladder",
-  // Today's "Ladders to" panel. Removed by a Today task-panel slot.
-  "src/components/today/CommandDashboard.tsx -> ladder",
 ]);
 
 const ROOT = path.resolve(__dirname, "../../..");

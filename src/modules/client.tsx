@@ -19,13 +19,22 @@ import {
   LadderTopBarActions,
   LadderTopBarViews,
 } from "@/components/ladder/LadderTopBar";
+import {
+  CanvasTaskBody,
+  CanvasTaskContext,
+  CanvasTaskPane,
+} from "@/components/packet/TaskSlots";
 import { CanvasLmsSettings } from "@/components/settings/CanvasLmsSettings";
 
+import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+
+import { moduleForSource } from "@/modules";
+import { TodayGoalSection } from "@/modules/ladder/components/TodayGoalSection";
 import {
   PeopleTopBarActions,
   PeopleTopBarViews,
 } from "@/modules/people/components/PeopleTopBar";
-import type { ModuleId } from "@/modules/types";
+import type { ModuleId, ModuleManifest } from "@/modules/types";
 
 /**
  * What each module puts into the browser's side of the core. The core reads
@@ -45,6 +54,15 @@ export interface ClientContributions {
   Status?: ComponentType;
   /** What Today offers before there's anything to rank. */
   FirstRun?: ComponentType;
+  /** A section in Today's panel for the selected task. */
+  TodayTaskSection?: ComponentType<{ task: FocusQueueTask }>;
+  /** Focus's work column for a task from one of its sources, in place of
+   *  the plain description. */
+  TaskBody?: ComponentType<{ task: FocusQueueTask }>;
+  /** More in Focus's context column for a task from one of its sources. */
+  TaskContext?: ComponentType<{ task: FocusQueueTask }>;
+  /** The task sheet's reading pane for a task from one of its sources. */
+  TaskPane?: ComponentType<{ taskId: string }>;
 }
 
 export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
@@ -55,11 +73,15 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     Settings: CanvasLmsSettings,
     Status: CourseActivityStatus,
     FirstRun: ConnectCanvasOffer,
+    TaskBody: CanvasTaskBody,
+    TaskContext: CanvasTaskContext,
+    TaskPane: CanvasTaskPane,
   },
   ladder: {
     command: { icon: HiOutlineFlag, shortcut: "gg" },
     Views: LadderTopBarViews,
     Actions: LadderTopBarActions,
+    TodayTaskSection: TodayGoalSection,
   },
   people: {
     command: { icon: HiOutlineUserGroup, shortcut: "gp" },
@@ -67,3 +89,17 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     Actions: PeopleTopBarActions,
   },
 };
+
+/**
+ * The module that owns a task's source, with what it draws for that task.
+ * Null for a task from the core (made by hand, a calendar). It doesn't wait
+ * to learn which modules are on: a task from a module that's off never
+ * reaches the browser (the server hides its source), and waiting would
+ * print a Canvas task's raw HTML description for a moment.
+ */
+export function useTaskModule(
+  source: string | null | undefined
+): (ClientContributions & { manifest: ModuleManifest }) | null {
+  const owner = moduleForSource(source);
+  return owner ? { manifest: owner, ...CLIENT_MODULES[owner.id] } : null;
+}

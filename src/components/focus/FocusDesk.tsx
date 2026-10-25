@@ -2,19 +2,14 @@
 
 import type { ReactNode } from "react";
 
-import {
-  PacketGrade,
-  PacketInstructions,
-  PacketMaterials,
-  PacketRubric,
-  PacketStatus,
-  useTaskPacket,
-} from "@/components/packet/TaskPacket";
 import { Button } from "@/components/ui/button";
 
 import { format } from "@/lib/date-utils";
 import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
+
+import { useTaskModule } from "@/modules/client";
+
 import { TaskStatus } from "@/types/task";
 
 interface FocusDeskProps {
@@ -97,10 +92,11 @@ export function FocusDesk({
   onToggleSubtask,
 }: FocusDeskProps) {
   const goal = primaryLadderGoal(task);
-  // Canvas tasks carry a packet: sanitized instructions, rubric, materials.
-  // Their description is raw Canvas HTML, so it's never printed as text.
-  const isCanvas = task.source === "CANVAS";
-  const packet = useTaskPacket(task.id, task.source);
+  // A module's task can draw its own work column and context (Courses: the
+  // Canvas packet); everything else prints its description.
+  const owner = useTaskModule(task.source);
+  const Body = owner?.TaskBody;
+  const Context = owner?.TaskContext;
   const projection = task.erwin?.gradeProjection;
   const weight = task.gradeWeightPercent ?? task.erwin?.gradeImpactPercent;
   const due = task.dueDate
@@ -161,12 +157,7 @@ export function FocusDesk({
                 </>
               ) : null
             )}
-            {/* Loading and errors are reported once, in the work column. */}
-            {packet.data ? (
-              <div className="border-t border-border py-3">
-                <PacketMaterials materials={packet.data.materials} />
-              </div>
-            ) : null}
+            {Context ? <Context task={task} /> : null}
             {fact("Because", goal?.whyItMatters)}
             {fact(
               "Calendar",
@@ -200,20 +191,8 @@ export function FocusDesk({
             {task.title}
           </h1>
           <div className="er-track mt-4 max-w-[62ch]" aria-hidden />
-          {isCanvas ? (
-            packet.data ? (
-              <>
-                {/* Quiz rules before the instructions: a timed, one-attempt
-                    LockDown exam changes how you start it. */}
-                <PacketGrade packet={packet.data} className="mt-4 max-w-[68ch]" />
-                <PacketInstructions html={packet.data.instructionsHtml} className="mt-4" />
-                <PacketRubric rubric={packet.data.rubric} className="mt-6 max-w-[68ch]" />
-              </>
-            ) : (
-              <div className="mt-4">
-                <PacketStatus loading={packet.loading} error={packet.error} />
-              </div>
-            )
+          {Body ? (
+            <Body task={task} />
           ) : task.description ? (
             <p className="mt-4 max-w-[62ch] whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {linkify(task.description)}
@@ -226,7 +205,8 @@ export function FocusDesk({
               rel="noopener noreferrer"
               className="mt-3 inline-block text-[14px] text-foreground underline decoration-border underline-offset-4 hover:text-rust-text"
             >
-              Open in {task.source === "CANVAS" ? "Canvas" : "source"}
+              {(task.source && owner?.manifest.linkLabels?.[task.source]) ??
+                "Open in source"}
             </a>
           ) : null}
 
