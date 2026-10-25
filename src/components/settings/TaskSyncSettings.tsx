@@ -1,6 +1,8 @@
 import { brand } from "@/lib/brand";
 import { useCallback, useEffect, useState } from "react";
 
+import Link from "next/link";
+
 import {
   Calendar,
   ExternalLink,
@@ -40,7 +42,6 @@ import { logger } from "@/lib/logger";
 import { useProjectStore } from "@/store/project";
 import { useSettingsStore } from "@/store/settings";
 
-import { CanvasLmsSettings } from "./CanvasLmsSettings";
 import { SettingRow, SettingsSection } from "./SettingsSection";
 
 // Logging source
@@ -890,7 +891,22 @@ export function TaskSyncSettings() {
 
   return (
     <>
-      <CanvasLmsSettings />
+      {/* Canvas belongs to the Courses module now, and is set up there. */}
+      <SettingsSection
+        title="Canvas LMS"
+        description="Canvas comes with the Courses module."
+      >
+        <p className="text-sm text-muted-foreground">
+          Connect it from{" "}
+          <Link
+            href="/modules?module=courses"
+            className="font-medium text-foreground underline underline-offset-4"
+          >
+            Modules → Courses
+          </Link>
+          .
+        </p>
+      </SettingsSection>
     <SettingsSection
       title="Task Synchronization"
       description="Manage task synchronization with external services such as Outlook or Google Tasks."
