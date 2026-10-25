@@ -14,6 +14,7 @@
  */
 
 import { ensureDesktopUser } from "../../src/lib/desktop/bootstrap";
+import { applyGoalRules } from "../../src/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "../../src/lib/erwin/hex";
 import { prisma } from "../../src/lib/prisma";
 
@@ -168,7 +169,7 @@ async function main() {
       importanceScore: 70,
       sortOrder: 2,
       develops: ["intelligence"],
-      taskSources: ["CANVAS"],
+      taskSources: [`course:${cs.canvasId}`],
       cycleId: cycle.id,
       userId,
     },
@@ -194,9 +195,20 @@ async function main() {
     { title: "Renew library books", minutes: 10, priority: "low", due: at(2, 18, 0), goal: null },
     { title: "Book a dentist appointment", minutes: 10, priority: "none", due: null, goal: null },
   ];
+  // A goal picked by hand is pinned, as the app does it; an unpinned link
+  // belongs to the goal rules, which drop it the first time they run.
   for (const p of personal) {
     const task = await prisma.task.create({
-      data: { title: p.title, status: "todo", duration: p.minutes, priority: p.priority, dueDate: p.due, category: "PERSONAL", userId },
+      data: {
+        title: p.title,
+        status: "todo",
+        duration: p.minutes,
+        priority: p.priority,
+        dueDate: p.due,
+        category: "PERSONAL",
+        goalsPinned: Boolean(p.goal),
+        userId,
+      },
     });
     if (p.goal) await prisma.taskGoalLink.create({ data: { taskId: task.id, goalId: p.goal } });
   }
@@ -234,6 +246,10 @@ async function main() {
     { feedId: life.id, title: "Dinner with Maya", start: at(5, 19, 0), end: at(5, 21, 0), location: null },
   ];
   for (const e of once) await prisma.calendarEvent.create({ data: { ...e, transparency: "OPAQUE" } });
+
+  // File coursework under the goals that claim it, as the app does after
+  // any change, so the demo opens with its goals already climbing.
+  await applyGoalRules(prisma, userId);
 
   console.log(`seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, 2 calendars for ${user.email}`);
 }
