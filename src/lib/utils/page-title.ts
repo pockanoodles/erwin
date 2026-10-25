@@ -6,7 +6,6 @@ const PAGE_NAMES: Record<string, string> = {
   "/calendar": "Calendar",
   "/tasks": "Tasks",
   "/focus": "Focus",
-  "/progress": "Progress",
   "/modules": "Modules",
   "/settings": "Settings",
   "/setup": "Setup",

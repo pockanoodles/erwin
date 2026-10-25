@@ -27,6 +27,7 @@ import { newDate } from "@/lib/date-utils";
 import { RecurrenceConverterFactory } from "@/lib/task-sync/recurrence/recurrence-converter-factory";
 import { cn } from "@/lib/utils";
 
+import { useModuleOn } from "@/store/modules";
 import { useProjectStore } from "@/store/project";
 
 import {
@@ -136,6 +137,7 @@ export function TaskModal({
   );
   const [goalId, setGoalId] = useState<string | null>(null);
   const [goals, setGoals] = useState<{ id: string; title: string }[]>([]);
+  const ladderOn = useModuleOn("ladder");
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const resetForm = useCallback(() => {
@@ -162,9 +164,10 @@ export function TaskModal({
     setGoalId(initialGoalId ?? null);
   }, [initialProjectId, initialGoalId]);
 
-  // Goals in the active cycle, for the optional goal link
+  // Goals in the active cycle, for the optional goal link (Ladder's, so only
+  // while Ladder is on)
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !ladderOn) return;
     let cancelled = false;
     fetch("/api/erwin/goals")
       .then((res) => (res.ok ? res.json() : []))
@@ -175,7 +178,7 @@ export function TaskModal({
     return () => {
       cancelled = true;
     };
-  }, [isOpen]);
+  }, [isOpen, ladderOn]);
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -582,7 +585,7 @@ export function TaskModal({
             </Select>
           </div>
 
-          {(goals.length > 0 || goalId) && (
+          {ladderOn && (goals.length > 0 || goalId) && (
             <div>
               <Label htmlFor="goal">Goal</Label>
               <Select

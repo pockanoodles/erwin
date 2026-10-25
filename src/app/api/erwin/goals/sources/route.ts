@@ -7,6 +7,8 @@ import { CLAIMABLE_SOURCES } from "@/lib/erwin/goal-input";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalSourcesAPI";
 
 /** How far back finished tasks are still offered as a boss's proof. */
@@ -26,6 +28,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
     const userId = auth.userId;
     const settings = await prisma.userSettings.findUnique({ where: { userId }, select: { timeZone: true } });
     const dayOf = (d: Date) => formatInTimeZone(d, settings?.timeZone ?? "UTC", "yyyy-MM-dd");

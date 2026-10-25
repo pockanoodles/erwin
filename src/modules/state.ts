@@ -32,6 +32,21 @@ export async function isModuleOn(
   return states.some((s) => s.id === id && s.on);
 }
 
+/**
+ * Everything a request needs to know about one person's modules, from one
+ * query: the task sources to hide and whether a given module is on.
+ */
+export async function moduleView(userId: string): Promise<{
+  hidden: string[];
+  isOn: (id: ModuleId) => boolean;
+}> {
+  const states = await loadModuleStates(userId);
+  return {
+    hidden: hiddenSourcesOf(states),
+    isOn: (id) => states.some((s) => s.id === id && s.on),
+  };
+}
+
 /** Task sources this person's modules hide (see `hiddenSourcesOf`). */
 export async function hiddenTaskSources(userId: string): Promise<string[]> {
   return hiddenSourcesOf(await loadModuleStates(userId));

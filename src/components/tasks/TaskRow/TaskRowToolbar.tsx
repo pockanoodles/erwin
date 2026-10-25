@@ -35,6 +35,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { useLordStore } from "@/store/lord";
+import { useModuleOn } from "@/store/modules";
 
 import { Priority, type Task } from "@/types/task";
 
@@ -228,6 +229,7 @@ export function TaskRowToolbar({
   onDelete,
 }: TaskRowToolbarProps) {
   const { lords } = useLordStore();
+  const ladderOn = useModuleOn("ladder");
   const taskLord = lords.find((lord) =>
     task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
   );
@@ -277,33 +279,35 @@ export function TaskRowToolbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <ToolbarButton
-            active={Boolean(taskLord)}
-            aria-label="Lord"
-            title="Assign Lord"
-          >
-            <HiOutlineFlag className="h-4 w-4" />
-            <span className="hidden max-w-36 truncate sm:inline">
-              {taskLord ? taskLord.title : "Lord"}
-            </span>
-          </ToolbarButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="rounded-none">
-          <DropdownMenuItem onSelect={() => patch({ goalId: null })}>
-            Unassigned
-          </DropdownMenuItem>
-          {lords.map((lord) => (
-            <DropdownMenuItem
-              key={lord.id}
-              onSelect={() => patch({ goalId: lord.id })}
+      {ladderOn ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <ToolbarButton
+              active={Boolean(taskLord)}
+              aria-label="Lord"
+              title="Assign Lord"
             >
-              {lord.title}
+              <HiOutlineFlag className="h-4 w-4" />
+              <span className="hidden max-w-36 truncate sm:inline">
+                {taskLord ? taskLord.title : "Lord"}
+              </span>
+            </ToolbarButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="rounded-none">
+            <DropdownMenuItem onSelect={() => patch({ goalId: null })}>
+              Unassigned
             </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {lords.map((lord) => (
+              <DropdownMenuItem
+                key={lord.id}
+                onSelect={() => patch({ goalId: lord.id })}
+              >
+                {lord.title}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
 
       {task.isRecurring ? (
         <span

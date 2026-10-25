@@ -7,6 +7,8 @@ import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalAPI";
 
 /** A goal the vault projects is the vault's: the next projection would undo an edit here. */
@@ -25,6 +27,8 @@ export async function GET(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const { id } = await params;
     const goal = await prisma.goal.findUnique({
@@ -67,6 +71,8 @@ export async function PUT(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { id } = await params;
@@ -188,6 +194,8 @@ export async function DELETE(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { id } = await params;

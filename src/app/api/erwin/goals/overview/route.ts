@@ -7,6 +7,8 @@ import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { notClosedWhere } from "@/lib/erwin/open-work";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalsOverviewAPI";
 
 const COMPLETION_WINDOW_DAYS = 30;
@@ -25,6 +27,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const now = newDate();

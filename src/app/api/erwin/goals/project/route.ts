@@ -8,6 +8,8 @@ import { sanitizeStatKeys, type StatKey } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma, type DbTransaction } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalsProjectAPI";
 
 // The vault is the source of truth for goals; the ops goals-sync pump projects
@@ -112,6 +114,8 @@ export async function POST(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
     const userId = auth.userId;
 
     const json = await request.json();

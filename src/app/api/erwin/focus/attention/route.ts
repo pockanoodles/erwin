@@ -7,7 +7,7 @@ import { openWorkWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
-import { hiddenTaskSources } from "@/modules/state";
+import { moduleView } from "@/modules/state";
 
 const LOG_SOURCE = "ErwinFocusAttentionAPI";
 
@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     const now = newDate();
-    const hidden = await hiddenTaskSources(auth.userId);
+    const modules = await moduleView(auth.userId);
     const goalFields = {
       title: true,
       externalId: true,
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     } as const;
 
     const rows = await prisma.task.findMany({
-      where: openWorkWhere(auth.userId, now, hidden),
+      where: openWorkWhere(auth.userId, now, modules.hidden),
       select: {
         id: true,
         title: true,
@@ -80,7 +80,10 @@ export async function GET(request: NextRequest) {
         id: r.id,
         title: r.title,
         dueDate: r.dueDate,
-        goals: r.goalLinks.map((l) => toAttentionGoal(l.goal)),
+        // With Ladder off, the attention list doesn't speak of goals.
+        goals: modules.isOn("ladder")
+          ? r.goalLinks.map((l) => toAttentionGoal(l.goal))
+          : [],
       })),
       now
     );

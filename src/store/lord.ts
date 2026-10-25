@@ -119,6 +119,9 @@ interface LordStore {
   bosses: Boss[];
   activeLordId: string | null;
   fetchLords: () => Promise<void>;
+  /** Forgets every Lord, for while Ladder is off: the list is cached, so
+   *  without this the old goals would keep showing. */
+  clear: () => void;
   setActiveLordId: (id: string | null) => void;
 }
 
@@ -150,6 +153,8 @@ export const useLordStore = create<LordStore>()(
           // Sidebar is a convenience view; a failed fetch just leaves it empty.
         }
       },
+
+      clear: () => set({ lords: [], bosses: [], activeLordId: null }),
 
       setActiveLordId: (id: string | null) => {
         set({ activeLordId: id });

@@ -71,7 +71,6 @@ const CORE_ROUTES: readonly RouteChrome[] = [
     Actions: TasksTopBarActions,
   },
   { match: (p) => p.startsWith("/modules"), title: "Modules" },
-  { match: (p) => p.startsWith("/progress"), title: "Progress" },
   { match: (p) => p.startsWith("/settings"), title: "Settings" },
 ];
 

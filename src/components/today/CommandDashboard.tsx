@@ -13,6 +13,7 @@ import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
 
 import { useErwinStatusStore } from "@/store/erwinStatus";
+import { useModuleOn } from "@/store/modules";
 
 // Tier idiom, mirrored from FocusDesk so the whole app reads danger/urgency
 // the same way: DANGER = red, HIGH-and-due-today = amber, else quiet.
@@ -52,6 +53,7 @@ export function CommandDashboard() {
   // while standing on /today.
   const tasks = useErwinStatusStore((s) => s.tasks);
   const status = useErwinStatusStore((s) => s.status);
+  const ladderOn = useModuleOn("ladder");
   const load = useErwinStatusStore((s) => s.load);
   const removeTask = useErwinStatusStore((s) => s.removeTask);
 
@@ -169,7 +171,9 @@ export function CommandDashboard() {
             <LadderPanel task={selected} onDone={markDone} />
           ) : (
             <p className="text-sm text-muted-foreground">
-              Select a task to see the goal it climbs toward.
+              {ladderOn
+                ? "Select a task to see the goal it climbs toward."
+                : "Select a task to see it here."}
             </p>
           )}
         </aside>
@@ -188,6 +192,7 @@ function LadderPanel({
   const badge = tierBadge(task);
   const goal = primaryLadderGoal(task);
   const gi = task.erwin?.gradeImpactPercent;
+  const ladderOn = useModuleOn("ladder");
 
   return (
     <div>
@@ -229,51 +234,53 @@ function LadderPanel({
         </p>
       </div>
 
-      {/* The ladder */}
-      <div className="mt-8 border-t border-border pt-6">
-        <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
-          Ladders to
-        </p>
-        {goal ? (
-          <div className="mt-3">
-            <div className="flex items-baseline gap-2">
-              {goal.isBoss && (
-                <span className="font-mono text-sm text-rust-text">⚔</span>
-              )}
-              <h3 className="text-lg font-medium">{goal.title}</h3>
-            </div>
-            {goal.targetDate && (
-              <p className="mt-1 text-sm">
-                <span className="text-rust-text">
-                  {goal.isBoss ? "Boss" : "Target"} — {formatDay(goal.targetDate)}
-                </span>
-              </p>
-            )}
-            {goal.develops.length > 0 && (
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {goal.develops.map((stat) => (
-                  <span
-                    key={stat}
-                    className="bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
-                  >
-                    {stat}
-                  </span>
-                ))}
-              </div>
-            )}
-            {goal.whyItMatters && (
-              <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                {goal.whyItMatters}
-              </p>
-            )}
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-muted-foreground">
-            Not linked to a goal yet. Give it a Lord from the task&apos;s menu
-            to see the climb.
+      {/* The ladder: Ladder's, so only while it's on */}
+      {ladderOn ? (
+        <div className="mt-8 border-t border-border pt-6">
+          <p className="font-mono text-xs uppercase tracking-widest text-muted-foreground">
+            Ladders to
           </p>
-        )}
-      </div>
+          {goal ? (
+            <div className="mt-3">
+              <div className="flex items-baseline gap-2">
+                {goal.isBoss && (
+                  <span className="font-mono text-sm text-rust-text">⚔</span>
+                )}
+                <h3 className="text-lg font-medium">{goal.title}</h3>
+              </div>
+              {goal.targetDate && (
+                <p className="mt-1 text-sm">
+                  <span className="text-rust-text">
+                    {goal.isBoss ? "Boss" : "Target"} — {formatDay(goal.targetDate)}
+                  </span>
+                </p>
+              )}
+              {goal.develops.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {goal.develops.map((stat) => (
+                    <span
+                      key={stat}
+                      className="bg-muted px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground"
+                    >
+                      {stat}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {goal.whyItMatters && (
+                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                  {goal.whyItMatters}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-muted-foreground">
+              Not linked to a goal yet. Give it a Lord from the task&apos;s menu
+              to see the climb.
+            </p>
+          )}
+        </div>
+      ) : null}
 
       {/* Actions */}
       <div className="mt-8 flex items-center gap-3 border-t border-border pt-6">

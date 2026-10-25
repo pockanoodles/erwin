@@ -18,7 +18,7 @@ import {
 } from "@/lib/erwin/rank-stage1";
 import { prisma } from "@/lib/prisma";
 
-import { hiddenTaskSources } from "@/modules/state";
+import { moduleView } from "@/modules/state";
 
 export function toTaskForRanking(r: {
   id: string;
@@ -104,10 +104,10 @@ export async function buildFocusQueueCore(
   userId: string
 ): Promise<FocusQueueCoreResult> {
   const now = newDate();
-  const hidden = await hiddenTaskSources(userId);
+  const modules = await moduleView(userId);
 
-  const rows = await prisma.task.findMany({
-    where: openWorkWhere(userId, now, hidden),
+  const loaded = await prisma.task.findMany({
+    where: openWorkWhere(userId, now, modules.hidden),
     include: {
       tags: true,
       project: true,
@@ -118,6 +118,11 @@ export async function buildFocusQueueCore(
       },
     },
   });
+
+  // With Ladder off, goals neither lift a task nor show beside it.
+  const rows = modules.isOn("ladder")
+    ? loaded
+    : loaded.map((r) => ({ ...r, goalLinks: [] }));
 
   const minimal = rows.map((r) => toTaskForRanking(r));
   const filtered = filterTasksForRanking(minimal, now);

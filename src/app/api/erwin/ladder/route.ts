@@ -9,6 +9,8 @@ import { openWorkWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 import { hiddenTaskSources } from "@/modules/state";
 
 const LOG_SOURCE = "ErwinLadderAPI";
@@ -30,6 +32,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const now = newDate();

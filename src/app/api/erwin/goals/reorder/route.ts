@@ -4,6 +4,8 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalsReorderAPI";
 
 /**
@@ -17,6 +19,8 @@ export async function PUT(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { orderedGoalIds } = await request.json();

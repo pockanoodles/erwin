@@ -7,6 +7,8 @@ import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalsAPI";
 
 /**
@@ -21,6 +23,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { searchParams } = new URL(request.url);
@@ -82,6 +86,8 @@ export async function POST(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const json = await request.json();

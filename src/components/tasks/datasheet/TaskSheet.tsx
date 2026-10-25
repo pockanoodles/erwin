@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { useLordStore, type Boss } from "@/store/lord";
 import { useMaterialCountsStore } from "@/store/materialCounts";
+import { useOnModules } from "@/store/modules";
 import {
   useTaskListViewSettings,
   type TaskColumnId,
@@ -23,6 +24,7 @@ import { bossCell, bossCellText } from "./boss-cells";
 import { BossPane, BossStrip } from "./BossPane";
 import {
   TASK_COLUMNS,
+  columnsFor,
   type ColumnContext,
   type SortKey,
   type TaskPatch,
@@ -109,9 +111,13 @@ export function TaskSheet({
   const resetColumnWidth = useTaskListViewSettings((s) => s.resetColumnWidth);
   const resize = useColumnResize(setColumnWidth);
 
+  const onModules = useOnModules();
   const columns = useMemo(
-    () => TASK_COLUMNS.filter((c) => visibleColumns.has(c.id)),
-    [visibleColumns]
+    () =>
+      columnsFor(new Set(onModules.map((m) => m.id))).filter((c) =>
+        visibleColumns.has(c.id)
+      ),
+    [visibleColumns, onModules]
   );
 
   /** Registry default, unless the header edge has been dragged. */

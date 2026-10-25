@@ -28,6 +28,7 @@ import { useIsMobile } from "@/hooks/use-media-query";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
 import { useMaterialCountsStore } from "@/store/materialCounts";
+import { useOnModules } from "@/store/modules";
 import {
   TaskColumnId,
   useTaskListViewSettings,
@@ -41,7 +42,7 @@ import { TaskRow } from "./TaskRow";
 import { TaskRowExpansionProvider } from "./TaskRow/TaskRowExpansionContext";
 import { buildSheetRows } from "./datasheet/sheet-rows";
 import { TaskSheet } from "./datasheet/TaskSheet";
-import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
+import { type TaskPatch, columnsFor } from "./datasheet/columns";
 import {
   compareTaskEnergyLevel,
   compareTaskPriority,
@@ -73,6 +74,7 @@ export function TaskList({
   onCreateSubtask,
 }: TaskListProps) {
   const isMobile = useIsMobile();
+  const onModules = useOnModules();
   const {
     sortBy,
     sortDirection,
@@ -466,7 +468,7 @@ export function TaskList({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                {TASK_COLUMNS.map((col) => (
+                {columnsFor(new Set(onModules.map((m) => m.id))).map((col) => (
                   <DropdownMenuCheckboxItem
                     key={col.id}
                     checked={visible.has(col.id)}

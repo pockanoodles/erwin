@@ -7,6 +7,8 @@ import { buildXpReport } from "@/lib/erwin/xp-report";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinXpAPI";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
@@ -31,6 +33,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const settings = await prisma.userSettings.findUnique({

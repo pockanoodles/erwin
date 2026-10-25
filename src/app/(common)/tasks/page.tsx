@@ -37,7 +37,8 @@ export default function TasksPage() {
     createTag,
   } = useTaskStore();
   const { fetchProjects } = useProjectStore();
-  const { fetchLords } = useLordStore();
+  const { fetchLords, clear: clearLords } = useLordStore();
+  const ladderOn = useModuleOn("ladder");
   const fetchMaterialCounts = useMaterialCountsStore((s) => s.fetchCounts);
   const coursesOn = useModuleOn("courses");
   const { viewMode } = useTaskPageSettings();
@@ -51,8 +52,13 @@ export default function TasksPage() {
     fetchTasks();
     fetchTags();
     fetchProjects();
-    fetchLords();
-  }, [fetchTasks, fetchTags, fetchProjects, fetchLords]);
+  }, [fetchTasks, fetchTags, fetchProjects]);
+
+  // Lords are Ladder's goals: fetched while it's on, forgotten while it's off.
+  useEffect(() => {
+    if (ladderOn) fetchLords();
+    else if (ladderOn === false) clearLords();
+  }, [ladderOn, fetchLords, clearLords]);
 
   // Material counts are Canvas's, so they're only asked for while Courses
   // is on (its API answers 409 while it's off).
@@ -177,7 +183,7 @@ export default function TasksPage() {
         )}
       </div>
 
-      <LordSidebar />
+      {ladderOn ? <LordSidebar /> : null}
     </div>
   );
 }

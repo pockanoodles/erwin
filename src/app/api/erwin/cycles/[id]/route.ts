@@ -7,6 +7,8 @@ import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinCycleAPI";
 
 /**
@@ -22,6 +24,8 @@ export async function GET(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const { id } = await params;
     const cycle = await prisma.goalCycle.findUnique({
@@ -59,6 +63,8 @@ export async function PUT(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { id } = await params;
@@ -135,6 +141,8 @@ export async function DELETE(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { id } = await params;

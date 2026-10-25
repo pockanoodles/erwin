@@ -12,6 +12,8 @@ import {
 } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
+import type { ModuleId } from "@/modules/types";
+
 import type { Lord } from "@/store/lord";
 import type { MaterialCount } from "@/store/materialCounts";
 import type { TaskColumnId } from "@/store/taskListViewSettings";
@@ -96,6 +98,8 @@ export interface TaskColumn {
   formValue: (task: Task, ctx: ColumnContext) => string;
   /** Turn a committed form value into a patch. `null` = reject, keep editing. */
   commit?: (raw: string, task: Task, ctx: ColumnContext) => TaskPatch | null;
+  /** The module this column belongs to: it's only offered while that module is on. */
+  module?: ModuleId;
 }
 
 /** The Lord editor's "let the vault's rules decide" choice. */
@@ -188,6 +192,13 @@ function scheduleText(task: Task): string {
     )}`;
   }
   return "Auto";
+}
+
+/** The columns on offer while these modules are on. */
+export function columnsFor(
+  onModules: ReadonlySet<ModuleId>
+): readonly TaskColumn[] {
+  return TASK_COLUMNS.filter((c) => !c.module || onModules.has(c.module));
 }
 
 /** Render order. Title is pinned visible by the column picker. */
@@ -310,6 +321,7 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
   },
   {
     id: "materials",
+    module: "courses",
     label: "Mat",
     sortKey: "materials",
     width: 56,
@@ -354,6 +366,7 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
   },
   {
     id: "lord",
+    module: "ladder",
     label: "Lord",
     sortKey: "lord",
     width: 168,

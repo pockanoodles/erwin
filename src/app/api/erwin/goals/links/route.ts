@@ -5,6 +5,8 @@ import { linkWouldCreateLoop } from "@/lib/erwin/goal-links";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGoalLinksAPI";
 
 /**
@@ -19,6 +21,8 @@ export async function POST(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const userId = auth.userId;
     const { parentGoalId, childGoalId } = await request.json();
@@ -77,6 +81,8 @@ export async function DELETE(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "ladder");
+    if (off) return off;
 
     const { searchParams } = new URL(request.url);
     const parentGoalId = searchParams.get("parentGoalId");
