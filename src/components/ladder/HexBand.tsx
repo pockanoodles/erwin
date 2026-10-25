@@ -259,9 +259,20 @@ function TrackDay({
   );
 }
 
+/** What a boss's mark says: beaten and how, or what its proof says now. */
+function bossState(boss: LadderBoss, gone: boolean) {
+  if (boss.felled) return `felled · ${boss.proof.label}`;
+  if (boss.proof.state === "missed") return "missed";
+  return gone ? `date passed · ${boss.proof.label}` : boss.proof.label;
+}
+
+/** Who settles a boss, in a few words. */
+function settledBy(boss: LadderBoss) {
+  return boss.proof.source === "canvas" ? "Canvas checks it" : boss.proof.source === "task" ? "Its task checks it" : "You mark it";
+}
+
 function BossMark({ boss, gone, onOpen }: { boss: LadderBoss; gone: boolean; onOpen?: () => void }) {
-  const state = boss.felled ? "felled" : gone ? "date passed" : "ahead";
-  const label = [boss.title, shortDay(boss.day), boss.goalTitle, state].filter(Boolean).join(" · ");
+  const label = [boss.title, shortDay(boss.day), boss.goalTitle, bossState(boss, gone)].filter(Boolean).join(" · ");
   const mark = (
     <span
       className={cn(
@@ -348,6 +359,9 @@ function NextBoss({ data }: { data: LadderPayload }) {
           <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">
             {shortDay(boss.day, today)} · {countdown(today, boss.day)}
             {boss.goalTitle ? ` · ${boss.goalTitle}` : ""}
+          </p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground" title={boss.proof.label}>
+            {settledBy(boss)}
           </p>
         </>
       ) : (

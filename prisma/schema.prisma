@@ -315,6 +315,10 @@ model Task {
   // Erwin v3: tasks link to any number of goals/subgoals through TaskGoalLink
   goalLinks   TaskGoalLink[]
   /**
+   * Bosses this task settles (Goal.proofTaskId).
+   */
+  proofFor    Goal[]         @relation("BossProof")
+  /**
    * Set once a person picks this task's goal by hand; the goal rules (src/lib/erwin/goal-rules.ts) then leave its links alone.
    */
   goalsPinned Boolean        @default(false)
@@ -392,7 +396,7 @@ model Goal {
   title            String
   whyItMatters     String? // the "why it matters" — surfaced in briefing
   definitionOfDone String? // what "done" looks like for this goal
-  status           String  @default("active") // enum: 'active' | 'done' | 'dropped'
+  status           String  @default("active") // enum: 'active' | 'done' | 'dropped' (no longer pursued: left out of the vault's projection or set aside by hand; its finished work keeps its XP)
   /**
    * Erwin: importance signal (0–100) parallel to Task.gradeImpactScore; feeds Stage 1 ranking
    */
@@ -407,7 +411,7 @@ model Goal {
    */
   develops   String[]  @default([])
   /**
-   * Boss = dated, pass/fail deliverable for the hex (ops pays 5 runes on the kill).
+   * Boss = dated, pass/fail milestone on a goal; felling it pays 5 XP (src/lib/erwin/xp.ts).
    */
   isBoss     Boolean   @default(false)
   targetDate DateTime?
@@ -423,9 +427,14 @@ model Goal {
    */
   taskSources        String[] @default([])
   /**
-   * Boss: the Canvas assignment id the vault boss names (`canvas: <id>`). The bound task's due date and submission win over the vault's.
+   * Boss: the Canvas gradebook item it is (`canvas: <id>` in the vault, or picked in Erwin). Canvas settles it: handing the work in, a grade or being excused fells the boss, and the item's due date wins over the boss's own.
    */
   canvasAssignmentId String?
+  /**
+   * Boss: an Erwin task that settles it, for proof that isn't a Canvas item (another task source, or a task made by hand). Finishing the task fells the boss.
+   */
+  proofTaskId        String?
+  proofTask          Task?    @relation("BossProof", fields: [proofTaskId], references: [id], onDelete: SetNull)
 
   cycleId String
   cycle   GoalCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)

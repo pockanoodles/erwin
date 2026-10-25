@@ -1,14 +1,26 @@
-import { planLinks } from "@/lib/erwin/goal-rules";
+import { claimKeys, planLinks } from "@/lib/erwin/goal-rules";
 
-const school = { id: "school", externalId: "venture:school-f25", isBoss: false, taskSources: ["CANVAS"] };
-const coop = { id: "coop", externalId: "venture:coop-2027", isBoss: false, taskSources: [] };
-const pitch = { id: "pitch", externalId: "venture:school-f25#boss:pitch", isBoss: true, taskSources: [] };
+const goal = (id: string, externalId: string | null, taskSources: string[] = [], extra = {}) => ({
+  id,
+  externalId,
+  isBoss: false,
+  status: "active",
+  taskSources,
+  ...extra,
+});
+const school = goal("school", "venture:school-f25", ["CANVAS"]);
+const coop = goal("coop", "venture:coop-2027");
+const pitch = goal("pitch", "venture:school-f25#boss:pitch", [], { isBoss: true });
 const goals = [school, coop, pitch];
 
-const task = (id: string, source: string | null, goalIds: string[] = []) => ({
+const task = (id: string, source: string | null, goalIds: string[] = [], extra = {}) => ({
   id,
   source,
+  courseId: null,
+  projectId: null,
+  status: "todo",
   goalLinks: goalIds.map((goalId) => ({ id: `${id}>${goalId}`, goalId })),
+  ...extra,
 });
 
 describe("planLinks", () => {
@@ -41,6 +53,41 @@ describe("planLinks", () => {
       task("a", "venture:school-f25#boss:pitch"),
       task("b", "OUTLOOK"),
       task("c", null),
+    ]);
+    expect(plan).toEqual({ create: [], stale: [] });
+  });
+
+  it("lets a goal made in Erwin claim a course or a project", () => {
+    const marketing = goal("mktg", null, ["course:c-mktg"]);
+    const thesis = goal("thesis", null, ["project:p-thesis"]);
+    const plan = planLinks([marketing, thesis], new Map(), [
+      task("quiz", "CANVAS", [], { courseId: "c-mktg" }),
+      task("draft", "MANUAL", [], { projectId: "p-thesis" }),
+      task("other", "CANVAS", [], { courseId: "c-intb" }),
+    ]);
+    expect(plan.create).toEqual([
+      { taskId: "quiz", goalId: "mktg" },
+      { taskId: "draft", goalId: "thesis" },
+    ]);
+    expect(claimKeys({ source: "CANVAS", courseId: "c", projectId: null })).toEqual(["CANVAS", "course:c"]);
+  });
+
+  it("keeps a set-aside goal's finished work, and lets its open work go", () => {
+    const parked = goal("gym", "venture:gym", ["MANUAL"], { status: "dropped" });
+    const plan = planLinks([parked], new Map(), [
+      task("ran", "MANUAL", ["gym"], { status: "completed" }),
+      task("run", "MANUAL", ["gym"]),
+      task("new", "MANUAL"),
+    ]);
+    // History stays credited; nothing new is filed under it.
+    expect(plan).toEqual({ create: [], stale: ["run>gym"] });
+  });
+
+  it("files nothing new under a goal that is done, but keeps what it earned", () => {
+    const shipped = goal("site", null, ["project:p-site"], { status: "done" });
+    const plan = planLinks([shipped], new Map(), [
+      task("launch", "MANUAL", ["site"], { projectId: "p-site", status: "completed" }),
+      task("polish", "MANUAL", [], { projectId: "p-site" }),
     ]);
     expect(plan).toEqual({ create: [], stale: [] });
   });

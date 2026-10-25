@@ -127,6 +127,7 @@ export function GoalSheet({ data }: { data: LadderPayload }) {
                   goal.title,
                   goal.parents.length ? `serves ${goal.parents.map((p) => p.title).join(", ")}` : null,
                   goal.managed ? "from your vault" : null,
+                  goal.status === "dropped" ? "set aside, so it earns nothing new" : null,
                 ]
                   .filter(Boolean)
                   .join(" · ");
@@ -143,6 +144,11 @@ export function GoalSheet({ data }: { data: LadderPayload }) {
                     <td className={cn(cell, titleCellClass(active), "text-foreground")} title={title}>
                       {goal.parents.length ? <span className="text-muted-foreground">↳ </span> : null}
                       {goal.title}
+                      {goal.status !== "active" ? (
+                        <span className="er-bracketed ml-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                          {goal.status === "done" ? "Done" : "Inactive"}
+                        </span>
+                      ) : null}
                     </td>
                     <td className={cn(cell, "font-mono text-[11px] uppercase")}>
                       {goal.stats.length ? (

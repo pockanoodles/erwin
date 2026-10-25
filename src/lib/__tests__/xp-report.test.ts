@@ -21,6 +21,11 @@ const input: XpReportInput = {
     goal({ id: "gym", title: "Gym", develops: ["vigor", "strength"] }),
     goal({ id: "side", title: "Side quest" }),
     goal({ id: "old", title: "Last hex's goal", develops: ["faith"], cycleId: "hex4" }),
+    goal({ id: "shipped", title: "Shipped", develops: ["arcane"], status: "done" }),
+    goal({ id: "final", title: "Final", isBoss: true, parentIds: ["school"], day: "2026-12-10" }),
+    goal({ id: "quiz", title: "Quiz", isBoss: true, parentIds: ["school"], day: "2026-10-30" }),
+    goal({ id: "early", title: "Handed in early", isBoss: true, status: "done", parentIds: ["school"], day: "2026-10-28" }),
+    goal({ id: "parked", title: "Parked", develops: ["arcane"], status: "dropped" }),
     goal({
       id: "midterm",
       title: "Midterm",
@@ -83,9 +88,20 @@ describe("buildXpReport", () => {
     ]);
   });
 
+  it("names the nearest boss still standing", () => {
+    expect(report.nextBoss).toEqual({
+      externalId: null,
+      title: "Quiz",
+      day: "2026-10-30",
+      goal: { externalId: "venture:school-f25", title: "School" },
+    });
+  });
+
   it("counts only the running hex's goals as feeders, and no boss under a goal", () => {
     expect(report.feeders.intelligence).toEqual([{ externalId: "venture:school-f25", title: "School" }]);
     expect(report.feeders.vigor.map((g) => g.title)).toEqual(["Gym"]);
     expect(report.feeders.faith).toEqual([]);
+    // Done or set aside, a goal earns nothing new, so Arcane has no feeder.
+    expect(report.feeders.arcane).toEqual([]);
   });
 });

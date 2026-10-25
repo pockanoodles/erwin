@@ -13,7 +13,7 @@ const goal = (row: Partial<LadderGoalRow> & Pick<LadderGoalRow, "id" | "title">)
   cycleId: "hex5",
   whyItMatters: null,
   definitionOfDone: null,
-  bound: false,
+  proof: null,
   ...row,
 });
 
@@ -125,6 +125,48 @@ describe("buildLadder — other hexes", () => {
     expect(ladder.goals.map((g) => g.id)).toEqual(["school", "gym"]);
     expect(ladder.summary.gained).toBe(0);
     expect(ladder.bosses.map((b) => b.title)).toEqual(["Exam 2"]);
+  });
+
+  it("says what proved each boss, and that a boss felled by hand was marked", () => {
+    const base = input({ year: 2026, index: 5 });
+    const graded = { source: "canvas" as const, state: "done" as const, label: "Graded 90 / 100" };
+    const waiting = { source: "canvas" as const, state: "open" as const, label: "Waiting on a grade" };
+    const ladder = buildLadder({
+      ...base,
+      goals: base.goals.map((g) =>
+        g.id === "quiz" ? { ...g, proof: graded } : g.id === "exam1" ? { ...g, proof: waiting, status: "done" } : g
+      ),
+    });
+    expect(ladder.bosses.map((b) => [b.title, b.proof.label])).toEqual([
+      ["Exam 1", "Marked done"],
+      ["Quiz", "Graded 90 / 100"],
+    ]);
+    expect(ladder.events.find((e) => e.id === "quiz")?.proof).toBe("Graded 90 / 100");
+    expect(buildLadder(input({ year: 2026, index: 6 })).nextBoss?.proof).toEqual({
+      source: null,
+      state: "open",
+      label: "You mark it",
+    });
+  });
+
+  it("shows a goal set aside only where its work earned XP, and never as a feeder", () => {
+    const base = input({ year: 2026, index: 5 });
+    const ladder = buildLadder({
+      ...base,
+      goals: base.goals.map((g) => (g.id === "school" || g.id === "gym" ? { ...g, status: "dropped" } : g)),
+    });
+    // School's finished work earned XP this hex, so it stays; Gym's didn't.
+    expect(ladder.goals.map((g) => [g.id, g.status])).toEqual([["school", "dropped"]]);
+    expect(ladder.stats.find((s) => s.key === "intelligence")).toMatchObject({ gained: 3.5, feeders: [] });
+  });
+
+  it("drops a boss set aside from the track", () => {
+    const base = input({ year: 2026, index: 5 });
+    const ladder = buildLadder({
+      ...base,
+      goals: base.goals.map((g) => (g.id === "exam1" ? { ...g, status: "dropped" } : g)),
+    });
+    expect(ladder.bosses.map((b) => b.title)).toEqual(["Quiz"]);
   });
 
   it("gives a boss made at the top level its own row", () => {

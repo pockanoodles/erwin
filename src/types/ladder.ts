@@ -1,5 +1,6 @@
 /** Client shapes for GET /api/erwin/ladder (src/lib/erwin/ladder.ts). */
 
+import type { BossProof } from "@/lib/erwin/boss-proof";
 import type { StatKey } from "@/lib/erwin/stats";
 
 export type HexState = "past" | "current" | "future";
@@ -52,6 +53,8 @@ export interface LadderStat {
 export interface LadderGoal {
   id: string;
   title: string;
+  /** active | done | dropped. A goal set aside shows only in a hex its work earned XP in. */
+  status: string;
   /** What it develops: its own stats, or the ones above it. */
   stats: StatKey[];
   /** Its own stats, for editing; empty when it inherits. */
@@ -78,8 +81,8 @@ export interface LadderBoss {
   day: string;
   felled: boolean;
   goalTitle: string | null;
-  /** It is a Canvas assignment, so Canvas fells it. */
-  bound: boolean;
+  /** How Erwin knows it was beaten, and what that says now. */
+  proof: BossProof;
   /** Projected from the vault, so it's edited there. */
   managed: boolean;
 }
@@ -94,6 +97,8 @@ export interface LadderEvent {
   goalIds: string[];
   stats: Partial<Record<StatKey, number>>;
   lost: number;
+  /** A felled boss: what proved it, e.g. "Graded 90 / 100". */
+  proof: string | null;
 }
 
 export interface LadderDay {

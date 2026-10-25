@@ -16,6 +16,8 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - **Courses page:** Activity, Grades, News and Library views, with an All tab beside the course tabs.
 - **Goals and progress:** goals link to tasks and courses, and progress shows honest numbers with no streaks.
 - **Ladder:** the goals page is a character sheet for the two-month hex. It shows the eight stats with levels and the XP each hex added, the hex's days with the work finished on each and its bosses, the goals behind each stat, and a log of what earned the XP. XP is derived from finished tasks on every read and never stored. `GET /api/erwin/ladder?year=&index=`.
+- **Goal claims:** a goal made in Erwin can claim all of Canvas, one course or a project from the Ladder, and every task from there files under it on its own, finished ones included, so XP works without linking tasks one by one.
+- **Boss proof:** a boss can name a Canvas gradebook item or another task as its proof. Handing the work in, a grade or an excusal fells it, the item's due date becomes its date, and the Ladder says what proved it ("Graded 90 / 100"). The boss form suggests the Canvas item a boss looks like, and a boss with no proof has a Done box. `GET /api/erwin/goals/sources` lists what can be claimed and proved. Migration `20261025040000_boss_proof`.
 - **XP report:** `GET /api/erwin/xp?from=&to=` gives the XP a span of days added and all XP through its last day, per stat, with the goals, unlinked work and felled bosses behind it, so a local tool can report on XP without working it out again.
 - **Calendar and tasks:** Google, Outlook and CalDAV calendars, task sync with Outlook and Google Tasks, auto-scheduling, subtasks, and deferred tasks.
 - **Desktop app:** Electron around the same server, with an embedded database and no account or setup. It saves a copy of the database before any migration that changes it.
@@ -37,6 +39,9 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - Focus's "if you miss this" projection reads the stored gradebook, weights groups the way Canvas's current score does, and no longer calls Canvas while the page loads.
 - The goals map is gone, and with it `@xyflow/react` and `@dagrejs/dagre`. Goals and bosses made in Erwin are added and edited from the Ladder, and tasks are still linked to goals from Tasks.
 - A new hex starts with the Build of the hex before it, so a season that spans two hexes keeps its Build.
+- A vault-bound boss is settled by its Canvas gradebook item, not only by an item with a task, so an in-class exam falls when its grade posts. The projection names the Canvas item an unbound boss looks like (`suggestedBindings`).
+- A goal the projection leaves out is set aside (`dropped`) instead of deleted, so its finished work keeps its XP and it returns if the vault brings it back. A goal that is done or set aside files no new work and no longer lifts its tasks in Focus, while its finished tasks keep their links. Tasks and the Ladder leave set-aside goals out, unless the Ladder's hex shows XP they earned.
+- Goals from the vault can't be edited or deleted through `PUT`/`DELETE /api/erwin/goals/[id]` (409), since the next projection would undo it.
 - The goal projection (`POST /api/erwin/goals/project`) can carry the Build. The running hex then takes it and shows it read-only, a change to it through `PUT /api/erwin/cycles/[id]` answers 409, and the hex's theme still edits in Erwin. A projection without one makes the Build editable again. Migration `20261024230000_projected_build`.
 
 ### Fixed

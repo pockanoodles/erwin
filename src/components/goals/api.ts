@@ -1,7 +1,7 @@
 /** Goal and hex mutations for the Ladder. Each throws on a non-OK response
  *  with the server's message, so callers can toast it. */
 
-import type { GoalFormValues } from "./GoalForm";
+import type { GoalFormValues, GoalSources } from "./GoalForm";
 
 async function expectOk(res: Response): Promise<Response> {
   if (!res.ok) {
@@ -21,7 +21,16 @@ export async function fetchGoal(id: string): Promise<GoalFormValues> {
     develops: json.develops ?? [],
     isBoss: json.isBoss ?? false,
     targetDate: json.targetDate ?? null,
+    taskSources: json.taskSources ?? [],
+    canvasAssignmentId: json.canvasAssignmentId ?? null,
+    proofTaskId: json.proofTaskId ?? null,
+    status: json.status ?? "active",
   };
+}
+
+export async function fetchGoalSources(): Promise<GoalSources> {
+  const res = await expectOk(await fetch("/api/erwin/goals/sources"));
+  return res.json();
 }
 
 export async function createGoal(

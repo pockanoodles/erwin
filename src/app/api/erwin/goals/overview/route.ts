@@ -50,7 +50,8 @@ export async function GET(request: NextRequest) {
         orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
       }),
       prisma.goal.findMany({
-        where: { userId, cycleId: cycle.id },
+        // A goal set aside keeps its history, but Tasks shows the ones in play.
+        where: { userId, cycleId: cycle.id, status: { not: "dropped" } },
         // Manual order first (0 = top); pre-reorder ties put the ⚔ boss on top.
         orderBy: [
           { sortOrder: "asc" },
@@ -70,6 +71,7 @@ export async function GET(request: NextRequest) {
           isBoss: true,
           targetDate: true,
           canvasAssignmentId: true,
+          proofTaskId: true,
           parentLinks: { select: { parentId: true } },
           taskLinks: {
             where: {
@@ -97,8 +99,8 @@ export async function GET(request: NextRequest) {
     ]);
     const managedExternally = projectedGoals > 0;
 
-    // A boss bound to a Canvas assignment is that task: the Tasks sheet shows
-    // them as one row, so it needs the task's id.
+    // A boss whose proof is a task is that task: the Tasks sheet shows them as
+    // one row, so it needs the task's id (a Canvas item's, or the proof task).
     const assignmentIds = goals.flatMap((g) => (g.canvasAssignmentId ? [g.canvasAssignmentId] : []));
     const boundTasks = assignmentIds.length
       ? await prisma.task.findMany({
@@ -108,9 +110,9 @@ export async function GET(request: NextRequest) {
       : [];
     const taskIdByAssignment = new Map(boundTasks.map((t) => [t.externalTaskId, t.id]));
 
-    const flatGoals = goals.map(({ parentLinks, taskLinks, canvasAssignmentId, ...goal }) => ({
+    const flatGoals = goals.map(({ parentLinks, taskLinks, canvasAssignmentId, proofTaskId, ...goal }) => ({
       ...goal,
-      boundTaskId: canvasAssignmentId ? (taskIdByAssignment.get(canvasAssignmentId) ?? null) : null,
+      boundTaskId: canvasAssignmentId ? (taskIdByAssignment.get(canvasAssignmentId) ?? null) : proofTaskId,
       parentGoalIds: parentLinks.map((link) => link.parentId),
       tasks: taskLinks
         .map((link) => link.task)

@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { suggestProof } from "@/lib/erwin/boss-proof";
 import { applyGoalRules, calendarDay, type BossBinding } from "@/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "@/lib/erwin/hex";
 import { sanitizeStatKeys, type StatKey } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
-import { prisma } from "@/lib/prisma";
+import { prisma, type DbTransaction } from "@/lib/prisma";
 
 const LOG_SOURCE = "ErwinGoalsProjectAPI";
 
 // The vault is the source of truth for goals; the ops goals-sync pump projects
 // them here. Projected rows are tagged with a "venture:" externalId and owned
 // entirely by the pump — this endpoint upserts them by (userId, externalId),
-// rebuilds their DAG edges, and prunes projected rows no longer in the vault.
-// Hand-made goals (externalId NULL) are never read or touched.
+// rebuilds their DAG edges, and sets aside projected rows no longer in the
+// vault (status "dropped": a goal parked or killed there keeps its finished
+// work and its XP here). Hand-made goals (externalId NULL) are never touched.
 const PROJECTION_PREFIX = "venture:";
 
 interface ProjectedGoal {
@@ -37,42 +39,72 @@ interface ProjectedGoal {
 
 /**
  * What pump 7 should say out loud about the boss bindings: a named assignment
- * Erwin doesn't have, a vault date Canvas disagrees with, and a boss Canvas
- * says is felled while the vault heading still lacks its ✅. Erwin pays the
- * boss either way; the ✅ keeps the vault's record in step.
+ * Erwin's gradebook doesn't have, and a vault date Canvas disagrees with. A
+ * bound boss needs no ✅: Canvas fells it.
  */
 function bindingReport(goals: ProjectedGoal[], bindings: BossBinding[]) {
   const sent = new Map(goals.map((g) => [g.externalId, g]));
   const unresolvedBindings: { externalId: string; canvasAssignmentId: string }[] = [];
   const dateMismatches: { externalId: string; vaultDate: string; canvasDate: string }[] = [];
-  const awaitingKillMark: string[] = [];
   for (const b of bindings) {
+    if (!b.externalId?.startsWith(PROJECTION_PREFIX)) continue;
     const vault = sent.get(b.externalId);
-    if (!b.task) {
+    if (!b.item) {
       unresolvedBindings.push({ externalId: b.externalId, canvasAssignmentId: b.canvasAssignmentId });
       continue;
     }
-    if (vault?.targetDate && b.task.dueDate) {
+    if (vault?.targetDate && b.item.dueDate) {
       const vaultDate = vault.targetDate.slice(0, 10);
-      const canvasDate = calendarDay(b.task.dueDate);
+      const canvasDate = calendarDay(b.item.dueDate);
       if (vaultDate !== canvasDate) {
         dateMismatches.push({ externalId: b.externalId, vaultDate, canvasDate });
       }
     }
-    if (b.task.completed && vault?.status !== "done") awaitingKillMark.push(b.externalId);
   }
-  return { unresolvedBindings, dateMismatches, awaitingKillMark };
+  return { unresolvedBindings, dateMismatches };
+}
+
+/**
+ * Canvas items the vault's unbound bosses look like, for pump 7 to name: an
+ * exam a boss stands for, once Canvas publishes it, is one `canvas:` line
+ * away from settling itself. Suggestions only; the vault decides.
+ */
+async function suggestBindings(db: DbTransaction, userId: string, goals: ProjectedGoal[]) {
+  const unbound = goals.filter(
+    (g) => g.isBoss && !g.canvasAssignmentId && g.status !== "done" && g.targetDate
+  );
+  if (unbound.length === 0) return [];
+  const taken = new Set(goals.flatMap((g) => (g.canvasAssignmentId ? [String(g.canvasAssignmentId)] : [])));
+  const items = await db.courseAssignment.findMany({
+    where: { course: { userId } },
+    select: { canvasId: true, name: true, dueAt: true, course: { select: { code: true } } },
+  });
+  const candidates = items
+    .filter((item) => !taken.has(item.canvasId))
+    .map((item) => ({
+      canvasId: item.canvasId,
+      name: item.name,
+      courseCode: item.course.code,
+      dueDay: item.dueAt ? calendarDay(item.dueAt) : null,
+    }));
+  return unbound.flatMap((boss) => {
+    const match = suggestProof({ title: boss.title, day: boss.targetDate!.slice(0, 10) }, candidates);
+    return match
+      ? [{ externalId: boss.externalId, canvasAssignmentId: match.canvasId, item: match.name }]
+      : [];
+  });
 }
 
 /**
  * POST /api/erwin/goals/project
  * Body: { cycleId?: string, goals: ProjectedGoal[], build?: string[] }
  * Idempotently reconciles the set of projected goals for the target cycle
- * (defaults to the active hex), then files tasks under them (lib/erwin/goal-rules).
- * `build` is the map's Current Build: sent, it becomes the cycle's Build and
- * can't be changed in Erwin; left out, the Build is Erwin's to edit again.
- * Returns { cycleId, build, created, updated, deleted, linked, linkedTasks,
- * unlinkedTasks, unresolvedBindings, dateMismatches, awaitingKillMark }.
+ * (defaults to the active hex), then files tasks under them and settles bosses
+ * (lib/erwin/goal-rules). `build` is the map's Current Build: sent, it becomes
+ * the cycle's Build and can't be changed in Erwin; left out, the Build is
+ * Erwin's to edit again. Returns { cycleId, build, created, updated, dropped,
+ * linked, linkedTasks, unlinkedTasks, unresolvedBindings, dateMismatches,
+ * suggestedBindings }.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -213,13 +245,18 @@ export async function POST(request: NextRequest) {
       });
       const idByExt = new Map(after.map((g) => [g.externalId, g.id]));
 
-      // Prune projected rows the vault no longer defines (cascades their links).
+      // Set aside projected rows the vault no longer defines. They keep their
+      // links, so finished work keeps its XP, and a goal the vault brings back
+      // under the same slug picks up where it was. A felled boss stays felled.
       const orphanIds = after
         .filter((g) => g.externalId !== null && !desired.has(g.externalId))
         .map((g) => g.id);
-      if (orphanIds.length > 0) {
-        await tx.goal.deleteMany({ where: { id: { in: orphanIds }, userId } });
-      }
+      const { count: dropped } = orphanIds.length
+        ? await tx.goal.updateMany({
+            where: { id: { in: orphanIds }, userId, status: "active" },
+            data: { status: "dropped" },
+          })
+        : { count: 0 };
 
       // Rebuild projected DAG edges: clear links INTO projected goals, then
       // recreate the desired parentExternalId → externalId edges. Only edges
@@ -250,11 +287,12 @@ export async function POST(request: NextRequest) {
       return {
         created,
         updated: goals.length - created,
-        deleted: orphanIds.length,
+        dropped,
         linked,
         linkedTasks: rules.linked,
         unlinkedTasks: rules.unlinked,
         ...bindingReport(goals, rules.bindings),
+        suggestedBindings: await suggestBindings(tx, userId, goals),
       };
     });
 

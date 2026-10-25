@@ -4,8 +4,8 @@ import { useEffect, useState } from "react";
 
 import { toast } from "sonner";
 
-import { createGoal, deleteGoal, fetchGoal, updateGoal } from "@/components/goals/api";
-import { GoalForm, type GoalFormValues } from "@/components/goals/GoalForm";
+import { createGoal, deleteGoal, fetchGoal, fetchGoalSources, updateGoal } from "@/components/goals/api";
+import { GoalForm, type GoalFormValues, type GoalSources } from "@/components/goals/GoalForm";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -19,6 +19,10 @@ const BLANK: GoalFormValues = {
   develops: [],
   isBoss: false,
   targetDate: null,
+  taskSources: [],
+  canvasAssignmentId: null,
+  proofTaskId: null,
+  status: "active",
 };
 
 /**
@@ -32,7 +36,22 @@ export function GoalDialog() {
   const data = useLadderStore((s) => s.data);
   const load = useLadderStore((s) => s.load);
   const [values, setValues] = useState<GoalFormValues | null>(null);
+  const [sources, setSources] = useState<GoalSources | null>(null);
   const editingId = dialog?.mode === "edit" ? dialog.goalId : null;
+
+  // What it can claim and prove: fresh each time, since Canvas moves on.
+  useEffect(() => {
+    if (!dialog) return;
+    let live = true;
+    setSources(null);
+    fetchGoalSources().then(
+      (next) => live && setSources(next),
+      () => live && setSources({ sources: [], courses: [], projects: [], items: [], tasks: [] })
+    );
+    return () => {
+      live = false;
+    };
+  }, [dialog]);
 
   useEffect(() => {
     if (!dialog) return;
@@ -91,8 +110,9 @@ export function GoalDialog() {
         <DialogHeader>
           <DialogTitle>{editingId ? (values?.isBoss ? "Edit boss" : "Edit goal") : "Add a goal"}</DialogTitle>
           <DialogDescription>
-            A goal names the stats its work develops. Link tasks to it from Tasks, and each one you finish earns XP for
-            those stats.
+            A goal names the stats its work develops. Each task that counts toward it earns XP for those stats when you
+            finish it, whether it files there on its own or you link it from Tasks. A boss can name its proof, so Erwin
+            knows when it&apos;s beaten.
           </DialogDescription>
         </DialogHeader>
         {values ? (
@@ -100,6 +120,8 @@ export function GoalDialog() {
             key={editingId ?? "new"}
             initialValues={values}
             parents={editingId ? undefined : parents}
+            sources={sources}
+            goalId={editingId}
             submitLabel={editingId ? "Save" : "Add goal"}
             onSubmit={submit}
             onCancel={close}

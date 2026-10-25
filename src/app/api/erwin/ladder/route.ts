@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { formatInTimeZone, newDate } from "@/lib/date-utils";
+import { canvasProof, selfProof, taskProof, type BossProof } from "@/lib/erwin/boss-proof";
 import { ensureCurrentHex, hexOfDay } from "@/lib/erwin/hex";
 import { buildLadder } from "@/lib/erwin/ladder";
 import { openWorkWhere } from "@/lib/erwin/open-work";
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
           whyItMatters: true,
           definitionOfDone: true,
           canvasAssignmentId: true,
+          proofTaskId: true,
           parentLinks: { select: { parentId: true } },
         },
       }),
@@ -90,6 +92,35 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    // What each boss's proof says now: its Canvas gradebook item, or its task.
+    const bosses = goals.filter((goal) => goal.isBoss);
+    const canvasIds = bosses.flatMap((goal) => (goal.canvasAssignmentId ? [goal.canvasAssignmentId] : []));
+    const proofTaskIds = bosses.flatMap((goal) =>
+      !goal.canvasAssignmentId && goal.proofTaskId ? [goal.proofTaskId] : []
+    );
+    const [items, proofTasks] = await Promise.all([
+      canvasIds.length
+        ? prisma.courseAssignment.findMany({
+            where: { canvasId: { in: canvasIds }, course: { userId } },
+            select: { canvasId: true, state: true, score: true, pointsPossible: true, grade: true },
+          })
+        : [],
+      proofTaskIds.length
+        ? prisma.task.findMany({ where: { id: { in: proofTaskIds }, userId }, select: { id: true, status: true } })
+        : [],
+    ]);
+    const itemOf = new Map(items.map((item) => [item.canvasId, item]));
+    const taskOf = new Map(proofTasks.map((task) => [task.id, task]));
+    const proofOf = (goal: (typeof goals)[number]): BossProof | null => {
+      if (!goal.isBoss) return null;
+      if (goal.canvasAssignmentId) {
+        const item = itemOf.get(goal.canvasAssignmentId);
+        return item ? canvasProof(item) : { source: "canvas", state: "open", label: "Not in your gradebook yet" };
+      }
+      const task = goal.proofTaskId ? taskOf.get(goal.proofTaskId) : undefined;
+      return task ? taskProof(task) : selfProof(goal.status);
+    };
+
     return NextResponse.json(
       buildLadder({
         today,
@@ -110,7 +141,7 @@ export async function GET(request: NextRequest) {
           cycleId: goal.cycleId,
           whyItMatters: goal.whyItMatters,
           definitionOfDone: goal.definitionOfDone,
-          bound: goal.canvasAssignmentId !== null,
+          proof: proofOf(goal),
         })),
         done: done.map((task) => ({
           id: task.id,

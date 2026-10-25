@@ -1,11 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { checkClaims, checkProof } from "@/lib/erwin/goal-input";
+import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 const LOG_SOURCE = "ErwinGoalAPI";
+
+/** A goal the vault projects is the vault's: the next projection would undo an edit here. */
+const VAULT_OWNED = "This goal comes from your vault, so change it there and the next sync brings it here";
 
 /**
  * GET /api/erwin/goals/[id]
@@ -48,7 +53,10 @@ export async function GET(
 
 /**
  * PUT /api/erwin/goals/[id]
- * Updates a goal scoped to the authenticated user.
+ * Updates a goal made in Erwin: its fields, its claims (`taskSources`) and, for
+ * a boss, its proof (`canvasAssignmentId` or `proofTaskId`) and `status` (a
+ * boss without proof is marked done by hand). A vault goal answers 409. The
+ * goal rules run after, so claims and proof take effect at once.
  */
 export async function PUT(
   request: NextRequest,
@@ -69,10 +77,22 @@ export async function PUT(
     if (!existing) {
       return new NextResponse("Goal not found", { status: 404 });
     }
+    if (existing.externalId !== null) {
+      return new NextResponse(VAULT_OWNED, { status: 409 });
+    }
 
     const json = await request.json();
     const { title, whyItMatters, definitionOfDone, status, importanceScore } =
       json;
+    if (status !== undefined && !["active", "done", "dropped"].includes(status)) {
+      return new NextResponse("status must be active, done or dropped", { status: 400 });
+    }
+
+    const claims = await checkClaims(prisma, userId, json.taskSources);
+    if (!claims.ok) return new NextResponse(claims.error, { status: 400 });
+    const proof = await checkProof(prisma, userId, json);
+    if (!proof.ok) return new NextResponse(proof.error, { status: 400 });
+    const boss = json.isBoss ?? existing.isBoss;
 
     let develops: string[] | undefined;
     if (json.develops !== undefined) {
@@ -133,9 +153,14 @@ export async function PUT(
               json.targetDate === null ? null : new Date(json.targetDate),
           }),
           ...(cycleId !== undefined && { cycleId }),
+          ...(claims.value !== undefined && { taskSources: claims.value }),
+          // Proof belongs to bosses; a goal that stops being one loses it.
+          ...(proof.value !== undefined && boss && proof.value),
+          ...(!boss && { canvasAssignmentId: null, proofTaskId: null }),
         },
       });
     });
+    await applyGoalRules(prisma, userId);
 
     return NextResponse.json(updated);
   } catch (error) {
@@ -172,6 +197,10 @@ export async function DELETE(
     });
     if (!existing) {
       return new NextResponse("Goal not found", { status: 404 });
+    }
+
+    if (existing.externalId !== null) {
+      return new NextResponse(VAULT_OWNED, { status: 409 });
     }
 
     await prisma.goal.delete({ where: { id, userId } });

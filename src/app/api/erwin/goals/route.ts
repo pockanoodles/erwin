@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { checkClaims, checkProof } from "@/lib/erwin/goal-input";
+import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { sanitizeStatKeys } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -9,8 +11,9 @@ const LOG_SOURCE = "ErwinGoalsAPI";
 
 /**
  * GET /api/erwin/goals
- * Lists goals scoped to the active cycle by default. `?cycleId=` targets a
- * specific cycle; `?all=true` returns every goal for the user.
+ * Lists goals scoped to the active cycle by default, leaving out goals set
+ * aside. `?cycleId=` targets a specific cycle; `?all=true` returns every goal
+ * for the user.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -45,6 +48,7 @@ export async function GET(request: NextRequest) {
       where: {
         userId,
         ...(scopeCycleId && { cycleId: scopeCycleId }),
+        ...(!all && { status: { not: "dropped" } }),
       },
       orderBy: [
         { sortOrder: "asc" },
@@ -68,6 +72,9 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/erwin/goals
  * Creates a goal. Defaults to the active cycle when no cycleId is supplied.
+ * `taskSources` claims work for it (lib/erwin/goal-input), and a boss can name
+ * its proof (`canvasAssignmentId` or `proofTaskId`); the goal rules run right
+ * after, so claimed tasks and a settled boss show at once.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -92,6 +99,11 @@ export async function POST(request: NextRequest) {
     if (!title) {
       return new NextResponse("title is required", { status: 400 });
     }
+
+    const claims = await checkClaims(prisma, userId, json.taskSources);
+    if (!claims.ok) return new NextResponse(claims.error, { status: 400 });
+    const proof = await checkProof(prisma, userId, json);
+    if (!proof.ok) return new NextResponse(proof.error, { status: 400 });
 
     let develops: string[] | undefined;
     if (json.develops !== undefined) {
@@ -170,6 +182,8 @@ export async function POST(request: NextRequest) {
         ...(targetDate !== undefined && {
           targetDate: targetDate === null ? null : new Date(targetDate),
         }),
+        ...(claims.value !== undefined && { taskSources: claims.value }),
+        ...(proof.value !== undefined && isBoss && proof.value),
         cycleId,
         userId,
         ...(parentIds.length > 0 && {
@@ -180,6 +194,7 @@ export async function POST(request: NextRequest) {
       },
       include: { parentLinks: { select: { parentId: true } } },
     });
+    await applyGoalRules(prisma, userId);
 
     return NextResponse.json(goal);
   } catch (error) {

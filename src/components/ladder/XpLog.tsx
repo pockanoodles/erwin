@@ -50,7 +50,8 @@ export function XpLog({ data }: { data: LadderPayload }) {
         <p className="flex-none border-b border-border px-4 py-2 text-[12px] text-warning">
           {data.summary.unlinked} finished task{data.summary.unlinked === 1 ? "" : "s"} serve
           {data.summary.unlinked === 1 ? "s" : ""} no goal, so {data.summary.unlinked === 1 ? "it" : "they"} earned no XP.
-          Give {data.summary.unlinked === 1 ? "it" : "them"} a goal in Tasks.
+          Have a goal claim where {data.summary.unlinked === 1 ? "it comes" : "they come"} from, or link{" "}
+          {data.summary.unlinked === 1 ? "it" : "them"} in Tasks.
         </p>
       ) : null}
 
@@ -86,6 +87,11 @@ export function XpLog({ data }: { data: LadderPayload }) {
                   {event.courseName ? (
                     <span className="hidden flex-none font-mono text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">
                       {courseTab({ code: null, name: event.courseName })}
+                    </span>
+                  ) : null}
+                  {event.proof ? (
+                    <span className="hidden flex-none font-mono text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">
+                      {event.proof}
                     </span>
                   ) : null}
                 </span>

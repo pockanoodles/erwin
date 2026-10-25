@@ -18,6 +18,7 @@ import type {
   LadderStat,
 } from "@/types/ladder";
 
+import { selfProof, type BossProof } from "./boss-proof";
 import { hexDayRange, hexLabel, hexMonths, hexOfDay } from "./hex";
 import { STAT_KEYS, isStatKey, type StatKey } from "./stats";
 import {
@@ -41,8 +42,8 @@ export interface LadderGoalRow extends XpGoalRow {
   cycleId: string;
   whyItMatters: string | null;
   definitionOfDone: string | null;
-  /** Bound to a Canvas assignment. */
-  bound: boolean;
+  /** A boss's proof as its source reads now; null for a goal. */
+  proof: BossProof | null;
 }
 
 export interface LadderTaskRow extends XpTaskRow {
@@ -129,11 +130,12 @@ export function buildLadder(input: LadderInput): LadderPayload {
 
   // The goals on show: the hex's own (the running hex's, for one that hasn't
   // begun), plus any goal its work credited. Bosses are milestones on a
-  // goal's path, so only a boss with nothing above it gets a row.
+  // goal's path, so only a boss with nothing above it gets a row, and a goal
+  // set aside shows only where its work earned XP.
   const shownCycleId = state === "future" ? input.currentCycleId : (cycle?.id ?? null);
   const rowIds = new Set<string>();
   for (const goal of input.goals) {
-    if (goal.cycleId === shownCycleId && standsAlone(goal, byId)) rowIds.add(goal.id);
+    if (goal.cycleId === shownCycleId && goal.status !== "dropped" && standsAlone(goal, byId)) rowIds.add(goal.id);
   }
   for (const event of hexEvents) for (const { goalId } of event.credit) rowIds.add(goalId);
   const rowStats = new Map([...rowIds].map((id) => [id, statsOf(id, economy)]));
@@ -153,6 +155,11 @@ export function buildLadder(input: LadderInput): LadderPayload {
     for (const goalId of creditedGoals(task.goalIds, economy)) add(openByGoal, goalId, 1);
   }
 
+  // A boss felled by hand before its source caught up reads as marked done.
+  const proofOf = (goal: LadderGoalRow): BossProof => {
+    const proof = goal.proof ?? selfProof(goal.status);
+    return goal.status === "done" && proof.state !== "done" ? selfProof("done") : proof;
+  };
   const toBoss = (goal: LadderGoalRow): LadderBoss => {
     const above = creditedGoals([goal.id], economy).filter((id) => id !== goal.id);
     return {
@@ -161,11 +168,14 @@ export function buildLadder(input: LadderInput): LadderPayload {
       day: goal.day!,
       felled: goal.status === "done",
       goalTitle: above.length ? byId.get(above[0])!.title : null,
-      bound: goal.bound,
+      proof: proofOf(goal),
       managed: goal.externalId !== null,
     };
   };
-  const datedBosses = input.goals.filter((goal) => goal.isBoss && goal.day).map(toBoss).sort(byDay);
+  const datedBosses = input.goals
+    .filter((goal) => goal.isBoss && goal.day && goal.status !== "dropped")
+    .map(toBoss)
+    .sort(byDay);
   const ahead = datedBosses.filter((boss) => !boss.felled && boss.day >= today);
   const nextBossOf = new Map<string, { title: string; day: string }>();
   for (const boss of ahead) {
@@ -179,6 +189,7 @@ export function buildLadder(input: LadderInput): LadderPayload {
     .map((goal) => ({
       id: goal.id,
       title: goal.title,
+      status: goal.status,
       stats: rowStats.get(goal.id) ?? [],
       develops: goal.develops.filter(isStatKey),
       importance: goal.importanceScore,
@@ -206,7 +217,8 @@ export function buildLadder(input: LadderInput): LadderPayload {
     );
 
   const stats: LadderStat[] = STAT_KEYS.map((key) => {
-    const feeders = goals.filter((goal) => goal.stats.includes(key)).map((goal) => goal.id);
+    // Only a goal in play can feed a stat; one done or set aside earns nothing new.
+    const feeders = goals.filter((goal) => goal.status === "active" && goal.stats.includes(key)).map((goal) => goal.id);
     const inBuild = build.includes(key);
     return {
       key,
@@ -246,6 +258,7 @@ export function buildLadder(input: LadderInput): LadderPayload {
       goalIds: event.credit.map((c) => c.goalId),
       stats: event.stats,
       lost: event.lost,
+      proof: event.kind === "boss" ? proofOf(byId.get(event.id)!).label : null,
     }))
     .sort((a, b) => b.day.localeCompare(a.day) || a.kind.localeCompare(b.kind) || a.title.localeCompare(b.title));
 

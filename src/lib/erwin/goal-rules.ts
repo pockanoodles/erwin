@@ -1,32 +1,34 @@
 import type { Db, DbTransaction } from "@/lib/prisma";
 
-/**
- * Files tasks under the goals the vault says they serve. Both rules are
- * declared in ~/brain and projected by pump 7; Erwin only applies them.
- *
- *  - A Lord claims every task whose source it names: its own
- *    "venture:<slug>" (tasks pump 2 decomposed from it) or one of its
- *    `sources:` (School claims CANVAS).
- *  - A boss that names a Canvas assignment claims that task, and Canvas wins
- *    on the facts: the task's due date becomes the boss's date, and
- *    submitting it fells the boss, which pays its XP (lib/erwin/xp.ts). A
- *    boss with no assignment is felled by the ✅ on its vault heading.
- *
- * Runs after every projection and every Canvas sync, so a new assignment is
- * filed the moment it lands rather than at 06:55 the next morning. A task
- * whose goal was picked by hand is pinned and never touched. Every link on
- * an unpinned task belongs to these rules, so one no rule produces anymore is
- * removed.
- */
+import { settlesBoss } from "./boss-proof";
 
-const PROJECTION_PREFIX = "venture:";
+/**
+ * Files tasks under the goals they serve, and settles bosses from their proof.
+ * The rules are declared on the goals, by the vault through pump 7 or by hand
+ * in Erwin; Erwin only applies them.
+ *
+ *  - A goal in play claims every task matching one of its claims: a task
+ *    source (CANVAS), `course:<Canvas course id>` or `project:<id>`. A vault goal also
+ *    claims its own "venture:<slug>", the tasks pump 2 decomposed from it.
+ *  - A boss with proof is settled by it (lib/erwin/boss-proof.ts). A Canvas
+ *    gradebook item or a task fells the boss once the work is handed in, and
+ *    the item's due date becomes the boss's date. The proof's task is filed
+ *    under the boss, so its work counts toward the goal above.
+ *  - A goal that is done or set aside claims nothing new, but a finished
+ *    task keeps its link to it: that link is the goal's history and its XP.
+ *
+ * Runs after every projection, every Canvas sync and every task or goal
+ * edit, so a new assignment is filed the moment it lands. A task whose goals
+ * were picked by hand is pinned and never touched. Every other link belongs to
+ * these rules, so one no rule produces anymore is removed.
+ */
 
 export interface BossBinding {
   goalId: string;
-  externalId: string;
+  externalId: string | null;
   canvasAssignmentId: string;
-  /** Null when no Canvas task has that id: the vault names one Erwin lacks. */
-  task: { id: string; dueDate: Date | null; completed: boolean } | null;
+  /** Null when the gradebook has no item with that id: the boss names one Erwin lacks. */
+  item: { dueDate: Date | null } | null;
 }
 
 export interface GoalRulesResult {
@@ -46,17 +48,32 @@ export const calendarDay = (d: Date) => d.toLocaleDateString("en-CA");
  *  so they read as the same day in any US zone. */
 const bossDate = (due: Date) => new Date(`${calendarDay(due)}T12:00:00.000Z`);
 
+const sameDay = (a: Date | null, b: Date) => a !== null && a.getTime() === b.getTime();
+
 interface RuleGoal {
   id: string;
   externalId: string | null;
   isBoss: boolean;
+  status: string;
   taskSources: string[];
 }
 
 interface RuleTask {
   id: string;
   source: string | null;
+  courseId: string | null;
+  projectId: string | null;
+  status: string;
   goalLinks: { id: string; goalId: string }[];
+}
+
+/** What a goal can claim a task by. */
+export function claimKeys(task: Pick<RuleTask, "source" | "courseId" | "projectId">): string[] {
+  return [
+    ...(task.source ? [task.source] : []),
+    ...(task.courseId ? [`course:${task.courseId}`] : []),
+    ...(task.projectId ? [`project:${task.projectId}`] : []),
+  ];
 }
 
 /**
@@ -68,20 +85,20 @@ export function planLinks(
   bossesByTask: Map<string, string[]>,
   tasks: RuleTask[]
 ): { create: { taskId: string; goalId: string }[]; stale: string[] } {
-  const lordsBySource = new Map<string, string[]>();
-  const claim = (source: string, goalId: string) =>
-    lordsBySource.set(source, [...(lordsBySource.get(source) ?? []), goalId]);
+  const byId = new Map(goals.map((g) => [g.id, g]));
+  const claimants = new Map<string, string[]>();
+  const claim = (key: string, goalId: string) => claimants.set(key, [...(claimants.get(key) ?? []), goalId]);
   for (const g of goals) {
-    if (g.isBoss || !g.externalId) continue;
-    claim(g.externalId, g.id);
-    for (const source of g.taskSources) claim(source, g.id);
+    if (g.isBoss || g.status !== "active") continue;
+    if (g.externalId) claim(g.externalId, g.id);
+    for (const key of g.taskSources) claim(key, g.id);
   }
 
   const create: { taskId: string; goalId: string }[] = [];
   const stale: string[] = [];
   for (const task of tasks) {
     const desired = new Set([
-      ...(task.source ? (lordsBySource.get(task.source) ?? []) : []),
+      ...claimKeys(task).flatMap((key) => claimants.get(key) ?? []),
       ...(bossesByTask.get(task.id) ?? []),
     ]);
     const have = new Set(task.goalLinks.map((l) => l.goalId));
@@ -89,7 +106,11 @@ export function planLinks(
       if (!have.has(goalId)) create.push({ taskId: task.id, goalId });
     }
     for (const link of task.goalLinks) {
-      if (!desired.has(link.goalId)) stale.push(link.id);
+      if (desired.has(link.goalId)) continue;
+      // Finished work stays with a goal that is done or set aside: its history.
+      const goal = byId.get(link.goalId);
+      if (task.status === "completed" && goal && goal.status !== "active") continue;
+      stale.push(link.id);
     }
   }
   return { create, stale };
@@ -101,52 +122,76 @@ export async function applyGoalRules(
   scope: { taskIds?: string[] } = {}
 ): Promise<GoalRulesResult> {
   const goals = await db.goal.findMany({
-    where: { userId, externalId: { startsWith: PROJECTION_PREFIX } },
+    where: { userId },
     select: {
       id: true,
       externalId: true,
       isBoss: true,
+      status: true,
       taskSources: true,
+      targetDate: true,
       canvasAssignmentId: true,
+      proofTaskId: true,
     },
   });
 
-  const bound = goals.filter(
-    (g): g is typeof g & { externalId: string; canvasAssignmentId: string } =>
-      g.isBoss && Boolean(g.externalId) && Boolean(g.canvasAssignmentId)
-  );
-  const canvasTasks = bound.length
-    ? await db.task.findMany({
-        where: {
-          userId,
-          source: "CANVAS",
-          externalTaskId: { in: bound.map((g) => g.canvasAssignmentId) },
-        },
-        select: { id: true, externalTaskId: true, dueDate: true, status: true, goalsPinned: true },
-      })
-    : [];
-  const taskByAssignment = new Map(canvasTasks.map((t) => [t.externalTaskId, t]));
+  // Settle each boss from its proof. A boss set aside is left as it was.
+  const proven = goals.filter((g) => g.isBoss && g.status !== "dropped" && (g.canvasAssignmentId || g.proofTaskId));
+  const canvasIds = proven.flatMap((g) => (g.canvasAssignmentId ? [g.canvasAssignmentId] : []));
+  const taskIds = proven.flatMap((g) => (!g.canvasAssignmentId && g.proofTaskId ? [g.proofTaskId] : []));
+  const [items, proofTasks] = await Promise.all([
+    canvasIds.length
+      ? db.courseAssignment.findMany({
+          where: { canvasId: { in: canvasIds }, course: { userId } },
+          select: { canvasId: true, state: true, dueAt: true, task: { select: { id: true, goalsPinned: true } } },
+        })
+      : [],
+    taskIds.length
+      ? db.task.findMany({
+          where: { id: { in: taskIds }, userId },
+          select: { id: true, status: true, dueDate: true, goalsPinned: true },
+        })
+      : [],
+  ]);
+  const itemByCanvasId = new Map(items.map((i) => [i.canvasId, i]));
+  const taskById = new Map(proofTasks.map((t) => [t.id, t]));
 
   const bindings: BossBinding[] = [];
   const bossesByTask = new Map<string, string[]>();
-  for (const boss of bound) {
-    const task = taskByAssignment.get(boss.canvasAssignmentId) ?? null;
-    const completed = task?.status === "completed";
-    bindings.push({
-      goalId: boss.id,
-      externalId: boss.externalId,
-      canvasAssignmentId: boss.canvasAssignmentId,
-      task: task && { id: task.id, dueDate: task.dueDate, completed },
-    });
-    if (!task) continue;
-    await db.goal.update({
-      where: { id: boss.id },
-      data: {
-        ...(task.dueDate && { targetDate: bossDate(task.dueDate) }),
-        ...(completed && { status: "done" }),
-      },
-    });
-    if (!task.goalsPinned) {
+  for (const boss of proven) {
+    let due: Date | null = null;
+    let handedIn = false;
+    let task: { id: string; goalsPinned: boolean } | null = null;
+    if (boss.canvasAssignmentId) {
+      const item = itemByCanvasId.get(boss.canvasAssignmentId) ?? null;
+      bindings.push({
+        goalId: boss.id,
+        externalId: boss.externalId,
+        canvasAssignmentId: boss.canvasAssignmentId,
+        item: item && { dueDate: item.dueAt },
+      });
+      if (!item) continue;
+      due = item.dueAt;
+      handedIn = settlesBoss(item.state);
+      task = item.task;
+    } else {
+      const proof = taskById.get(boss.proofTaskId!);
+      if (!proof) continue;
+      due = proof.dueDate;
+      handedIn = proof.status === "completed";
+      task = proof;
+    }
+
+    const date = due ? bossDate(due) : null;
+    const moveDate = date !== null && !sameDay(boss.targetDate, date);
+    const fell = handedIn && boss.status === "active";
+    if (moveDate || fell) {
+      await db.goal.update({
+        where: { id: boss.id },
+        data: { ...(moveDate && { targetDate: date }), ...(fell && { status: "done" }) },
+      });
+    }
+    if (task && !task.goalsPinned) {
       bossesByTask.set(task.id, [...(bossesByTask.get(task.id) ?? []), boss.id]);
     }
   }
@@ -157,7 +202,14 @@ export async function applyGoalRules(
       goalsPinned: false,
       ...(scope.taskIds && { id: { in: scope.taskIds } }),
     },
-    select: { id: true, source: true, goalLinks: { select: { id: true, goalId: true } } },
+    select: {
+      id: true,
+      source: true,
+      courseId: true,
+      projectId: true,
+      status: true,
+      goalLinks: { select: { id: true, goalId: true } },
+    },
   });
 
   const { create, stale } = planLinks(goals, bossesByTask, tasks);

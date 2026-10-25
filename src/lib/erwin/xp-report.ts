@@ -69,7 +69,9 @@ export interface XpReport {
   unlinked: { source: string | null; count: number }[];
   /** Bosses felled in the span, and the goal each one sits under. */
   bosses: (XpGoalRef & { day: string; goal: XpGoalRef | null })[];
-  /** The running hex's goals behind each stat. A stat with none can't gain XP. */
+  /** The nearest boss still standing from the span's last day on. */
+  nextBoss: (XpGoalRef & { day: string; goal: XpGoalRef | null }) | null;
+  /** The running hex's active goals behind each stat. A stat with none can't gain XP. */
   feeders: Record<StatKey, XpGoalRef[]>;
 }
 
@@ -81,6 +83,13 @@ export function buildXpReport(input: XpReportInput): XpReport {
     const goal = byId.get(id)!;
     return { externalId: goal.externalId, title: goal.title };
   };
+  const goalAbove = (bossId: string) => {
+    const above = creditedGoals([bossId], economy).filter((id) => id !== bossId);
+    return above.length ? refOf(above[0]) : null;
+  };
+  const standing = input.goals
+    .filter((goal) => goal.isBoss && goal.status === "active" && goal.day !== null && goal.day >= to)
+    .sort((a, b) => a.day!.localeCompare(b.day!) || a.title.localeCompare(b.title));
 
   const events = xpEvents(input.goals, input.done, economy);
   const span = events.filter((event) => event.day >= from && event.day <= to);
@@ -107,8 +116,9 @@ export function buildXpReport(input: XpReportInput): XpReport {
     unlinked.set(source, (unlinked.get(source) ?? 0) + 1);
   }
 
+  // Only a goal in play feeds a stat now; one done or set aside earns nothing new.
   const running = input.goals.filter(
-    (goal) => goal.cycleId === input.currentCycleId && standsAlone(goal, byId)
+    (goal) => goal.cycleId === input.currentCycleId && goal.status === "active" && standsAlone(goal, byId)
   );
 
   return {
@@ -134,11 +144,11 @@ export function buildXpReport(input: XpReportInput): XpReport {
       .sort((a, b) => b.count - a.count || (a.source ?? "").localeCompare(b.source ?? "")),
     bosses: span
       .filter((event) => event.kind === "boss")
-      .map((event) => {
-        const above = creditedGoals([event.id], economy).filter((id) => id !== event.id);
-        return { ...refOf(event.id), day: event.day, goal: above.length ? refOf(above[0]) : null };
-      })
+      .map((event) => ({ ...refOf(event.id), day: event.day, goal: goalAbove(event.id) }))
       .sort((a, b) => a.day.localeCompare(b.day) || a.title.localeCompare(b.title)),
+    nextBoss: standing.length
+      ? { ...refOf(standing[0].id), day: standing[0].day!, goal: goalAbove(standing[0].id) }
+      : null,
     feeders: Object.fromEntries(
       STAT_KEYS.map((key) => [
         key,

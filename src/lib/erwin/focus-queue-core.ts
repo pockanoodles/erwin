@@ -38,7 +38,7 @@ export function toTaskForRanking(r: {
   createdAt: Date;
   postponedUntil?: Date | null;
   parentTaskId?: string | null;
-  goalLinks?: Array<{ goal: { importanceScore: number | null } }> | null;
+  goalLinks?: Array<{ goal: { importanceScore: number | null; status: string } }> | null;
 }): TaskForRanking {
   return {
     id: r.id,
@@ -61,9 +61,11 @@ export function toTaskForRanking(r: {
     postponedUntil: r.postponedUntil ?? null,
     parentTaskId: r.parentTaskId ?? null,
     // Erwin v3: a task can serve several goals — it surfaces on its most
-    // important one (see rank-stage1 computeStage1Scores).
+    // important one (see rank-stage1 computeStage1Scores). A goal done or set
+    // aside no longer makes its work matter more.
     goalImportanceScore:
       r.goalLinks?.reduce<number | null>((best, link) => {
+        if (link.goal.status !== "active") return best;
         const score = link.goal.importanceScore;
         if (score == null) return best;
         return best == null ? score : Math.max(best, score);

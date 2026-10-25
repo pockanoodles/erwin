@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import { suggestProof } from "@/lib/erwin/boss-proof";
 import { STAT_ABBREV, STAT_KEYS, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,30 @@ export interface GoalFormValues {
   develops: string[];
   isBoss: boolean;
   targetDate: string | null;
+  /** Where its work comes from: "CANVAS", "course:<id>", "project:<id>". */
+  taskSources: string[];
+  /** A boss's proof: one Canvas gradebook item, or one task. */
+  canvasAssignmentId: string | null;
+  proofTaskId: string | null;
+  status: string;
+}
+
+/** GET /api/erwin/goals/sources: what a goal can claim and a boss can name as proof. */
+export interface GoalSources {
+  sources: string[];
+  /** Claimed as `course:<canvasId>`. */
+  courses: { canvasId: string; code: string | null; name: string }[];
+  projects: { id: string; name: string }[];
+  items: {
+    canvasId: string;
+    courseId: string;
+    courseCode: string | null;
+    name: string;
+    dueDay: string | null;
+    label: string;
+    boundTo: string | null;
+  }[];
+  tasks: { id: string; title: string; source: string | null; dueDay: string | null; done: boolean }[];
 }
 
 interface GoalFormProps {
@@ -24,9 +49,27 @@ interface GoalFormProps {
   submitLabel: string;
   /** Goals a new one can sit under, a boss on its path. Omit when editing. */
   parents?: { id: string; title: string }[];
+  /** What it can claim and prove; null while that loads. */
+  sources: GoalSources | null;
+  /** The goal being edited, so its own proof stays selectable. */
+  goalId?: string | null;
   onSubmit: (values: GoalFormValues, parentGoalId: string | null) => Promise<void>;
   onCancel: () => void;
 }
+
+const SOURCE_NAMES: Record<string, string> = {
+  CANVAS: "All Canvas work",
+  GOOGLE: "Google Tasks",
+  OUTLOOK: "Outlook tasks",
+};
+
+/** "SCHM2301" from Canvas's "SCHM2301.10244.202710". */
+const shortCode = (code: string | null, name: string) => code?.split(".")[0] || name;
+
+const dayLabel = (day: string | null) =>
+  day
+    ? new Date(`${day}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+    : "no date";
 
 function FieldLabel({
   htmlFor,
@@ -45,11 +88,32 @@ function FieldLabel({
   );
 }
 
+function Chip({ on, onClick, title, children }: { on: boolean; onClick: () => void; title?: string; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      aria-pressed={on}
+      onClick={onClick}
+      className={cn(
+        "border px-1.5 py-0.5 font-mono text-xs transition-colors",
+        on
+          ? "border-foreground bg-foreground text-background"
+          : "border-border text-muted-foreground hover:border-foreground/40"
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 /** The form for adding or editing a goal made in Erwin. */
 export function GoalForm({
   initialValues,
   submitLabel,
   parents,
+  sources,
+  goalId = null,
   onSubmit,
   onCancel,
 }: GoalFormProps) {
@@ -66,18 +130,49 @@ export function GoalForm({
       : ""
   );
   const [develops, setDevelops] = useState<string[]>(initialValues.develops);
+  const [claims, setClaims] = useState<string[]>(initialValues.taskSources);
   const [isBoss, setIsBoss] = useState(initialValues.isBoss);
   const [targetDate, setTargetDate] = useState(
     initialValues.targetDate ? initialValues.targetDate.slice(0, 10) : ""
   );
+  // "" (marked by hand), "canvas:<id>" or "task:<id>".
+  const [proof, setProof] = useState(
+    initialValues.canvasAssignmentId
+      ? `canvas:${initialValues.canvasAssignmentId}`
+      : initialValues.proofTaskId
+        ? `task:${initialValues.proofTaskId}`
+        : ""
+  );
+  const [done, setDone] = useState(initialValues.status === "done");
   const [parentGoalId, setParentGoalId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const toggleStat = (key: StatKey) => {
-    setDevelops((prev) =>
-      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
-    );
-  };
+  const toggle = (list: string[], key: string) =>
+    list.includes(key) ? list.filter((k) => k !== key) : [...list, key];
+
+  // Canvas items free to prove this boss, by course.
+  const freeItems = useMemo(
+    () => (sources?.items ?? []).filter((item) => !item.boundTo || item.boundTo === goalId),
+    [sources, goalId]
+  );
+  const itemsByCourse = useMemo(() => {
+    const groups = new Map<string, GoalSources["items"]>();
+    for (const item of freeItems) {
+      const course = shortCode(item.courseCode, "Canvas");
+      groups.set(course, [...(groups.get(course) ?? []), item]);
+    }
+    return [...groups];
+  }, [freeItems]);
+  const suggestion = useMemo(
+    () =>
+      isBoss && !proof && title.trim()
+        ? suggestProof({ title, day: targetDate || null }, freeItems)
+        : null,
+    [isBoss, proof, title, targetDate, freeItems]
+  );
+  const chosenItem = proof.startsWith("canvas:")
+    ? sources?.items.find((item) => item.canvasId === proof.slice(7))
+    : undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,6 +188,10 @@ export function GoalForm({
           develops,
           isBoss,
           targetDate: targetDate || null,
+          taskSources: isBoss ? [] : claims,
+          canvasAssignmentId: isBoss && proof.startsWith("canvas:") ? proof.slice(7) : null,
+          proofTaskId: isBoss && proof.startsWith("task:") ? proof.slice(5) : null,
+          status: isBoss && !proof ? (done ? "done" : "active") : initialValues.status,
         },
         parentGoalId || null
       );
@@ -131,27 +230,59 @@ export function GoalForm({
       <div className="space-y-1.5">
         <FieldLabel>Develops</FieldLabel>
         <div className="flex flex-wrap gap-1">
-          {STAT_KEYS.map((key) => {
-            const active = develops.includes(key);
-            return (
-              <button
-                key={key}
-                type="button"
-                title={key}
-                onClick={() => toggleStat(key)}
-                className={cn(
-                  "border px-1.5 py-0.5 font-mono text-xs transition-colors",
-                  active
-                    ? "border-foreground bg-foreground text-background"
-                    : "border-border text-muted-foreground hover:border-foreground/40"
-                )}
-              >
-                {STAT_ABBREV[key]}
-              </button>
-            );
-          })}
+          {STAT_KEYS.map((key: StatKey) => (
+            <Chip key={key} title={key} on={develops.includes(key)} onClick={() => setDevelops((d) => toggle(d, key))}>
+              {STAT_ABBREV[key]}
+            </Chip>
+          ))}
         </div>
       </div>
+      {!isBoss ? (
+        <div className="space-y-1.5">
+          <FieldLabel>Counts toward it</FieldLabel>
+          {sources ? (
+            sources.sources.length + sources.courses.length + sources.projects.length > 0 ? (
+              <>
+                <div className="flex flex-wrap gap-1">
+                  {sources.sources.map((source) => (
+                    <Chip key={source} on={claims.includes(source)} onClick={() => setClaims((c) => toggle(c, source))}>
+                      {SOURCE_NAMES[source] ?? source}
+                    </Chip>
+                  ))}
+                  {sources.courses.map((course) => (
+                    <Chip
+                      key={course.canvasId}
+                      title={course.name}
+                      on={claims.includes(`course:${course.canvasId}`)}
+                      onClick={() => setClaims((c) => toggle(c, `course:${course.canvasId}`))}
+                    >
+                      {shortCode(course.code, course.name)}
+                    </Chip>
+                  ))}
+                  {sources.projects.map((project) => (
+                    <Chip
+                      key={project.id}
+                      on={claims.includes(`project:${project.id}`)}
+                      onClick={() => setClaims((c) => toggle(c, `project:${project.id}`))}
+                    >
+                      {project.name}
+                    </Chip>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Tasks from what you pick file under this goal on their own, finished ones too.
+                </p>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">
+                Connect Canvas or make a project, and its work can file under this goal on its own.
+              </p>
+            )
+          ) : (
+            <p className="text-xs text-muted-foreground">Loading…</p>
+          )}
+        </div>
+      ) : null}
       {parents && parents.length > 0 ? (
         <div className="space-y-1.5">
           <FieldLabel htmlFor="goal-parent">Under</FieldLabel>
@@ -195,6 +326,72 @@ export function GoalForm({
           </div>
         ) : null}
       </div>
+      {isBoss ? (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="goal-proof">Proof</FieldLabel>
+          <select
+            id="goal-proof"
+            value={proof}
+            onChange={(e) => setProof(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-raised px-2 text-sm text-foreground"
+          >
+            <option value="">None, I&apos;ll mark it done</option>
+            {itemsByCourse.map(([course, items]) => (
+              <optgroup key={course} label={course}>
+                {items.map((item) => (
+                  <option key={item.canvasId} value={`canvas:${item.canvasId}`}>
+                    {item.name} · {dayLabel(item.dueDay)} · {item.label}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+            {sources?.tasks.length ? (
+              <optgroup label="Other tasks">
+                {sources.tasks.map((task) => (
+                  <option key={task.id} value={`task:${task.id}`}>
+                    {task.title} · {dayLabel(task.dueDay)}
+                    {task.done ? " · done" : ""}
+                  </option>
+                ))}
+              </optgroup>
+            ) : null}
+          </select>
+          {proof ? (
+            <p className="text-xs text-muted-foreground">
+              {chosenItem ? `Canvas says: ${chosenItem.label}. ` : ""}
+              {proof.startsWith("canvas:")
+                ? "Handing it in, a grade or an excusal fells the boss, and Canvas's due date replaces this one."
+                : "Finishing the task fells the boss."}
+            </p>
+          ) : (
+            <>
+              {suggestion ? (
+                <p className="text-xs text-muted-foreground">
+                  Looks like <span className="text-foreground">{suggestion.name}</span> in Canvas.
+                  <button
+                    type="button"
+                    onClick={() => setProof(`canvas:${suggestion.canvasId}`)}
+                    className="er-slash ml-2 font-mono uppercase tracking-wide text-muted-foreground transition-colors duration-150 hover:text-foreground"
+                  >
+                    Use it
+                  </button>
+                </p>
+              ) : null}
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={done}
+                  onChange={(e) => setDone(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-foreground"
+                />
+                <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
+                  Done, it&apos;s beaten
+                </span>
+              </label>
+            </>
+          )}
+        </div>
+      ) : null}
       <div className="space-y-1.5">
         <FieldLabel htmlFor="goal-why">Why it matters</FieldLabel>
         <Textarea
