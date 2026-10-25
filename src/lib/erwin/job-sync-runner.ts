@@ -9,7 +9,9 @@ import { DEFAULT_CANVAS_SYNC_MINUTES } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
-import { isModuleOn } from "@/modules/state";
+import { MODULES } from "@/modules";
+import { SERVER_MODULES } from "@/modules/server";
+import { isModuleOn, usersWithModuleOn } from "@/modules/state";
 
 const LOG_SOURCE = "ErwinJobSyncRunner";
 
@@ -197,14 +199,49 @@ export async function runPeriodicCaldavSyncs(): Promise<CaldavSyncRunStats> {
 }
 
 /**
- * Runs Canvas then CalDAV periodic passes (single BullMQ tick).
+ * Each module's jobs (src/modules/server.ts), for everyone who has that
+ * module on. One person's failure is logged and doesn't stop the rest.
+ */
+export async function runModuleJobs(): Promise<{ ran: number; failed: number }> {
+  let ran = 0;
+  let failed = 0;
+  for (const m of MODULES) {
+    const jobs = SERVER_MODULES[m.id].jobs ?? [];
+    if (jobs.length === 0) continue;
+    for (const userId of await usersWithModuleOn(m.id)) {
+      for (const job of jobs) {
+        try {
+          await job.run(userId);
+          ran += 1;
+        } catch (error) {
+          failed += 1;
+          logger.error(
+            "Module job failed",
+            {
+              job: job.id,
+              userId,
+              error: error instanceof Error ? error.message : String(error),
+            },
+            LOG_SOURCE
+          );
+        }
+      }
+    }
+  }
+  return { ran, failed };
+}
+
+/**
+ * Runs Canvas, CalDAV, then every module's jobs (one tick of the sync loop).
  */
 export async function runAllPeriodicErwinSyncs(): Promise<{
   canvas: CanvasSyncRunStats;
   caldav: CaldavSyncRunStats;
+  modules: { ran: number; failed: number };
 }> {
   const canvas = await runPeriodicCanvasSyncs();
   const caldav = await runPeriodicCaldavSyncs();
+  const modules = await runModuleJobs();
   logger.info(
     "Erwin periodic sync tick complete",
     {
@@ -214,8 +251,10 @@ export async function runAllPeriodicErwinSyncs(): Promise<{
       caldavSkipped: caldav.skipped,
       caldavSynced: caldav.synced,
       caldavFailed: caldav.failed,
+      moduleJobsRan: modules.ran,
+      moduleJobsFailed: modules.failed,
     },
     LOG_SOURCE
   );
-  return { canvas, caldav };
+  return { canvas, caldav, modules };
 }

@@ -6,7 +6,7 @@
 import type { Db } from "@/lib/prisma";
 
 /** Task sources a goal can claim whole. */
-export const CLAIMABLE_SOURCES = ["CANVAS", "GOOGLE", "OUTLOOK"] as const;
+export const CLAIMABLE_SOURCES = ["CANVAS", "GOOGLE", "OUTLOOK", "PEOPLE"] as const;
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 

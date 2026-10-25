@@ -3,7 +3,11 @@
 import type { ComponentType } from "react";
 
 import type { IconType } from "react-icons";
-import { HiOutlineCollection, HiOutlineFlag } from "react-icons/hi";
+import {
+  HiOutlineCollection,
+  HiOutlineFlag,
+  HiOutlineUserGroup,
+} from "react-icons/hi";
 
 import { ConnectCanvasOffer } from "@/components/courses/ConnectCanvasOffer";
 import { CourseActivityStatus } from "@/components/courses/CourseActivityStatus";
@@ -17,6 +21,10 @@ import {
 } from "@/components/ladder/LadderTopBar";
 import { CanvasLmsSettings } from "@/components/settings/CanvasLmsSettings";
 
+import {
+  PeopleTopBarActions,
+  PeopleTopBarViews,
+} from "@/modules/people/components/PeopleTopBar";
 import type { ModuleId } from "@/modules/types";
 
 /**
@@ -52,5 +60,10 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     command: { icon: HiOutlineFlag, shortcut: "gg" },
     Views: LadderTopBarViews,
     Actions: LadderTopBarActions,
+  },
+  people: {
+    command: { icon: HiOutlineUserGroup, shortcut: "gp" },
+    Views: PeopleTopBarViews,
+    Actions: PeopleTopBarActions,
   },
 };

@@ -102,6 +102,7 @@ model User {
   goals                Goal[]
   courses              Course[]
   modules              UserModule[]
+  people               Person[]
 }
 
 model VerificationToken {
@@ -891,6 +892,63 @@ model UserModule {
   updatedAt DateTime @updatedAt
 
   @@id([userId, moduleId])
+}
+
+/**
+ * People module: someone worth keeping in touch with. A cadence turns into one "Reach out to" task (source PEOPLE, externalTaskId = this id), due a cadence after the last conversation.
+ */
+model Person {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  /**
+   * Where they are: a company, a school, a team.
+   */
+  org           String?
+  /**
+   * What they do, or how you know them.
+   */
+  role          String?
+  email         String?
+  phone         String?
+  /**
+   * A profile or website.
+   */
+  link          String?
+  notes         String?
+  /**
+   * Days between check-ins. Null means no cadence and no reach-out task.
+   */
+  cadenceDays   Int?
+  /**
+   * The latest conversation (Interaction.at), kept here for sorting and for the next check-in.
+   */
+  lastContactAt DateTime?
+  archived      Boolean       @default(false)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  interactions  Interaction[]
+
+  @@index([userId, archived])
+}
+
+/**
+ * People module: one conversation with a person. Logging one closes their open reach-out task; finishing that task anywhere in Erwin logs one.
+ */
+model Interaction {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  at        DateTime
+  /**
+   * How you talked: "message", "call", "meeting", "email", or "done" when the reach-out task was ticked without a note.
+   */
+  kind      String
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([personId, at])
 }
 
 model Tag {

@@ -23,6 +23,7 @@ describe("resolveModuleStates", () => {
     ]);
     expect(states).toEqual([
       { id: "ladder", on: false, position: 0 },
+      { id: "people", on: false, position: 2 },
       { id: "courses", on: true, position: 5 },
     ]);
   });
@@ -39,17 +40,21 @@ describe("resolveModuleStates", () => {
       { moduleId: "ladder", enabled: true, position: 0 },
       { moduleId: "courses", enabled: true, position: 0 },
     ]);
-    expect(states.map((s) => s.id)).toEqual(["courses", "ladder"]);
+    expect(states.map((s) => s.id)).toEqual(["courses", "ladder", "people"]);
   });
 });
 
 describe("hiddenSourcesOf", () => {
-  it("hides Canvas tasks only while Courses is off", () => {
-    expect(hiddenSourcesOf(resolveModuleStates([]))).toEqual(["CANVAS"]);
+  it("hides each module's tasks only while it's off", () => {
+    expect(hiddenSourcesOf(resolveModuleStates([]))).toEqual([
+      "CANVAS",
+      "PEOPLE",
+    ]);
     expect(
       hiddenSourcesOf(
         resolveModuleStates([
           { moduleId: "courses", enabled: true, position: 0 },
+          { moduleId: "people", enabled: true, position: 1 },
         ])
       )
     ).toEqual([]);

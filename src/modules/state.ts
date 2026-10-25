@@ -47,6 +47,26 @@ export async function moduleView(userId: string): Promise<{
   };
 }
 
+/** Everyone who has a module on, for work that runs per person (module jobs). */
+export async function usersWithModuleOn(id: ModuleId): Promise<string[]> {
+  if (moduleById(id).defaultOn) {
+    const [users, off] = await Promise.all([
+      prisma.user.findMany({ select: { id: true } }),
+      prisma.userModule.findMany({
+        where: { moduleId: id, enabled: false },
+        select: { userId: true },
+      }),
+    ]);
+    const offIds = new Set(off.map((r) => r.userId));
+    return users.map((u) => u.id).filter((userId) => !offIds.has(userId));
+  }
+  const rows = await prisma.userModule.findMany({
+    where: { moduleId: id, enabled: true },
+    select: { userId: true },
+  });
+  return rows.map((r) => r.userId);
+}
+
 /** Task sources this person's modules hide (see `hiddenSourcesOf`). */
 export async function hiddenTaskSources(userId: string): Promise<string[]> {
   return hiddenSourcesOf(await loadModuleStates(userId));

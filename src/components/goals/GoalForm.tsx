@@ -61,6 +61,7 @@ const SOURCE_NAMES: Record<string, string> = {
   CANVAS: "All Canvas work",
   GOOGLE: "Google Tasks",
   OUTLOOK: "Outlook tasks",
+  PEOPLE: "All reach-outs (People)",
 };
 
 /** "SCHM2301" from Canvas's "SCHM2301.10244.202710". */

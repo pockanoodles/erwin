@@ -10,7 +10,7 @@
  * `src/modules/server.ts`.
  */
 
-export type ModuleId = "courses" | "ladder";
+export type ModuleId = "courses" | "ladder" | "people";
 
 /** One thing a module sends out of Erwin, written for someone who isn't an engineer. */
 export interface ModuleEgress {
