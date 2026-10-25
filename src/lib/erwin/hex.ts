@@ -54,16 +54,45 @@ export function hexOf(year: number, index: number): Hex {
   };
 }
 
+/** e.g. "Jul–Aug" */
+export function hexMonths(index: number): string {
+  const startMonth = (index - 1) * 2;
+  return `${MONTH_ABBREV[startMonth]}–${MONTH_ABBREV[startMonth + 1]}`;
+}
+
 /** e.g. "Hex 4 · Jul–Aug 2026" */
 export function hexLabel(hex: Pick<Hex, "year" | "index">): string {
-  const startMonth = (hex.index - 1) * 2;
-  return `Hex ${hex.index} · ${MONTH_ABBREV[startMonth]}–${MONTH_ABBREV[startMonth + 1]} ${hex.year}`;
+  return `Hex ${hex.index} · ${hexMonths(hex.index)} ${hex.year}`;
+}
+
+/** The hex a calendar day ("2026-10-24") falls in. */
+export function hexOfDay(day: string): Pick<Hex, "year" | "index"> {
+  return {
+    year: Number(day.slice(0, 4)),
+    index: Math.floor((Number(day.slice(5, 7)) - 1) / 2) + 1,
+  };
+}
+
+/** A hex's first and last calendar days, as YYYY-MM-DD. */
+export function hexDayRange(hex: Pick<Hex, "year" | "index">): {
+  first: string;
+  last: string;
+} {
+  const { startDate, endDate } = hexOf(hex.year, hex.index);
+  return {
+    first: startDate.toISOString().slice(0, 10),
+    last: endDate.toISOString().slice(0, 10),
+  };
 }
 
 /**
  * Returns the GoalCycle for the hex covering today, creating and activating it
  * if needed. Any active cycle that has already ended is marked completed;
  * other stray actives are archived (one active cycle per user).
+ *
+ * A new hex inherits the Build of the hex before it. A Build holds until it is
+ * respecced, the way the map's Current Build does, and seasons there don't
+ * break at hex boundaries.
  */
 export async function ensureCurrentHex(
   prisma: Db,
@@ -93,9 +122,15 @@ export async function ensureCurrentHex(
       data: { status: "completed" },
     });
     await deactivateActiveCycles(tx, userId);
+    const previous = await tx.goalCycle.findFirst({
+      where: { userId, startDate: { lt: hex.startDate } },
+      orderBy: { startDate: "desc" },
+      select: { focusStats: true },
+    });
     return tx.goalCycle.create({
       data: {
         theme: "",
+        focusStats: previous?.focusStats ?? [],
         startDate: hex.startDate,
         endDate: hex.endDate,
         status: "active",

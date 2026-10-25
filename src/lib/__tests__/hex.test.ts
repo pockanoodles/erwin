@@ -1,4 +1,6 @@
-import { hexForDate, hexLabel, hexOf } from "../erwin/hex";
+import type { Db } from "@/lib/prisma";
+
+import { ensureCurrentHex, hexDayRange, hexForDate, hexLabel, hexOf, hexOfDay } from "../erwin/hex";
 
 describe("hexForDate", () => {
   it("maps January 1 to hex 1", () => {
@@ -38,5 +40,37 @@ describe("hexLabel", () => {
     expect(hexLabel(hexOf(2026, 4))).toBe("Hex 4 · Jul–Aug 2026");
     expect(hexLabel(hexOf(2027, 1))).toBe("Hex 1 · Jan–Feb 2027");
     expect(hexLabel(hexOf(2026, 6))).toBe("Hex 6 · Nov–Dec 2026");
+  });
+});
+
+describe("hexOfDay / hexDayRange", () => {
+  it("names the hex a calendar day falls in, and its first and last days", () => {
+    expect(hexOfDay("2026-10-31")).toEqual({ year: 2026, index: 5 });
+    expect(hexOfDay("2026-11-01")).toEqual({ year: 2026, index: 6 });
+    expect(hexDayRange({ year: 2028, index: 1 })).toEqual({ first: "2028-01-01", last: "2028-02-29" });
+  });
+});
+
+describe("ensureCurrentHex", () => {
+  it("carries the Build of the hex before into a new one, but not its theme", async () => {
+    const created: Record<string, unknown>[] = [];
+    const tx = {
+      goalCycle: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce({ focusStats: ["arcane", "intelligence"] }),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+        create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+          created.push(data);
+          return { id: "new", ...data };
+        }),
+        update: jest.fn(),
+      },
+    };
+    const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as Db;
+    await ensureCurrentHex(db, "user");
+    expect(created).toHaveLength(1);
+    expect(created[0]).toMatchObject({ theme: "", focusStats: ["arcane", "intelligence"], status: "active" });
   });
 });
