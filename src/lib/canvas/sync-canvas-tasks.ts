@@ -12,8 +12,8 @@
  */
 
 import { CLOSED_STATES, DONE_STATES, isActionable } from "@/lib/canvas/gradebook-plan";
+import { gradeShares } from "@/lib/canvas/grade-share";
 import type { GradebookSyncResult } from "@/lib/canvas/sync-canvas-gradebook";
-import type { CanvasAssignment } from "@/lib/canvas/types";
 import { prisma } from "@/lib/prisma";
 
 function estimateDurationMinutes(types: string[] | undefined): number {
@@ -32,62 +32,6 @@ function estimateDurationMinutes(types: string[] | undefined): number {
   return 30;
 }
 
-function computeGradeImpactRaw(params: {
-  points: number | null | undefined;
-  maxInGroup: number;
-  groupWeightPercent: number | null | undefined;
-  omitFromFinalGrade: boolean;
-  gradingType: string | null | undefined;
-}): number {
-  const {
-    points,
-    maxInGroup,
-    groupWeightPercent,
-    omitFromFinalGrade,
-    gradingType,
-  } = params;
-
-  let base = 0;
-  const pts = points ?? 0;
-
-  if (pts === 0) {
-    base = 0.15;
-  } else if (maxInGroup > 0 && groupWeightPercent != null && groupWeightPercent > 0) {
-    base = (pts / maxInGroup) * (groupWeightPercent / 100);
-  } else if (pts > 0) {
-    base = Math.min(1, pts / 100);
-  } else {
-    base = 0.1;
-  }
-
-  if (omitFromFinalGrade) {
-    base *= 0.3;
-  }
-  if (gradingType === "not_graded") {
-    base = Math.max(base * 0.5, 0.1);
-  }
-  return Math.min(1, base);
-}
-
-function maxPointsInGroup(
-  assignments: CanvasAssignment[],
-  groupId: number | null
-): number {
-  if (groupId == null) {
-    return 0;
-  }
-  let max = 0;
-  for (const a of assignments) {
-    if (a.assignment_group_id === groupId) {
-      const p = a.points_possible ?? 0;
-      if (p > max) {
-        max = p;
-      }
-    }
-  }
-  return max || 1;
-}
-
 export interface TaskProjectionStats {
   upserted: number;
   removed: number;
@@ -96,12 +40,24 @@ export interface TaskProjectionStats {
 export async function projectCourseTasks(
   userId: string,
   providerId: string,
-  courseRowId: string,
+  course: { rowId: string; weighted: boolean },
   gradebook: GradebookSyncResult,
   now: Date
 ): Promise<TaskProjectionStats> {
   const { assignments } = gradebook;
-  const groupById = new Map(gradebook.groups.map((g) => [g.id, g]));
+  const courseRowId = course.rowId;
+  // Impact is an assignment's share of the final grade (lib/canvas/grade-share.ts).
+  const shares = gradeShares(
+    assignments.map((a) => ({
+      id: String(a.id),
+      groupId: a.assignment_group_id != null ? String(a.assignment_group_id) : null,
+      pointsPossible: a.points_possible ?? null,
+      omitFromFinalGrade: Boolean(a.omit_from_final_grade),
+      gradingType: a.grading_type ?? null,
+    })),
+    gradebook.groups.map((g) => ({ id: String(g.id), weight: g.group_weight ?? null })),
+    course.weighted
+  );
 
   const existing = await prisma.task.findMany({
     where: {
@@ -135,18 +91,7 @@ export async function projectCourseTasks(
     const extId = plan.canvasId;
     const prev = byExternal.get(extId);
 
-    const gid = a.assignment_group_id ?? null;
-    const group = gid != null ? groupById.get(gid) : undefined;
-    const weight = group?.group_weight ?? null;
-    const impact = computeGradeImpactRaw({
-      points: a.points_possible,
-      maxInGroup: maxPointsInGroup(assignments, gid),
-      groupWeightPercent: weight,
-      omitFromFinalGrade: plan.omitFromFinalGrade,
-      gradingType: plan.gradingType,
-    });
-
-    // todo: apply assignment group drop_lowest rules when adjusting impact (spec §5.2.7 / §8.1)
+    const impact = shares.get(extId) ?? 0;
 
     // A hand-marked completion stands: group and external submissions never
     // show up in Canvas, so "unsubmitted" can't reopen the task.
@@ -191,7 +136,7 @@ export async function projectCourseTasks(
     if (rowId) {
       await prisma.courseAssignment.update({
         where: { id: rowId },
-        data: { taskId: task.id, gradeWeightPercent: Math.min(100, Math.max(0, impact * 100)) },
+        data: { taskId: task.id, gradeWeightPercent: impact * 100 },
       });
     }
   }

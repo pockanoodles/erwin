@@ -12,8 +12,8 @@
  *  - `materialCount`: course materials linked to it, and how many its
  *    instructions cite (the Tasks sheet's Mat column).
  *
- * For Focus's ranking, each task's stakes: its points, compared within its
- * course. And the key a goal claims a course's work by:
+ * For Focus's ranking, each task's stakes: its share of the grade, compared
+ * within its course. And the key a goal claims a course's work by:
  * `course:<Canvas course id>`.
  */
 import { projectMissedGrades } from "@/lib/erwin/load-grade-projections";
@@ -98,7 +98,7 @@ export async function courseRankSignals(
     where: { taskId: { in: taskIds }, course: { userId } },
     select: {
       taskId: true,
-      pointsPossible: true,
+      gradeWeightPercent: true,
       course: { select: { canvasId: true } },
     },
   });
@@ -108,7 +108,10 @@ export async function courseRankSignals(
         ? [
             [
               r.taskId,
-              { stakes: r.pointsPossible ?? 0, stakesGroup: r.course.canvasId },
+              {
+                stakes: r.gradeWeightPercent ?? 0,
+                stakesGroup: r.course.canvasId,
+              },
             ] as const,
           ]
         : []

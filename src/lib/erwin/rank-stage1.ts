@@ -5,7 +5,8 @@
  * It knows no module. What a task is worth arrives as `impact` (set by the
  * module that owns it: Courses scores coursework by its share of the grade),
  * `lift` (another module vouching for it: Ladder, by its goals) and
- * `stakes` (how big it is among its peers: Courses, points within a course).
+ * `stakes` (how big it is among its peers: Courses, its share of the grade
+ * within a course).
  */
 import type { Task } from "@prisma/client";
 
@@ -71,7 +72,7 @@ export type TaskForRanking = Pick<
   lift?: number | null;
   /**
    * How much rides on it in its group's own units, and the group it's
-   * compared within (Courses: points, within one course). Only the
+   * compared within (Courses: share of the grade, within one course). Only the
    * long-horizon boost reads them.
    */
   stakes?: number | null;

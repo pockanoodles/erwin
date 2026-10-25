@@ -222,7 +222,13 @@ export async function syncCanvasForUser(
       gradebooks.set(course.id, gradebook);
       await record(row.id, gradebook.activity);
       stats.assignments += gradebook.rowIds.size;
-      const tasks = await projectCourseTasks(userId, provider.id, row.id, gradebook, now);
+      const tasks = await projectCourseTasks(
+        userId,
+        provider.id,
+        { rowId: row.id, weighted: Boolean(course.apply_assignment_group_weights) },
+        gradebook,
+        now
+      );
       stats.upserted += tasks.upserted;
       stats.removed += tasks.removed;
       stats.problems.push(...gradebook.problems);
