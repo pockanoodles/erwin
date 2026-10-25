@@ -5,7 +5,6 @@ import {
   getBriefingCalendarHints,
   getBriefingProgressStats,
 } from "@/lib/erwin/briefing-extras";
-import { loadGradeProjectionsForDangerTasks } from "@/lib/erwin/load-grade-projections";
 import { buildFocusQueueCore } from "@/lib/erwin/focus-queue-core";
 import { humanCountdown } from "@/lib/erwin/human-countdown";
 import { isDangerResolved } from "@/lib/erwin/rank-stage1";
@@ -17,6 +16,8 @@ const LOG_SOURCE = "ErwinFocusBriefingAPI";
 
 /**
  * GET /api/erwin/focus/briefing — daily briefing payload (docs/focus-mode.md §1.2).
+ * Each task in it carries what the modules add (Courses: its course, its
+ * share of the grade and, in danger, the grade if it's missed).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -56,63 +57,46 @@ export async function GET(request: NextRequest) {
       isDangerResolved(t, now)
     );
 
-    const projections = await loadGradeProjectionsForDangerTasks(
-      userId,
-      core.rows,
-      core.meta
-    );
+    const rowById = new Map(core.rows.map((r) => [r.id, r]));
 
-    const dangerZoneTasks = dangerMinimal.map((dm) => {
-      const row = core.rows.find((r) => r.id === dm.id);
+    const dangerZoneTasks = dangerMinimal.flatMap((dm) => {
+      const row = rowById.get(dm.id);
       if (!row) {
-        return null;
-      }
-      const due = row.dueDate ? new Date(row.dueDate) : now;
-      return {
-        id: row.id,
-        title: row.title,
-        courseName: row.courseName,
-        dueAt: due.toISOString(),
-        countdownHuman: humanCountdown(due, now),
-        gradeImpactPercent: row.gradeWeightPercent ?? 0,
-        skipCount: row.skipCount,
-      };
-    }).filter((x): x is NonNullable<typeof x> => x != null);
-
-    const dangerProjections = dangerZoneTasks.flatMap((dt) => {
-      const p = projections.get(dt.id);
-      if (!p) {
         return [];
       }
+      const due = row.dueDate ? new Date(row.dueDate) : now;
       return [
         {
-          taskId: dt.id,
-          taskTitle: dt.title,
-          courseName: dt.courseName ?? "",
-          currentCourseGrade: p.currentCourseGrade,
-          gradeIfMissed: p.gradeIfMissed,
-          letterGradeCurrent: p.letterGradeCurrent,
-          letterGradeIfMissed: p.letterGradeIfMissed,
+          id: row.id,
+          title: row.title,
+          dueAt: due.toISOString(),
+          countdownHuman: humanCountdown(due, now),
+          skipCount: row.skipCount,
+          ...core.facts.get(row.id),
         },
       ];
     });
 
-    const topTasks = core.ordered.slice(0, 5).map((t) => {
-      const row = core.rows.find((r) => r.id === t.id)!;
-      const m = core.meta.get(t.id)!;
+    const topTasks = core.ordered.slice(0, 5).flatMap((t) => {
+      const row = rowById.get(t.id);
+      const m = core.meta.get(t.id);
+      if (!row || !m) {
+        return [];
+      }
       const due = row.dueDate ? new Date(row.dueDate) : null;
-      return {
-        id: row.id,
-        title: row.title,
-        courseName: row.courseName,
-        category: row.category ?? "PERSONAL",
-        dueAt: due?.toISOString() ?? null,
-        countdownHuman: due ? humanCountdown(due, now) : null,
-        estimatedDuration: row.duration ?? 30,
-        gradeImpactPercent: row.gradeWeightPercent ?? null,
-        urgencyTier: m.urgencyTier,
-        baseScore: m.baseScore,
-      };
+      return [
+        {
+          id: row.id,
+          title: row.title,
+          category: row.category ?? "PERSONAL",
+          dueAt: due?.toISOString() ?? null,
+          countdownHuman: due ? humanCountdown(due, now) : null,
+          estimatedDuration: row.duration ?? 30,
+          urgencyTier: m.urgencyTier,
+          baseScore: m.baseScore,
+          ...core.facts.get(row.id),
+        },
+      ];
     });
 
     const calendar = await getBriefingCalendarHints(userId, now, timeZone);
@@ -126,7 +110,6 @@ export async function GET(request: NextRequest) {
       totalPendingTasks: core.filtered.length,
       freeHoursToday: calendar.freeHoursToday,
       nextEvent: calendar.nextEvent,
-      dangerProjections,
       topTasks,
       tasksCompletedToday: progress.tasksCompletedToday,
       tasksCompletedThisWeek: progress.tasksCompletedThisWeek,

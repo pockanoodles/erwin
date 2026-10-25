@@ -1,9 +1,8 @@
 /**
  * Maps API JSON (ISO date strings) to client `Task` shape for Focus UI.
  */
-
 import type { Project } from "@/types/project";
-import type { Tag, Task } from "@/types/task";
+import type { GradeProjection, Tag, Task } from "@/types/task";
 import { TaskStatus } from "@/types/task";
 
 type ApiTask = Record<string, unknown>;
@@ -28,21 +27,19 @@ export type FocusQueueTask = Task & {
     urgencyTier?: string;
     baseScore?: number;
     countdownHuman?: string | null;
-    gradeImpactPercent?: number | null;
-    gradeProjection?: {
-      currentGrade: number;
-      gradeIfMissed: number;
-      letterCurrent: string;
-      letterIfMissed: string;
-    } | null;
     lastSkippedAgo?: string | null;
     effortEstimate?: string;
   };
-  /** Goals this task climbs toward. The queue join (`goalLinks[].goal`) is
-   *  mapped here; the base `Task.goalLinks` only carries ids. */
+  /** Goals this task climbs toward: Ladder's facts (src/modules/ladder/facts.ts).
+   *  The base `Task.goalLinks` only carries ids. */
   ladderGoals?: LadderGoal[];
   /** Checklist children. Focus ranks parents only; these ride along for the desk. */
-  subtasks?: { id: string; title: string; status: TaskStatus; order: number | null }[];
+  subtasks?: {
+    id: string;
+    title: string;
+    status: TaskStatus;
+    order: number | null;
+  }[];
 };
 
 function parseDate(v: unknown): Date | null {
@@ -63,21 +60,18 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
   const tags = (raw.tags as Tag[] | undefined) ?? [];
   const project = (raw.project as Project | null | undefined) ?? null;
 
-  const ladderGoals: LadderGoal[] = Array.isArray(raw.goalLinks)
-    ? (raw.goalLinks as Array<{ goal?: Record<string, unknown> }>)
-        .map((link) => link.goal)
-        .filter((g): g is Record<string, unknown> => Boolean(g))
-        .map((g) => ({
-          id: String(g.id),
-          title: String(g.title ?? ""),
-          isBoss: Boolean(g.isBoss),
-          targetDate: (g.targetDate as string | null) ?? null,
-          externalId: (g.externalId as string | null) ?? null,
-          importanceScore:
-            g.importanceScore == null ? null : Number(g.importanceScore),
-          develops: Array.isArray(g.develops) ? (g.develops as string[]) : [],
-          whyItMatters: (g.whyItMatters as string | null) ?? null,
-        }))
+  const ladderGoals: LadderGoal[] = Array.isArray(raw.ladderGoals)
+    ? (raw.ladderGoals as Array<Record<string, unknown>>).map((g) => ({
+        id: String(g.id),
+        title: String(g.title ?? ""),
+        isBoss: Boolean(g.isBoss),
+        targetDate: (g.targetDate as string | null) ?? null,
+        externalId: (g.externalId as string | null) ?? null,
+        importanceScore:
+          g.importanceScore == null ? null : Number(g.importanceScore),
+        develops: Array.isArray(g.develops) ? (g.develops as string[]) : [],
+        whyItMatters: (g.whyItMatters as string | null) ?? null,
+      }))
     : [];
 
   return {
@@ -121,10 +115,12 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
       raw.gradeWeightPercent == null
         ? undefined
         : Number(raw.gradeWeightPercent),
-    skipCount:
-      raw.skipCount == null ? undefined : Number(raw.skipCount),
+    skipCount: raw.skipCount == null ? undefined : Number(raw.skipCount),
     lastSkippedAt: parseDate(raw.lastSkippedAt),
-    submissionStatus: (raw.submissionStatus as string | null | undefined) ?? null,
+    submissionStatus:
+      (raw.submissionStatus as string | null | undefined) ?? null,
+    gradeProjection:
+      (raw.gradeProjection as GradeProjection | null | undefined) ?? null,
     externalUrl: (raw.externalUrl as string | null | undefined) ?? null,
     category: (raw.category as string | null | undefined) ?? null,
     erwin: raw.erwin as FocusQueueTask["erwin"],

@@ -97,8 +97,8 @@ export function FocusDesk({
   const owner = useTaskModule(task.source);
   const Body = owner?.TaskBody;
   const Context = owner?.TaskContext;
-  const projection = task.erwin?.gradeProjection;
-  const weight = task.gradeWeightPercent ?? task.erwin?.gradeImpactPercent;
+  const projection = task.gradeProjection;
+  const weight = task.gradeWeightPercent;
   const due = task.dueDate
     ? task.dueDate instanceof Date
       ? task.dueDate
@@ -336,8 +336,8 @@ export function FocusDesk({
                 {[
                   next.erwin?.countdownHuman,
                   next.courseName,
-                  next.erwin?.gradeImpactPercent != null
-                    ? `${next.erwin.gradeImpactPercent}%`
+                  next.gradeWeightPercent != null
+                    ? `${next.gradeWeightPercent}%`
                     : null,
                 ]
                   .filter(Boolean)

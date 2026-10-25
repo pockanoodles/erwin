@@ -11,9 +11,10 @@ import {
   TaskChangeTracker,
 } from "@/lib/task-sync/task-change-tracker";
 import { normalizeRecurrenceRule } from "@/lib/utils/normalize-recurrence-rules";
+import { taskColumnsOnly } from "@/lib/utils/task-columns";
 
-import { tasksChanged } from "@/modules/hooks";
-import { hiddenTaskSources, visibleSourceWhere } from "@/modules/state";
+import { moduleTaskFacts, tasksChanged } from "@/modules/hooks";
+import { moduleView, visibleSourceWhere } from "@/modules/state";
 
 import { EnergyLevel, TaskStatus, TimePreference } from "@/types/task";
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
     const hideUpcomingTasks = searchParams.get("hideUpcomingTasks") === "true";
 
     const now = newDate();
-    const hidden = await hiddenTaskSources(userId);
+    const modules = await moduleView(userId);
     const tasks = await prisma.task.findMany({
       where: {
         // Filter by the current user's ID
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
         // a search used to vanish whenever upcoming tasks were hidden.
         AND: [
           // Tasks from a module that's off stay stored but leave the list.
-          visibleSourceWhere(hidden),
+          visibleSourceWhere(modules.hidden),
           ...(search
             ? [
                 {
@@ -96,7 +97,15 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(tasks);
+    // What the modules add to their tasks (Courses: courseName and
+    // submissionStatus, which ops reads), spread onto each one.
+    const facts = await moduleTaskFacts(
+      prisma,
+      userId,
+      tasks.map((t) => ({ id: t.id })),
+      modules.isOn
+    );
+    return NextResponse.json(tasks.map((t) => ({ ...t, ...facts.get(t.id) })));
   } catch (error) {
     logger.error(
       "Error fetching tasks:",
@@ -130,8 +139,10 @@ export async function POST(request: NextRequest) {
       parentTask,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       subtasks,
-      ...taskData
+      ...body
     } = json;
+    // Only Task's columns: a client copying a task sends its facts too.
+    const taskData = taskColumnsOnly(body);
 
     // One-level subtasks: inherit the parent's project, never auto-schedule,
     // never sync outward (Canvas/Outlook stay a single assignment).

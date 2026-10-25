@@ -1,5 +1,7 @@
 import type { Db, DbTransaction } from "@/lib/prisma";
 
+import { moduleClaimKeys } from "@/modules/hooks";
+
 import { settlesBoss } from "./boss-proof";
 
 /**
@@ -8,8 +10,9 @@ import { settlesBoss } from "./boss-proof";
  * in Erwin; Erwin only applies them.
  *
  *  - A goal in play claims every task matching one of its claims: a task
- *    source (CANVAS), `course:<Canvas course id>` or `project:<id>`. A vault goal also
- *    claims its own "venture:<slug>", the tasks pump 2 decomposed from it.
+ *    source (CANVAS), `project:<id>`, or a key a module adds to its tasks
+ *    (Courses: `course:<Canvas course id>`). A vault goal also claims its own
+ *    "venture:<slug>", the tasks pump 2 decomposed from it.
  *  - A boss with proof is settled by it (lib/erwin/boss-proof.ts). A Canvas
  *    gradebook item or a task fells the boss once the work is handed in, and
  *    the item's due date becomes the boss's date. The proof's task is filed
@@ -61,17 +64,18 @@ interface RuleGoal {
 interface RuleTask {
   id: string;
   source: string | null;
-  courseId: string | null;
+  /** Keys the modules add (`moduleClaimKeys`): Courses' `course:<Canvas course id>`. */
+  claims: string[];
   projectId: string | null;
   status: string;
   goalLinks: { id: string; goalId: string }[];
 }
 
 /** What a goal can claim a task by. */
-export function claimKeys(task: Pick<RuleTask, "source" | "courseId" | "projectId">): string[] {
+export function claimKeys(task: Pick<RuleTask, "source" | "claims" | "projectId">): string[] {
   return [
     ...(task.source ? [task.source] : []),
-    ...(task.courseId ? [`course:${task.courseId}`] : []),
+    ...task.claims,
     ...(task.projectId ? [`project:${task.projectId}`] : []),
   ];
 }
@@ -205,14 +209,22 @@ export async function applyGoalRules(
     select: {
       id: true,
       source: true,
-      courseId: true,
       projectId: true,
       status: true,
       goalLinks: { select: { id: true, goalId: true } },
     },
   });
+  const claims = await moduleClaimKeys(
+    db,
+    userId,
+    tasks.map((t) => t.id)
+  );
 
-  const { create, stale } = planLinks(goals, bossesByTask, tasks);
+  const { create, stale } = planLinks(
+    goals,
+    bossesByTask,
+    tasks.map((t) => ({ ...t, claims: claims.get(t.id) ?? [] }))
+  );
 
   if (create.length) {
     await db.taskGoalLink.createMany({ data: create, skipDuplicates: true });

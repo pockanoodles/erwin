@@ -1,38 +1,40 @@
 /**
- * Grade projections for Focus's DANGER Canvas tasks ("miss this and the
- * course drops to B+"), read from the gradebook mirror the Canvas sync keeps —
- * so opening Focus never waits on Canvas. focus-mode.md §1.3.
+ * What missing an assignment would do to its course grade ("miss this and
+ * the course drops to B+"), read from the gradebook mirror the Canvas sync
+ * keeps — so opening Focus never waits on Canvas. focus-mode.md §1.3.
  */
 
-import type { FocusQueueTaskRow } from "@/lib/erwin/focus-queue-core";
 import {
   type GradeProjectionResult,
   type LetterScheme,
   projectMissedAssignment,
 } from "@/lib/erwin/grade-projection";
-import type { Stage1Scores } from "@/lib/erwin/rank-stage1";
-import { prisma } from "@/lib/prisma";
+import type { Db } from "@/lib/prisma";
 
-/**
- * Returns grade projections keyed by task id (Canvas danger tasks only).
- */
-export async function loadGradeProjectionsForDangerTasks(
+/** One gradebook item to project, under the key the caller wants it back by. */
+export interface ProjectionItem {
+  key: string;
+  /** Course row id (CourseAssignment.courseId). */
+  courseRowId: string;
+  /** Canvas's id for the assignment. */
+  canvasId: string;
+}
+
+/** Projections keyed like the items; an item the gradebook can't project is left out. */
+export async function projectMissedGrades(
+  db: Db,
   userId: string,
-  tasks: FocusQueueTaskRow[],
-  meta: Map<string, Stage1Scores>
+  items: ProjectionItem[]
 ): Promise<Map<string, GradeProjectionResult>> {
   const out = new Map<string, GradeProjectionResult>();
-  const danger = tasks.filter(
-    (t) => meta.get(t.id)?.danger && t.source === "CANVAS" && t.courseId && t.externalTaskId
-  );
-  if (danger.length === 0) {
+  if (items.length === 0) {
     return out;
   }
 
-  const courses = await prisma.course.findMany({
-    where: { userId, canvasId: { in: [...new Set(danger.map((t) => t.courseId!))] } },
+  const courses = await db.course.findMany({
+    where: { userId, id: { in: [...new Set(items.map((i) => i.courseRowId))] } },
     select: {
-      canvasId: true,
+      id: true,
       currentScore: true,
       gradingScheme: true,
       applyGroupWeights: true,
@@ -51,10 +53,10 @@ export async function loadGradeProjectionsForDangerTasks(
       },
     },
   });
-  const byCanvasId = new Map(courses.map((c) => [c.canvasId, c]));
+  const byId = new Map(courses.map((c) => [c.id, c]));
 
-  for (const t of danger) {
-    const course = byCanvasId.get(t.courseId!);
+  for (const item of items) {
+    const course = byId.get(item.courseRowId);
     if (!course) {
       continue;
     }
@@ -66,10 +68,10 @@ export async function loadGradeProjectionsForDangerTasks(
         entries: course.assignments,
         groups: course.assignmentGroups,
       },
-      t.externalTaskId!
+      item.canvasId
     );
     if (projection) {
-      out.set(t.id, projection);
+      out.set(item.key, projection);
     }
   }
   return out;

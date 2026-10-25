@@ -77,11 +77,6 @@ const REGISTRIES = new Set([
 
 /** "<importing file> -> <module>", each with what will remove it. */
 const KNOWN = new Set([
-  // Focus's payloads add Canvas's grade facts and projections. Removed by
-  // task facts as a module contribution (plan step 8b).
-  "src/lib/erwin/enrich-focus-task.ts -> courses",
-  "src/app/api/erwin/focus/briefing/route.ts -> courses",
-  "src/app/api/erwin/focus/queue/route.ts -> courses",
   // The Tasks page's materials column (counts of Canvas files per task).
   // Removed by sheet columns as a module contribution.
   "src/app/(common)/tasks/page.tsx -> courses",

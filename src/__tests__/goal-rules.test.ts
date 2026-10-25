@@ -16,7 +16,7 @@ const goals = [school, coop, pitch];
 const task = (id: string, source: string | null, goalIds: string[] = [], extra = {}) => ({
   id,
   source,
-  courseId: null,
+  claims: [] as string[],
   projectId: null,
   status: "todo",
   goalLinks: goalIds.map((goalId) => ({ id: `${id}>${goalId}`, goalId })),
@@ -61,15 +61,15 @@ describe("planLinks", () => {
     const marketing = goal("mktg", null, ["course:c-mktg"]);
     const thesis = goal("thesis", null, ["project:p-thesis"]);
     const plan = planLinks([marketing, thesis], new Map(), [
-      task("quiz", "CANVAS", [], { courseId: "c-mktg" }),
+      task("quiz", "CANVAS", [], { claims: ["course:c-mktg"] }),
       task("draft", "MANUAL", [], { projectId: "p-thesis" }),
-      task("other", "CANVAS", [], { courseId: "c-intb" }),
+      task("other", "CANVAS", [], { claims: ["course:c-intb"] }),
     ]);
     expect(plan.create).toEqual([
       { taskId: "quiz", goalId: "mktg" },
       { taskId: "draft", goalId: "thesis" },
     ]);
-    expect(claimKeys({ source: "CANVAS", courseId: "c", projectId: null })).toEqual(["CANVAS", "course:c"]);
+    expect(claimKeys({ source: "CANVAS", claims: ["course:c"], projectId: null })).toEqual(["CANVAS", "course:c"]);
   });
 
   it("keeps a set-aside goal's finished work, and lets its open work go", () => {

@@ -1,20 +1,14 @@
 /**
- * Queue response display fields (docs/focus-mode.md §2.8).
+ * Queue response display fields (docs/focus-mode.md §2.8): Focus's own words
+ * about a task. What a module knows about it (Courses: the grade) arrives as
+ * task facts instead.
  */
 
-import type { GradeProjectionResult } from "@/lib/erwin/grade-projection";
 import { humanCountdown } from "@/lib/erwin/human-countdown";
 import type { FocusQueueTaskRow } from "@/lib/erwin/focus-queue-core";
 
 export interface ErwinQueueAugmentation {
   countdownHuman: string | null;
-  gradeImpactPercent: number | null;
-  gradeProjection: {
-    currentGrade: number;
-    gradeIfMissed: number;
-    letterCurrent: string;
-    letterIfMissed: string;
-  } | null;
   lastSkippedAgo: string | null;
   effortEstimate: string;
 }
@@ -55,45 +49,13 @@ function formatLastSkippedAgo(
   return `${Math.floor(h / 24)}d ago`;
 }
 
-/**
- * Maps Canvas grade projection to API shape for `erwin.gradeProjection`.
- */
-export function mapGradeProjection(
-  p: GradeProjectionResult | null,
-  options: { danger: boolean; source: string | null }
-): ErwinQueueAugmentation["gradeProjection"] {
-  if (!p || options.source !== "CANVAS" || !options.danger) {
-    return null;
-  }
-  return {
-    currentGrade: p.currentCourseGrade,
-    gradeIfMissed: p.gradeIfMissed,
-    letterCurrent: p.letterGradeCurrent,
-    letterIfMissed: p.letterGradeIfMissed,
-  };
-}
-
 export function enrichFocusTaskDisplay(
-  task: FocusQueueTaskRow,
-  now: Date,
-  gradeProjection: GradeProjectionResult | null,
-  options: { danger: boolean }
+  task: Pick<FocusQueueTaskRow, "dueDate" | "lastSkippedAt" | "duration">,
+  now: Date
 ): ErwinQueueAugmentation {
   const due = task.dueDate ? new Date(task.dueDate) : null;
-  const countdownHuman = due ? humanCountdown(due, now) : null;
-
-  const gradeImpactPercent =
-    task.source === "CANVAS" && task.gradeWeightPercent != null
-      ? Math.round(task.gradeWeightPercent * 10) / 10
-      : null;
-
   return {
-    countdownHuman,
-    gradeImpactPercent,
-    gradeProjection: mapGradeProjection(gradeProjection, {
-      danger: options.danger,
-      source: task.source,
-    }),
+    countdownHuman: due ? humanCountdown(due, now) : null,
     lastSkippedAgo: formatLastSkippedAgo(task.lastSkippedAt, now),
     effortEstimate: formatEffortMinutes(task.duration),
   };

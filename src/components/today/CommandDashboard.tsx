@@ -191,7 +191,7 @@ function LadderPanel({
   onDone: (id: string) => void;
 }) {
   const badge = tierBadge(task);
-  const gi = task.erwin?.gradeImpactPercent;
+  const gi = task.gradeWeightPercent;
   const modules = useOnModules();
 
   return (

@@ -36,7 +36,31 @@ export interface Tag {
   color?: string;
 }
 
-export interface Task {
+/** The course grade now and if one piece of work is missed (Courses). */
+export interface GradeProjection {
+  currentGrade: number;
+  gradeIfMissed: number;
+  letterCurrent: string;
+  letterIfMissed: string;
+}
+
+/**
+ * What the Courses module adds to its own tasks wherever the core hands them
+ * out (src/modules/courses/facts.ts). Absent on every other task.
+ */
+export interface CourseTaskFacts {
+  /** Canvas's id for the course. */
+  courseId?: string | null;
+  courseName?: string | null;
+  /** Canvas's word on the submission: unsubmitted | missing | missed | submitted | pending_review | graded | excused. */
+  submissionStatus?: string | null;
+  /** Roughly how much of the course grade it's worth, 0–100, to one decimal. */
+  gradeWeightPercent?: number | null;
+  /** Only on work Focus judged DANGER. */
+  gradeProjection?: GradeProjection | null;
+}
+
+export interface Task extends CourseTaskFacts {
   id: string;
   title: string;
   description?: string | null;
@@ -77,13 +101,8 @@ export interface Task {
   impact?: number | null;
   /** When its source closed it without it being done (Canvas: missed). */
   closedAt?: Date | null;
-  courseName?: string | null;
-  courseId?: string | null;
-  /** Canvas: approximate % of final course grade (Focus UI) */
-  gradeWeightPercent?: number | null;
   skipCount?: number;
   lastSkippedAt?: Date | null;
-  submissionStatus?: string | null;
   externalUrl?: string | null;
   category?: string | null;
   /** Erwin v3: goal links (many-to-many); a task can serve several goals */

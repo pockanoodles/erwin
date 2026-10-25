@@ -1,5 +1,7 @@
 /**
  * Shared ranking pipeline for Focus queue and briefing (docs/focus-mode.md).
+ * Modules weigh in through the registry: a lift before ranking (Ladder's
+ * goals), facts after it (Courses' course and grade). Neither is read here.
  */
 import type { Prisma } from "@prisma/client";
 
@@ -13,46 +15,36 @@ import { openWorkWhere } from "@/lib/erwin/open-work";
 import {
   type TaskForRanking,
   filterTasksForRanking,
+  isDangerResolved,
   orderTasksStage1,
   stage1MetaForTasks,
 } from "@/lib/erwin/rank-stage1";
 import { prisma } from "@/lib/prisma";
 
+import { moduleLift, moduleTaskFacts } from "@/modules/hooks";
+import type { TaskFacts } from "@/modules/server";
 import { moduleView } from "@/modules/state";
 
-function liftFromGoals(
-  links:
-    | Array<{ goal: { importanceScore: number | null; status: string } }>
-    | null
-    | undefined
-): number | null {
-  const best = (links ?? []).reduce<number | null>((top, link) => {
-    if (link.goal.status !== "active") return top;
-    const score = link.goal.importanceScore;
-    if (score == null) return top;
-    return top == null ? score : Math.max(top, score);
-  }, null);
-  return best == null ? null : best / 100;
-}
-
-export function toTaskForRanking(r: {
-  id: string;
-  title: string;
-  status: string;
-  dueDate: Date | null;
-  unlockAt: Date | null;
-  lockAt: Date | null;
-  duration: number | null;
-  impact: number | null;
-  closedAt: Date | null;
-  priority: string | null;
-  skipCount: number;
-  lastSkippedAt: Date | null;
-  createdAt: Date;
-  postponedUntil?: Date | null;
-  parentTaskId?: string | null;
-  goalLinks?: Array<{ goal: { importanceScore: number | null; status: string } }> | null;
-}): TaskForRanking {
+export function toTaskForRanking(
+  r: {
+    id: string;
+    title: string;
+    status: string;
+    dueDate: Date | null;
+    unlockAt: Date | null;
+    lockAt: Date | null;
+    duration: number | null;
+    impact: number | null;
+    closedAt: Date | null;
+    priority: string | null;
+    skipCount: number;
+    lastSkippedAt: Date | null;
+    createdAt: Date;
+    postponedUntil?: Date | null;
+    parentTaskId?: string | null;
+  },
+  lift: number | null = null
+): TaskForRanking {
   return {
     id: r.id,
     title: r.title,
@@ -69,10 +61,7 @@ export function toTaskForRanking(r: {
     createdAt: r.createdAt,
     postponedUntil: r.postponedUntil ?? null,
     parentTaskId: r.parentTaskId ?? null,
-    // Erwin v3: a task can serve several goals — it surfaces on its most
-    // important one (see rank-stage1 computeStage1Scores). A goal done or set
-    // aside no longer makes its work matter more.
-    lift: liftFromGoals(r.goalLinks),
+    lift,
   };
 }
 
@@ -80,7 +69,6 @@ export type FocusQueueTaskRow = Prisma.TaskGetPayload<{
   include: {
     tags: true;
     project: true;
-    goalLinks: { include: { goal: true } };
     subtasks: {
       select: { id: true; title: true; status: true; order: true };
     };
@@ -89,6 +77,8 @@ export type FocusQueueTaskRow = Prisma.TaskGetPayload<{
 
 export interface FocusQueueCoreResult {
   rows: FocusQueueTaskRow[];
+  /** What the modules add to each row, keyed by task id: spread it onto the row. */
+  facts: Map<string, TaskFacts>;
   minimal: TaskForRanking[];
   filtered: TaskForRanking[];
   slotAware: TaskForRanking[];
@@ -107,12 +97,11 @@ export async function buildFocusQueueCore(
   const now = newDate();
   const modules = await moduleView(userId);
 
-  const loaded = await prisma.task.findMany({
+  const rows = await prisma.task.findMany({
     where: openWorkWhere(userId, now, modules.hidden),
     include: {
       tags: true,
       project: true,
-      goalLinks: { include: { goal: true } },
       subtasks: {
         orderBy: { order: "asc" },
         select: { id: true, title: true, status: true, order: true },
@@ -120,12 +109,9 @@ export async function buildFocusQueueCore(
     },
   });
 
-  // With Ladder off, goals neither lift a task nor show beside it.
-  const rows = modules.isOn("ladder")
-    ? loaded
-    : loaded.map((r) => ({ ...r, goalLinks: [] }));
-
-  const minimal = rows.map((r) => toTaskForRanking(r));
+  const ids = rows.map((r) => r.id);
+  const lift = await moduleLift(prisma, userId, ids, modules.isOn);
+  const minimal = rows.map((r) => toTaskForRanking(r, lift.get(r.id) ?? null));
   const filtered = filterTasksForRanking(minimal, now);
 
   const availability = await computeErwinAvailabilitySummary(userId, now);
@@ -145,8 +131,19 @@ export async function buildFocusQueueCore(
 
   const meta = stage1MetaForTasks(ordered, slotAware, now, slotMinutesForRank);
 
+  const danger = new Set(
+    filtered.filter((t) => isDangerResolved(t, now)).map((t) => t.id)
+  );
+  const facts = await moduleTaskFacts(
+    prisma,
+    userId,
+    ids.map((id) => ({ id, danger: danger.has(id) })),
+    modules.isOn
+  );
+
   return {
     rows,
+    facts,
     minimal,
     filtered,
     slotAware,

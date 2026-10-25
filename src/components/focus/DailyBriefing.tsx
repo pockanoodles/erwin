@@ -48,7 +48,7 @@ export function DailyBriefing({
         </header>
 
         {data.dangerZoneTasks.map((dt) => {
-          const proj = data.dangerProjections.find((p) => p.taskId === dt.id);
+          const proj = dt.gradeProjection;
           return (
             <div key={dt.id} className="border border-destructive/40 bg-destructive/10 p-4">
               <div className="flex items-center gap-2 font-mono text-xs font-semibold uppercase tracking-[0.1em] text-destructive">
@@ -60,12 +60,13 @@ export function DailyBriefing({
                 {dt.title}
               </p>
               <p className="mt-1 font-mono text-xs uppercase tracking-[0.04em] text-muted-foreground">
-                {dt.countdownHuman} · {dt.gradeImpactPercent}% of final grade
+                {dt.countdownHuman}
+                {dt.gradeWeightPercent != null ? ` · ${dt.gradeWeightPercent}% of final grade` : ""}
               </p>
               {proj ? (
                 <p className="mt-2 font-semibold text-destructive">
-                  Missing this: {proj.currentCourseGrade}% ({proj.letterGradeCurrent}) →{" "}
-                  {proj.gradeIfMissed}% ({proj.letterGradeIfMissed})
+                  Missing this: {proj.currentGrade}% ({proj.letterCurrent}) →{" "}
+                  {proj.gradeIfMissed}% ({proj.letterIfMissed})
                 </p>
               ) : null}
             </div>
@@ -103,7 +104,7 @@ export function DailyBriefing({
                   <span className="truncate font-medium">{t.title}</span>
                   <span className="font-mono text-xs uppercase text-muted-foreground tabular">
                     {t.estimatedDuration}m
-                    {t.gradeImpactPercent != null ? ` · ${t.gradeImpactPercent}%` : ""}
+                    {t.gradeWeightPercent != null ? ` · ${t.gradeWeightPercent}%` : ""}
                     {t.courseName == null && t.category === "PERSONAL" ? " · personal" : ""}
                   </span>
                 </button>

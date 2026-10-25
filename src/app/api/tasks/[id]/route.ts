@@ -12,12 +12,26 @@ import {
   TaskChangeTracker,
 } from "@/lib/task-sync/task-change-tracker";
 import { normalizeRecurrenceRule } from "@/lib/utils/normalize-recurrence-rules";
+import { taskColumnsOnly } from "@/lib/utils/task-columns";
 
-import { tasksChanged } from "@/modules/hooks";
+import { moduleTaskFacts, tasksChanged } from "@/modules/hooks";
+import { moduleView } from "@/modules/state";
 
 import { TaskStatus } from "@/types/task";
 
 const LOG_SOURCE = "task-route";
+
+/** What the modules this person has on add to one task (see GET /api/tasks). */
+async function factsOf(userId: string, taskId: string) {
+  const modules = await moduleView(userId);
+  const facts = await moduleTaskFacts(
+    prisma,
+    userId,
+    [{ id: taskId }],
+    modules.isOn
+  );
+  return facts.get(taskId);
+}
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,7 +61,7 @@ export async function GET(
       return new NextResponse("Task not found", { status: 404 });
     }
 
-    return NextResponse.json(task);
+    return NextResponse.json({ ...task, ...(await factsOf(userId, id)) });
   } catch (error) {
     logger.error(
       "Error fetching task:",
@@ -97,8 +111,9 @@ export async function PUT(
 
     // Clients echo whole task objects back; strip everything prisma.update
     // can't take. goalLinks/tags/project are relations (links change via
-    // `goalId` below), and taskProviderId is an FK scalar that the checked
-    // update input rejects once the nested `project` write is present.
+    // `goalId` below), taskProviderId is an FK scalar that the checked
+    // update input rejects once the nested `project` write is present, and
+    // what's left keeps only Task's columns (`taskColumnsOnly`).
     const {
       tagIds,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -121,8 +136,9 @@ export async function PUT(
       parentTask,
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       subtasks,
-      ...updates
+      ...body
     } = json;
+    const updates = taskColumnsOnly(body);
 
     // Set completedAt when task is marked as completed
     if (
@@ -349,7 +365,12 @@ export async function PUT(
       select: { goalId: true },
     });
     const goalsPinnedNow = goalChosen || (task.goalsPinned && goalsPinned !== false);
-    return NextResponse.json({ ...updatedTask, goalLinks: goalLinksNow, goalsPinned: goalsPinnedNow });
+    return NextResponse.json({
+      ...updatedTask,
+      ...(await factsOf(userId, id)),
+      goalLinks: goalLinksNow,
+      goalsPinned: goalsPinnedNow,
+    });
   } catch (error) {
     logger.error(
       "Error updating task:",
