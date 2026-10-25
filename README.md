@@ -64,6 +64,20 @@ flowchart LR
 
 Canvas is read-only, and Google, Outlook and CalDAV sync in both directions, so an event you move in Erwin moves in the calendar it came from. Canvas and CalDAV also sync in the background on a timer (every 15 minutes by default), while Google and Outlook sync when you use them in the app.
 
+## Modules
+
+The core is Today, Focus, Calendar and Tasks. The rest of Erwin comes as modules you turn on or off at `/modules`, where each one says what it adds, what it keeps and what it sends out of Erwin.
+
+| Module | What it adds |
+|---|---|
+| **Courses** | Canvas sync, the Courses page (activity, grades, news and a library of course materials), and course details on Canvas tasks |
+| **Ladder** | Goals, the two-month cycle and XP. Goals file the work they claim and lift it in the ranking, and the Tasks page gets a tab per goal |
+| **People** | The people you keep in touch with. Give someone a cadence and a reach-out task appears when it's time |
+
+Ladder starts on, and Courses and People start off (Courses comes on by itself for an install that already had Canvas connected). Turning a module off hides its page and its tasks from every list and from the scheduler, stops its background work and leaves everything it stored in place, so turning it back on picks up where it left off. Only Courses talks to an outside service, which is Canvas ([DATAFLOW.md](DATAFLOW.md)).
+
+A module reaches the core only through the registries in `src/modules/`, and `src/modules/__tests__/boundary.test.ts` fails on any import that goes around them. [docs/specs/modules.md](docs/specs/modules.md) describes how a module plugs in.
+
 ## How the ranking works
 
 Erwin's ranker is deterministic arithmetic, with no model and no learned weights, so you can work out why a task is on top. Each open task gets a base score between 0 and 2, built from three weighted terms plus a boost and a penalty.
@@ -86,10 +100,10 @@ flowchart LR
 
 | Input | How it is computed |
 |---|---|
-| **Impact (0.35)** | The larger of the task's grade impact and its goal importance (0 to 100, divided by 100), then divided by the largest value in the current pool so grade-driven and goal-driven tasks compete on one 0 to 1 scale. Grade impact comes from the assignment's points and its group's weight in Canvas, and it falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
+| **Impact (0.35)** | The larger of the task's own impact and the importance of the goal it serves (0 to 100, divided by 100), then divided by the largest value in the current pool so coursework and goal-driven tasks compete on one 0 to 1 scale. A task's own impact is set by the module it comes from: for a Canvas assignment it is the assignment's share of the final course grade, its group's weight split across the group's points (or its points over the course's when the course doesn't weight groups), and work that doesn't count toward the grade has none. It falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
 | **Deadline pressure (0.45)** | A sigmoid of the hours left, `1 / (1 + e^(0.15 × (hours - 48)))`, which is 0.5 at 48 hours out, rises toward 1 as the due date nears, and stays at 1 once a task is overdue. A task with no due date scores 0. |
 | **Effort fit (0.20)** | How well the task's estimate (30 minutes when none is set) matches the open slot (240 minutes when no slot is known), as `1 - abs(estimate - slot) / max(estimate, slot)`. |
-| **Visibility boost (+0.15)** | Added to a Canvas task due in more than 7 days whose points sit above the 80th percentile of that course's open work, so a large far-off assignment is not invisible until it is urgent. |
+| **Visibility boost (+0.15)** | Added to a task due in more than 7 days whose stakes sit above the 80th percentile of its group's open work, so a large far-off assignment is not invisible until it is urgent. For Canvas the stakes are an assignment's share of the grade and the group is its course. |
 | **Skip penalty (up to -0.20)** | 0.05 for each time you skipped the task (capped at 0.20), halving every 48 hours since the last skip, so repeated avoidance costs a task its lead and one skip is forgotten by the weekend. |
 
 The score alone does not set the order. Tasks are sorted by the keys below in turn, so the base score orders only the tasks that match on every earlier key, and the due date and then the title break exact ties.
@@ -99,14 +113,14 @@ flowchart TD
     A["Open tasks"] --> B["Drop done, locked, deferred and subtasks"]
     B --> C{"Skipped in the last 4 hours?"}
     C -- yes --> Z["Sorted last"]
-    C -- no --> D{"Personal task while Canvas has a danger or high task?"}
-    D -- yes --> Y["Demoted below the Canvas work"]
+    C -- no --> D{"Personal task while coursework is in danger or due within a day?"}
+    D -- yes --> Y["Demoted below the coursework"]
     D -- no --> E{"In danger?"}
     E -- yes --> X["Sorted first"]
     E -- no --> W["Sorted by base score, then due date, then title"]
 ```
 
-A task is in danger when it is overdue, when less than three times its estimated effort remains before the due date, or when it has been skipped three times, has a grade impact above 0.5 and is due within five days. A personal task is any non-Canvas task that is not marked high priority and is not linked to a goal, so goal-linked tasks always compete in the main pool.
+A task is in danger when it is overdue, when less than three times its estimated effort remains before the due date, or when it has been skipped three times, has an impact above 0.5 and is due within five days. A personal task is one its module gives no impact (only Canvas coursework has one today) that is not marked high priority and is not linked to a goal, so goal-linked tasks always compete in the main pool. The ranker itself names no module: impact, a goal's lift and a task's stakes reach it from the modules that are on.
 
 ## The two-month goal cycle
 
