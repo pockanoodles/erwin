@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { cn } from "@/lib/utils";
 
 import { UNASSIGNED_LORD_ID, useLordStore, type Lord } from "@/store/lord";
@@ -15,13 +17,19 @@ interface LordEntry {
   count?: number;
 }
 
-/** Tasks-page tabs come from the goals map: one tab per Lord (root goal of
- *  the active hex), covering every boss and task on its path — laid out as
- *  a spreadsheet sheet-tab strip along the bottom of the table. One shape at
- *  every width, so the filter never costs a column of horizontal space. */
-export function LordSidebar() {
-  const { lords, activeLordId, setActiveLordId } = useLordStore();
+/** Ladder's tabs on the Tasks page (its Tasks lens, modules/ladder/tasks):
+ *  one tab per Lord (root goal of the active hex), covering every boss and
+ *  task on its path — laid out as a spreadsheet sheet-tab strip along the
+ *  bottom of the table. One shape at every width, so the filter never costs
+ *  a column of horizontal space. Drawn whenever Ladder is on, so it's what
+ *  keeps the Lords fresh for the rest of the page. */
+export function LordTabs() {
+  const { lords, activeLordId, setActiveLordId, fetchLords } = useLordStore();
   const { tasks } = useTaskStore();
+
+  useEffect(() => {
+    void fetchLords();
+  }, [fetchLords]);
 
   const openTasks = tasks.filter((t) => t.status !== TaskStatus.COMPLETED);
   const openCountFor = (lord: Lord) => {

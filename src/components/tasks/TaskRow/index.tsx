@@ -10,11 +10,10 @@ import { Input } from "@/components/ui/input";
 import { newDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-import { useLordStore } from "@/store/lord";
-
 import { Priority, type Task, TaskStatus } from "@/types/task";
 
 import type { TaskPatch } from "../datasheet/columns";
+import { useTasksLenses } from "../use-tasks-lenses";
 import {
   formatContextualDate,
   formatDeferLabel,
@@ -41,7 +40,7 @@ function priorityRule(priority?: Priority | null): string {
 
 /**
  * Things-style task row for `/tasks`. Collapsed: scan. Expanded: the row is
- * the editor (title + due/defer/priority/lord). The full modal is for
+ * the editor (title + due/defer/priority, and what a module adds). The full modal is for
  * recurrence, tags, and the rest.
  */
 export function TaskRow({
@@ -55,7 +54,7 @@ export function TaskRow({
 }: TaskRowProps) {
   const { toggle, isExpanded } = useTaskRowExpansion();
   const expanded = isExpanded(task.id);
-  const { lords } = useLordStore();
+  const lenses = useTasksLenses();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [draftTitle, setDraftTitle] = useState(task.title);
 
@@ -64,9 +63,8 @@ export function TaskRow({
   const deferred = task.postponedUntil
     ? formatDeferLabel(task.postponedUntil)
     : null;
-  const lordTitle = lords.find((lord) =>
-    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-  )?.title;
+  // A word from each module about the task (Ladder: its Lord).
+  const labels = lenses.flatMap((lens) => lens.rowLabel?.(task) ?? []);
 
   useEffect(() => {
     setDraftTitle(task.title);
@@ -119,7 +117,7 @@ export function TaskRow({
     deferred
       ? { key: "defer", text: `Until ${deferred}`, overdue: false }
       : null,
-    lordTitle ? { key: "lord", text: lordTitle, overdue: false } : null,
+    ...labels.map((text, i) => ({ key: `module-${i}`, text, overdue: false })),
     task.duration
       ? { key: "dur", text: `${task.duration}m`, overdue: false }
       : null,

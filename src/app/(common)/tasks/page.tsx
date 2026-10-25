@@ -5,14 +5,12 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { BoardView } from "@/components/tasks/BoardView/BoardView";
-import { LordSidebar } from "@/components/tasks/LordSidebar";
 import { TaskList } from "@/components/tasks/TaskList";
 import { TaskModal } from "@/components/tasks/TaskModal";
+import { useTasksLenses } from "@/components/tasks/use-tasks-lenses";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
-import { useLordStore } from "@/store/lord";
-import { useModuleOn } from "@/store/modules";
 import { useProjectStore } from "@/store/project";
 import { useTaskStore } from "@/store/task";
 import { useTaskModalStore } from "@/store/taskModal";
@@ -36,26 +34,20 @@ export default function TasksPage() {
     createTag,
   } = useTaskStore();
   const { fetchProjects } = useProjectStore();
-  const { fetchLords, clear: clearLords } = useLordStore();
-  const ladderOn = useModuleOn("ladder");
+  // What the modules add to the page: Ladder's Lord tabs along the bottom.
+  const lenses = useTasksLenses();
   const { viewMode } = useTaskPageSettings();
   // View switching and Create Task live in the app top bar
   // (components/tasks/TasksTopBar.tsx); the page only owns the modal itself.
   const { isOpen, editingTask, initialGoalId, openEdit, close } =
     useTaskModalStore();
 
-  // Fetch tasks, tags, and the Lord sections on mount
+  // Fetch tasks, tags and projects on mount
   useEffect(() => {
     fetchTasks();
     fetchTags();
     fetchProjects();
   }, [fetchTasks, fetchTags, fetchProjects]);
-
-  // Lords are Ladder's goals: fetched while it's on, forgotten while it's off.
-  useEffect(() => {
-    if (ladderOn) fetchLords();
-    else if (ladderOn === false) clearLords();
-  }, [ladderOn, fetchLords, clearLords]);
 
   const handleCreateTask = async (task: NewTask) => {
     await createTask(task);
@@ -123,8 +115,8 @@ export default function TasksPage() {
   };
 
   return (
-    // The Lord filter is a bottom sheet-tab strip at every width — see
-    // LordSidebar for why that replaced the side column.
+    // A module's tabs run along the bottom as a sheet-tab strip at every
+    // width (Ladder: one per Lord).
     <div className="flex h-full flex-col">
       <div className="flex flex-1 flex-col overflow-hidden" data-task-page>
         {error && (
@@ -174,7 +166,7 @@ export default function TasksPage() {
         )}
       </div>
 
-      {ladderOn ? <LordSidebar /> : null}
+      {lenses.map((lens, i) => (lens.Tabs ? <lens.Tabs key={i} /> : null))}
     </div>
   );
 }

@@ -26,8 +26,6 @@ import { cn } from "@/lib/utils";
 
 import { useIsMobile } from "@/hooks/use-media-query";
 
-import { filterTasksByLord, useLordStore } from "@/store/lord";
-import { useOnModules } from "@/store/modules";
 import {
   TaskColumnId,
   useTaskListViewSettings,
@@ -39,9 +37,11 @@ import { EnergyLevel, Task, TaskStatus, TimePreference } from "@/types/task";
 import { TaskListModeSwitch } from "./TaskListModeSwitch";
 import { TaskRow } from "./TaskRow";
 import { TaskRowExpansionProvider } from "./TaskRow/TaskRowExpansionContext";
-import { buildSheetRows } from "./datasheet/sheet-rows";
 import { TaskSheet } from "./datasheet/TaskSheet";
-import { type TaskPatch, columnsFor } from "./datasheet/columns";
+import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
+import { buildSheetRows } from "./datasheet/sheet-rows";
+import { applyLensFilters, lensBand, withLensColumns } from "./lens";
+import { useTasksLenses } from "./use-tasks-lenses";
 import {
   compareTaskEnergyLevel,
   compareTaskPriority,
@@ -64,6 +64,18 @@ interface TaskListProps {
 
 type SortKey = ReturnType<typeof useTaskListViewSettings.getState>["sortBy"];
 
+/** A module column's sort: empty values last whichever way it runs. */
+function compareSortValues(
+  a: string | number | null,
+  b: string | number | null,
+  direction: number
+): number {
+  if (a == null || b == null) return a == null ? (b == null ? 0 : 1) : -1;
+  return typeof a === "string" && typeof b === "string"
+    ? direction * a.localeCompare(b)
+    : direction * (Number(a) - Number(b));
+}
+
 export function TaskList({
   tasks,
   onEdit,
@@ -73,7 +85,6 @@ export function TaskList({
   onCreateSubtask,
 }: TaskListProps) {
   const isMobile = useIsMobile();
-  const onModules = useOnModules();
   const {
     sortBy,
     sortDirection,
@@ -94,7 +105,13 @@ export function TaskList({
     setPacketOpen,
   } = useTaskListViewSettings();
   const { listStyle, setListStyle } = useTaskPageSettings();
-  const { lords, bosses, activeLordId } = useLordStore();
+  // What the modules add here: Ladder narrows to a Lord and pins its bosses,
+  // Courses and Ladder add columns.
+  const lenses = useTasksLenses();
+  const columns = useMemo(
+    () => withLensColumns(TASK_COLUMNS, lenses),
+    [lenses]
+  );
 
   const visible = useMemo(
     () => new Set<TaskColumnId>([...visibleColumns, "title"]),
@@ -110,23 +127,16 @@ export function TaskList({
     }
   };
 
-  // Tasks fight for goals; a task's Lord is the root whose subtree holds any
-  // of its linked goals. Used by the Lord column sort.
-  const lordTitleOf = (task: Task) =>
-    lords.find((lord) =>
-      task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-    )?.title;
-
   // Split children out of the inventory: only parents sort/filter as rows.
-  // Children nest under their parent and inherit its Lord filter.
+  // Children nest under their parent and follow it through the lenses.
   const { parents, childrenOf } = useMemo(
     () => groupTasksByParent(tasks),
     [tasks]
   );
 
-  const lordParents = useMemo(
-    () => filterTasksByLord(parents, lords, activeLordId),
-    [parents, lords, activeLordId]
+  const scopedParents = useMemo(
+    () => applyLensFilters(lenses, parents),
+    [lenses, parents]
   );
 
   // Then apply other filters (single source of truth in task-list-utils, so
@@ -134,7 +144,7 @@ export function TaskList({
   // "upcoming" means — the old per-row "Upcoming" badge is gone). Search
   // still surfaces a parent when a child title matches.
   const filteredTasks = useMemo(() => {
-    return lordParents.filter((task) =>
+    return scopedParents.filter((task) =>
       parentMatchesListFilters(task, childrenOf[task.id] ?? [], {
         status,
         energyLevel,
@@ -146,7 +156,7 @@ export function TaskList({
       })
     );
   }, [
-    lordParents,
+    scopedParents,
     childrenOf,
     status,
     energyLevel,
@@ -164,8 +174,13 @@ export function TaskList({
 
   // Apply sorting
   const sortedTasks = useMemo(() => {
+    // A module's column sorts by its own value.
+    const moduleSort = columns.find((c) => c.sortKey === sortBy)?.sortValue;
     return [...modeFilteredTasks].sort((a, b) => {
       const direction = sortDirection === "asc" ? 1 : -1;
+      if (moduleSort) {
+        return compareSortValues(moduleSort(a), moduleSort(b), direction);
+      }
       switch (sortBy) {
         case "title":
           return direction * a.title.localeCompare(b.title);
@@ -185,15 +200,6 @@ export function TaskList({
           );
         case "status":
           return direction * a.status.localeCompare(b.status);
-        case "lord":
-        case "project": {
-          // "project" is the legacy persisted name for this sort key
-          const aLord = lordTitleOf(a);
-          const bLord = lordTitleOf(b);
-          if (!aLord) return 1;
-          if (!bLord) return -1;
-          return direction * aLord.localeCompare(bLord);
-        }
         case "priority":
           // Sort by semantic rank (low < medium < high, no-priority last), not
           // the alphabetical order of the labels. See task-list-utils.
@@ -209,13 +215,6 @@ export function TaskList({
           if (!a.duration) return 1;
           if (!b.duration) return -1;
           return direction * (a.duration - b.duration);
-        case "materials": {
-          const aCount = a.materialCount?.total ?? 0;
-          const bCount = b.materialCount?.total ?? 0;
-          if (!aCount) return 1;
-          if (!bCount) return -1;
-          return direction * (aCount - bCount);
-        }
         case "schedule":
           // First sort by auto-scheduled vs manual
           if (a.isAutoScheduled !== b.isAutoScheduled) {
@@ -243,19 +242,21 @@ export function TaskList({
           );
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modeFilteredTasks, sortBy, sortDirection, lords]);
+  }, [modeFilteredTasks, sortBy, sortDirection, columns]);
 
-  // The sheet's rows: the boss band on top of the sorted tasks. It follows the
-  // Lord tab and search; felled bosses show only when completed work does.
+  // The sheet's rows: what the modules pin (Ladder: its bosses) on top of
+  // the sorted tasks. The band follows search, and shows finished items only
+  // when completed work shows.
   const sheetRows = useMemo(
     () =>
-      buildSheetRows(sortedTasks, bosses, {
-        activeLordId,
-        search,
-        showFelled: !status?.length || status.includes(TaskStatus.COMPLETED),
-      }),
-    [sortedTasks, bosses, activeLordId, search, status]
+      buildSheetRows(
+        sortedTasks,
+        lensBand(lenses, sortedTasks, {
+          search,
+          showDone: !status?.length || status.includes(TaskStatus.COMPLETED),
+        })
+      ),
+    [sortedTasks, lenses, search, status]
   );
 
   const groupedTasks = useMemo(
@@ -466,7 +467,7 @@ export function TaskList({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
-                {columnsFor(new Set(onModules.map((m) => m.id))).map((col) => (
+                {columns.map((col) => (
                   <DropdownMenuCheckboxItem
                     key={col.id}
                     checked={visible.has(col.id)}
@@ -540,8 +541,7 @@ export function TaskList({
         <TaskSheet
           rows={sheetRows}
           visibleColumns={visible}
-          // "project" is the legacy persisted name for the Lord sort key.
-          sortBy={sortBy === "project" ? "lord" : sortBy}
+          sortBy={sortBy}
           sortDirection={sortDirection}
           onSort={handleSort}
           onEdit={onEdit}

@@ -8,8 +8,6 @@ import { cn } from "@/lib/utils";
 
 import { useTaskModule } from "@/modules/client";
 
-import { useLordStore, type Boss } from "@/store/lord";
-import { useOnModules } from "@/store/modules";
 import {
   useTaskListViewSettings,
   type TaskColumnId,
@@ -18,17 +16,16 @@ import {
 import { Task, TaskStatus } from "@/types/task";
 
 import { useDraggableTask } from "../../dnd/useDragAndDrop";
+import { type BandItem, type RowMark, withLensColumns } from "../lens";
+import { useTasksLenses } from "../use-tasks-lenses";
 import { isUpcomingTask } from "../utils/task-list-utils";
-import { bossCell, bossCellText } from "./boss-cells";
-import { BossPane, BossStrip } from "./BossPane";
 import {
   TASK_COLUMNS,
-  columnsFor,
-  type ColumnContext,
   type SortKey,
+  type TaskColumn,
   type TaskPatch,
 } from "./columns";
-import { bandSize, rowKey, type SheetRow } from "./sheet-rows";
+import { bandSize, markOf, rowKey, type SheetRow } from "./sheet-rows";
 import { useColumnResize } from "./useColumnResize";
 import { ValueBar } from "./ValueBar";
 
@@ -46,10 +43,11 @@ import { ValueBar } from "./ValueBar";
  * target floor, which is the correct trade for a sheet you drive with a
  * pointer and arrow keys. Every other surface in the app keeps the floor.
  *
- * The hex's bosses sit above the tasks as a frozen band (see sheet-rows): a
- * milestone row per boss, or the assignment's own row when the boss is one.
- * The gutter marks them ⚔ instead of a number, and a full-strength rule under
- * the band is Excel's freeze-pane line.
+ * A module can pin rows above the tasks as a frozen band (see sheet-rows):
+ * Ladder pins the hex's bosses, a milestone row per boss or the assignment's
+ * own row when the boss is one. The gutter shows the module's mark (⚔)
+ * instead of a number, and a full-strength rule under the band is Excel's
+ * freeze-pane line. Columns come from the core and the modules' lenses.
  */
 
 /** Uniform row height. The one property that makes a sheet scannable. */
@@ -67,7 +65,7 @@ const DONE_WIDTH = 32;
 const ACTIONS_WIDTH = 60;
 
 interface TaskSheetProps {
-  /** Already filtered and sorted by TaskList: the boss band, then tasks. */
+  /** Already filtered and sorted by TaskList: the modules' band, then tasks. */
   rows: SheetRow[];
   visibleColumns: Set<TaskColumnId>;
   sortBy: SortKey;
@@ -101,21 +99,18 @@ export function TaskSheet({
   onInlineEdit,
   packetOpen,
 }: TaskSheetProps) {
-  const lords = useLordStore((s) => s.lords);
-  const ctx = useMemo(() => ({ lords }), [lords]);
-
   const columnWidths = useTaskListViewSettings((s) => s.columnWidths);
   const setColumnWidth = useTaskListViewSettings((s) => s.setColumnWidth);
   const resetColumnWidth = useTaskListViewSettings((s) => s.resetColumnWidth);
   const resize = useColumnResize(setColumnWidth);
 
-  const onModules = useOnModules();
+  const lenses = useTasksLenses();
   const columns = useMemo(
     () =>
-      columnsFor(new Set(onModules.map((m) => m.id))).filter((c) =>
+      withLensColumns(TASK_COLUMNS, lenses).filter((c) =>
         visibleColumns.has(c.id)
       ),
-    [visibleColumns, onModules]
+    [visibleColumns, lenses]
   );
 
   /** Registry default, unless the header edge has been dragged. */
@@ -159,10 +154,10 @@ export function TaskSheet({
   const col = Math.min(active.col, Math.max(0, columns.length - 1));
   const activeRow: SheetRow | null = rows[row] ?? null;
   const activeTask: Task | null = activeRow?.kind === "task" ? activeRow.task : null;
-  const activeBoss: Boss | null = activeRow ? (activeRow.kind === "boss" ? activeRow.boss : activeRow.boss) : null;
+  const activeMark = markOf(activeRow);
   const activeColumn = columns[col] ?? null;
 
-  // Band rows are marked ⚔; tasks are numbered from 1 below them.
+  // Band rows carry their module's mark; tasks are numbered from 1 below them.
   const band = bandSize(rows);
   const rowNumberOf = (r: number) => (r < band ? null : r - band + 1);
 
@@ -261,7 +256,6 @@ export function TaskSheet({
           task={null}
           rowNumber={null}
           column={null}
-          ctx={ctx}
           onCommit={onInlineEdit}
         />
         <p className="p-8 text-center text-sm text-muted-foreground">
@@ -276,14 +270,13 @@ export function TaskSheet({
       <ValueBar
         task={activeTask}
         rowNumber={activeRow ? rowNumberOf(row) : null}
-        rowLabel={activeBoss ? "⚔" : undefined}
+        rowLabel={activeMark?.glyph}
         readonlyText={
-          activeRow?.kind === "boss" && activeColumn
-            ? bossCellText(activeRow.boss, activeColumn.id, ctx)
+          activeRow?.kind === "item" && activeColumn
+            ? activeRow.item.text(activeColumn.id)
             : undefined
         }
         column={activeColumn}
-        ctx={ctx}
         onCommit={onInlineEdit}
         onCommitted={() => {
           // Excel advances a row on commit, which is what makes a column of
@@ -422,28 +415,26 @@ export function TaskSheet({
 
           <tbody>
             {rows.map((sheetRow, r) =>
-              sheetRow.kind === "boss" ? (
-                <BossRow
+              sheetRow.kind === "item" ? (
+                <ItemRow
                   key={rowKey(sheetRow)}
-                  boss={sheetRow.boss}
+                  item={sheetRow.item}
                   bandEnd={r === band - 1}
                   isActiveRow={r === row}
                   activeCol={r === row ? col : -1}
                   columns={columns}
-                  ctx={ctx}
                   onSelect={(c) => setActive({ row: r, col: c })}
                 />
               ) : (
                 <TaskSheetRow
                   key={rowKey(sheetRow)}
                   task={sheetRow.task}
-                  boss={sheetRow.boss}
+                  mark={sheetRow.mark}
                   rowNumber={rowNumberOf(r)}
                   bandEnd={r === band - 1}
                   isActiveRow={r === row}
                   activeCol={r === row ? col : -1}
                   columns={columns}
-                  ctx={ctx}
                   onSelect={(c) => setActive({ row: r, col: c })}
                   onOpenValueBar={focusValueBar}
                   onEdit={onEdit}
@@ -501,14 +492,11 @@ export function TaskSheet({
           style={{ width: PACKET_WIDTH }}
           className="flex-none overflow-y-auto border-l border-border"
         >
-          {activeRow?.kind === "boss" ? (
-            <BossPane
-              boss={activeRow.boss}
-              lordTitle={lords.find((l) => l.id === activeRow.boss.lordId)?.title ?? null}
-            />
+          {activeRow?.kind === "item" ? (
+            activeRow.item.pane()
           ) : (
             <>
-              {activeBoss ? <BossStrip boss={activeBoss} /> : null}
+              {activeMark?.strip?.()}
               <TaskReadingPane task={activeTask ?? null} />
             </>
           )}
@@ -521,13 +509,12 @@ export function TaskSheet({
 
 function TaskSheetRow({
   task,
-  boss,
+  mark,
   rowNumber,
   bandEnd,
   isActiveRow,
   activeCol,
   columns,
-  ctx,
   onSelect,
   onOpenValueBar,
   onEdit,
@@ -535,15 +522,14 @@ function TaskSheetRow({
   onStatusChange,
 }: {
   task: Task;
-  /** Set when this task is a boss (bound to its Canvas assignment). */
-  boss: Boss | null;
-  /** Null for a band row, which the gutter marks ⚔ instead. */
+  /** Set when a module pinned this task into the band (Ladder: a boss's assignment). */
+  mark: RowMark | null;
+  /** Null for a band row, which the gutter marks with its module's glyph. */
   rowNumber: number | null;
   bandEnd: boolean;
   isActiveRow: boolean;
   activeCol: number;
-  columns: typeof TASK_COLUMNS;
-  ctx: ColumnContext;
+  columns: TaskColumn[];
   onSelect: (col: number) => void;
   onOpenValueBar: () => void;
   onEdit: (task: Task) => void;
@@ -564,7 +550,7 @@ function TaskSheetRow({
     <tr
       className={cn(
         "group",
-        boss && "font-medium",
+        mark && "font-medium",
         isDragging && "opacity-50",
         isUpcoming && "text-muted-foreground",
         isCompleted && "text-muted-foreground line-through decoration-1"
@@ -587,12 +573,12 @@ function TaskSheetRow({
             : "bg-muted text-muted-foreground"
         )}
         title={
-          boss
-            ? `Boss: ${boss.title}. Drag onto the calendar to schedule`
+          mark
+            ? `${mark.title}. Drag onto the calendar to schedule`
             : "Drag onto the calendar to schedule"
         }
       >
-        {rowNumber ?? "⚔"}
+        {rowNumber ?? mark?.glyph}
       </td>
 
       <td
@@ -628,7 +614,7 @@ function TaskSheetRow({
               onSelect(i);
               onOpenValueBar();
             }}
-            title={c.text(task, ctx) || undefined}
+            title={c.text(task) || undefined}
             className={cn(
               cellBase,
               c.align === "right" && "text-right",
@@ -639,7 +625,7 @@ function TaskSheetRow({
               !isActiveRow && "group-hover:bg-muted/40"
             )}
           >
-            {c.render(task, ctx)}
+            {c.render(task)}
           </td>
         );
       })}
@@ -687,39 +673,37 @@ function TaskSheetRow({
 }
 
 /**
- * An unbound boss: a milestone, not a task. Same grid and selection as a task
- * row so arrowing through the band just works, but nothing to tick, drag or
- * delete — it's written in the vault, and killed there.
+ * A row a module pinned that isn't a task (Ladder: a boss with no assignment
+ * behind it). Same grid and selection as a task row so arrowing through the
+ * band just works, but nothing to tick, drag or delete: the module owns it.
  */
-function BossRow({
-  boss,
+function ItemRow({
+  item,
   bandEnd,
   isActiveRow,
   activeCol,
   columns,
-  ctx,
   onSelect,
 }: {
-  boss: Boss;
+  item: BandItem;
   bandEnd: boolean;
   isActiveRow: boolean;
   activeCol: number;
-  columns: typeof TASK_COLUMNS;
-  ctx: ColumnContext;
+  columns: TaskColumn[];
   onSelect: (col: number) => void;
 }) {
   const rule = bandEnd ? "border-b-border" : "border-b-border/60";
   return (
-    <tr className={cn("group", boss.felled && "text-muted-foreground line-through decoration-1")}>
+    <tr className={cn("group", item.done && "text-muted-foreground line-through decoration-1")}>
       <td
         className={cn(
           ROW,
           "sticky left-0 z-10 border-b border-r border-border px-2 text-right font-mono text-[11px]",
           isActiveRow ? "bg-accent text-accent-foreground" : "bg-muted text-foreground"
         )}
-        title={`Boss: ${boss.title}`}
+        title={item.mark.title}
       >
-        ⚔
+        {item.mark.glyph}
       </td>
       <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
       {columns.map((c, i) => {
@@ -729,7 +713,7 @@ function BossRow({
             key={c.id}
             data-active-cell={isActive || undefined}
             onClick={() => onSelect(i)}
-            title={bossCellText(boss, c.id, ctx) || undefined}
+            title={item.text(c.id) || undefined}
             className={cn(
               ROW,
               "relative max-w-0 truncate border-b border-r border-r-border/60 px-2 align-middle",
@@ -742,7 +726,7 @@ function BossRow({
               !isActiveRow && "group-hover:bg-muted/40"
             )}
           >
-            {bossCell(boss, c.id, ctx)}
+            {item.cell(c.id)}
           </td>
         );
       })}

@@ -4,16 +4,17 @@ import { BsKanban, BsListTask } from "react-icons/bs";
 
 import {
   BarButton,
-  BarSegmented,
   type BarSegment,
+  BarSegmented,
 } from "@/components/navigation/top-bar-parts";
 
 import { useIsMobile } from "@/hooks/use-media-query";
 
-import { UNASSIGNED_LORD_ID, useLordStore } from "@/store/lord";
 import { useTaskStore } from "@/store/task";
 import { useTaskModalStore } from "@/store/taskModal";
 import { useTaskPageSettings } from "@/store/taskPageSettings";
+
+import { useTasksLenses } from "./use-tasks-lenses";
 
 /** The tasks page's share of the app top bar — see CalendarTopBar for why
  *  these live with their feature rather than inside AppTopBar. */
@@ -39,7 +40,10 @@ export function TasksTopBarViews() {
 
 export function TasksTopBarActions() {
   const scheduleAllTasks = useTaskStore((s) => s.scheduleAllTasks);
-  const activeLordId = useLordStore((s) => s.activeLordId);
+  // Creating from a module's view links the task there (Ladder: the open Lord).
+  const newTaskGoalId = useTasksLenses().find(
+    (lens) => lens.newTaskGoalId
+  )?.newTaskGoalId;
   const openCreate = useTaskModalStore((s) => s.openCreate);
   const isMobile = useIsMobile();
 
@@ -54,15 +58,7 @@ export function TasksTopBarActions() {
       <BarButton
         emphasis="loud"
         data-create-task-button=""
-        onClick={() =>
-          // Creating inside a Lord's section pre-links the task to that Lord;
-          // "All" and "Unassigned" seed nothing.
-          openCreate(
-            activeLordId && activeLordId !== UNASSIGNED_LORD_ID
-              ? activeLordId
-              : undefined
-          )
-        }
+        onClick={() => openCreate(newTaskGoalId)}
       >
         Create Task
       </BarButton>

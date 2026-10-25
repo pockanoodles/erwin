@@ -4,12 +4,13 @@ import { useMemo } from "react";
 
 import { DndContext, DragEndEvent } from "@dnd-kit/core";
 
-import { filterTasksByLord, useLordStore } from "@/store/lord";
 import { useTaskListViewSettings } from "@/store/taskListViewSettings";
 
 import { Task, TaskStatus } from "@/types/task";
 
 import { TaskListModeSwitch } from "../TaskListModeSwitch";
+import { applyLensFilters } from "../lens";
+import { useTasksLenses } from "../use-tasks-lenses";
 import { isDeferredTask, taskMatchesListMode } from "../utils/task-list-utils";
 import { Column } from "./Column";
 
@@ -28,16 +29,25 @@ export function BoardView({
   onStatusChange,
   onInlineEdit,
 }: BoardViewProps) {
-  const { lords, activeLordId } = useLordStore();
-  const { energyLevel, timePreference, tagIds, search, showDeferred, listMode } =
-    useTaskListViewSettings();
+  const lenses = useTasksLenses();
+  const {
+    energyLevel,
+    timePreference,
+    tagIds,
+    search,
+    showDeferred,
+    listMode,
+  } = useTaskListViewSettings();
 
-  // First, scope to the selected Lord's section (its whole path in the DAG)
-  const lordFilteredTasks = filterTasksByLord(tasks, lords, activeLordId);
+  // First, scope to what the modules narrow to (Ladder: the open Lord's path)
+  const scopedTasks = useMemo(
+    () => applyLensFilters(lenses, tasks),
+    [lenses, tasks]
+  );
 
   // Then apply other filters
   const filteredTasks = useMemo(() => {
-    return lordFilteredTasks.filter((task) => {
+    return scopedTasks.filter((task) => {
       if (task.parentTaskId) {
         return false;
       }
@@ -85,7 +95,7 @@ export function BoardView({
       return true;
     });
   }, [
-    lordFilteredTasks,
+    scopedTasks,
     energyLevel,
     timePreference,
     tagIds,

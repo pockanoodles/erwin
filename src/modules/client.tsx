@@ -25,11 +25,14 @@ import {
   CanvasTaskPane,
 } from "@/components/packet/TaskSlots";
 import { CanvasLmsSettings } from "@/components/settings/CanvasLmsSettings";
+import type { TasksLens } from "@/components/tasks/lens";
 
 import type { FocusQueueTask } from "@/lib/erwin/parse-task";
 
 import { moduleForSource } from "@/modules";
+import { useCoursesTasksLens } from "@/modules/courses/tasks";
 import { TodayGoalSection } from "@/modules/ladder/components/TodayGoalSection";
+import { useLadderTasksLens } from "@/modules/ladder/tasks";
 import {
   PeopleTopBarActions,
   PeopleTopBarViews,
@@ -63,6 +66,12 @@ export interface ClientContributions {
   TaskContext?: ComponentType<{ task: FocusQueueTask }>;
   /** The task sheet's reading pane for a task from one of its sources. */
   TaskPane?: ComponentType<{ taskId: string }>;
+  /**
+   * What it adds to the Tasks page (columns, tabs, row labels, pinned rows).
+   * A hook, called on every render whether the module is on or off: it hands
+   * back null while off. See components/tasks/lens.ts.
+   */
+  useTasksLens?: () => TasksLens | null;
 }
 
 export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
@@ -76,12 +85,14 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     TaskBody: CanvasTaskBody,
     TaskContext: CanvasTaskContext,
     TaskPane: CanvasTaskPane,
+    useTasksLens: useCoursesTasksLens,
   },
   ladder: {
     command: { icon: HiOutlineFlag, shortcut: "gg" },
     Views: LadderTopBarViews,
     Actions: LadderTopBarActions,
     TodayTaskSection: TodayGoalSection,
+    useTasksLens: useLadderTasksLens,
   },
   people: {
     command: { icon: HiOutlineUserGroup, shortcut: "gp" },

@@ -5,6 +5,8 @@ import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
 import { EnergyLevel, TaskListMode, TaskStatus, TimePreference } from "@/types/task";
 
+/** The core's columns; a module's column brings its own id (Courses:
+ *  "materials", Ladder: "lord"). Ids are what's persisted. */
 export type TaskColumnId =
   | "status"
   | "title"
@@ -13,13 +15,12 @@ export type TaskColumnId =
   | "preferredTime"
   | "dueDate"
   | "duration"
-  | "lord"
   | "schedule"
   | "startDate"
-  | "materials";
+  | (string & {});
 
-/** Daily-scan columns. Energy/Time/Start date are auto-scheduler inputs and
- *  live behind the Columns picker by default. */
+/** Daily-scan columns, modules' included. Energy/Time/Start date are
+ *  auto-scheduler inputs and live behind the Columns picker by default. */
 export const DEFAULT_VISIBLE_COLUMNS: TaskColumnId[] = [
   "status",
   "title",
@@ -32,20 +33,18 @@ export const DEFAULT_VISIBLE_COLUMNS: TaskColumnId[] = [
 ];
 
 interface TaskListViewSettings {
-  // Sort settings ("project" is the legacy name for "lord" in persisted state)
+  // Sort settings: a core key, or a module column's own.
   sortBy:
     | "dueDate"
     | "startDate"
     | "title"
     | "status"
-    | "lord"
-    | "project"
     | "schedule"
     | "priority"
     | "energyLevel"
     | "preferredTime"
     | "duration"
-    | "materials";
+    | (string & {});
   sortDirection: "asc" | "desc";
 
   // Filter settings
@@ -178,7 +177,7 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       // before a key existed simply leaves its initial value in place.
       // `visibleColumns` is different — a saved list replaces the default
       // wholesale, so a new default column has to be added to it explicitly.
-      version: 1,
+      version: 2,
       migrate: (persisted, version) => {
         const state = persisted as Partial<TaskListViewSettings>;
         if (version < 1 && state.visibleColumns && !state.visibleColumns.includes("materials")) {
@@ -187,6 +186,8 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
           next.splice(at === -1 ? next.length : at + 1, 0, "materials");
           state.visibleColumns = next;
         }
+        // "project" was the Lord column's sort key before it was the Lord's.
+        if (version < 2 && state.sortBy === "project") state.sortBy = "lord";
         return state as TaskListViewSettings;
       },
     }

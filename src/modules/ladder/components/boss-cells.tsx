@@ -4,10 +4,10 @@ import type { ReactNode } from "react";
 
 import { differenceInCalendarDays, format, newDate } from "@/lib/date-utils";
 
-import type { Boss } from "@/store/lord";
-import type { TaskColumnId } from "@/store/taskListViewSettings";
+import { dateLabel } from "@/components/tasks/datasheet/columns";
 
-import { dateLabel, type ColumnContext } from "./columns";
+import type { Boss, Lord } from "@/store/lord";
+import type { TaskColumnId } from "@/store/taskListViewSettings";
 
 /**
  * How an unbound boss fills the sheet's columns. It isn't a task — nothing to
@@ -15,8 +15,8 @@ import { dateLabel, type ColumnContext } from "./columns";
  * milestone has: what, when, whose, and whether it's down.
  */
 
-const lordTitle = (boss: Boss, ctx: ColumnContext) =>
-  ctx.lords.find((l) => l.id === boss.lordId)?.title ?? "";
+const lordTitle = (boss: Boss, lords: Lord[]) =>
+  lords.find((l) => l.id === boss.lordId)?.title ?? "";
 
 /** "in 8 days" / "today" / "3 days ago": a boss is read as a countdown. */
 export function countdown(targetDate: string | null): string {
@@ -27,7 +27,7 @@ export function countdown(targetDate: string | null): string {
   return days > 0 ? `in ${days} days` : `${-days} days ago`;
 }
 
-export function bossCellText(boss: Boss, column: TaskColumnId, ctx: ColumnContext): string {
+export function bossCellText(boss: Boss, column: TaskColumnId, lords: Lord[]): string {
   switch (column) {
     case "title":
       return boss.title;
@@ -38,13 +38,13 @@ export function bossCellText(boss: Boss, column: TaskColumnId, ctx: ColumnContex
         ? `${format(newDate(boss.targetDate), "EEE MMM d")} · ${countdown(boss.targetDate)}`
         : "No date";
     case "lord":
-      return lordTitle(boss, ctx);
+      return lordTitle(boss, lords);
     default:
       return "";
   }
 }
 
-export function bossCell(boss: Boss, column: TaskColumnId, ctx: ColumnContext): ReactNode {
+export function bossCell(boss: Boss, column: TaskColumnId, lords: Lord[]): ReactNode {
   switch (column) {
     case "title":
       return <span className="font-medium text-foreground">{boss.title}</span>;
@@ -59,7 +59,7 @@ export function bossCell(boss: Boss, column: TaskColumnId, ctx: ColumnContext): 
         <span className="tabular-nums text-foreground">{dateLabel(boss.targetDate)}</span>
       ) : null;
     case "lord":
-      return <span className="text-foreground">{lordTitle(boss, ctx)}</span>;
+      return <span className="text-foreground">{lordTitle(boss, lords)}</span>;
     default:
       return null;
   }

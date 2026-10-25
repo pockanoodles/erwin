@@ -1,22 +1,14 @@
 "use client";
 
 import { useDraggable } from "@dnd-kit/core";
-import { HiClock, HiFlag, HiLockClosed, HiPencil, HiTrash } from "react-icons/hi";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
+import { HiClock, HiLockClosed, HiPencil, HiTrash } from "react-icons/hi";
 
 import { format, newDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-import { useLordStore } from "@/store/lord";
-
 import { Task, TimePreference } from "@/types/task";
 
+import { useTasksLenses } from "../use-tasks-lenses";
 import { formatContextualDate } from "../utils/task-list-utils";
 
 interface BoardTaskProps {
@@ -61,10 +53,7 @@ export function BoardTask({
         task,
       },
     });
-  const { lords } = useLordStore();
-  const taskLord = lords.find((lord) =>
-    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-  );
+  const lenses = useTasksLenses();
 
   const style = transform
     ? {
@@ -164,49 +153,21 @@ export function BoardTask({
               </span>
             )}
 
-            {/* Lord chip: editable in place. The wrapper swallows pointer
-                events so opening the select never starts a card drag. */}
-            <div
-              onPointerDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Select
-                value={taskLord?.id || "none"}
-                onValueChange={(value) => {
-                  onInlineEdit({
-                    ...task,
-                    goalId: value === "none" ? null : value,
-                  });
-                }}
+            {/* What the modules add (Ladder: the Lord chip), editable in
+                place. The wrapper swallows pointer events so opening one
+                never starts a card drag. */}
+            {lenses.some((lens) => lens.Control) ? (
+              <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
               >
-                <SelectTrigger
-                  className={cn(
-                    "h-auto gap-1 border-none bg-transparent p-0 text-xs shadow-none transition-colors duration-150 focus:ring-0",
-                    taskLord
-                      ? "text-muted-foreground hover:text-foreground"
-                      : "text-muted-foreground/50 hover:text-foreground"
-                  )}
-                  title="Assign Lord"
-                >
-                  <span className="flex items-center gap-1">
-                    <HiFlag className="h-3 w-3 flex-none" />
-                    {taskLord
-                      ? taskLord.title
-                      : task.goalLinks?.length
-                        ? "Other hex"
-                        : "No lord"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
-                  {lords.map((lord) => (
-                    <SelectItem key={lord.id} value={lord.id}>
-                      {lord.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                {lenses.map((lens, i) =>
+                  lens.Control ? (
+                    <lens.Control key={i} task={task} onPatch={onInlineEdit} variant="card" />
+                  ) : null
+                )}
+              </div>
+            ) : null}
 
             {task.isAutoScheduled &&
               task.scheduledStart &&

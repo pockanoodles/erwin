@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { Task } from "@/types/task";
 
-import type { ColumnContext, TaskColumn, TaskPatch } from "./columns";
+import type { TaskColumn, TaskPatch } from "./columns";
 
 /**
  * Excel's formula bar, and it's here for exactly Excel's reason: a cell is one
@@ -33,12 +33,11 @@ interface ValueBarProps {
   task: Task | null;
   /** 1-based, as shown in the row gutter. */
   rowNumber: number | null;
-  /** Replaces "R<n>" for a row the gutter doesn't number (a boss: "⚔"). */
+  /** Replaces "R<n>" for a row a module pinned (Ladder's bosses: "⚔"). */
   rowLabel?: string;
-  /** A row that isn't a task (an unbound boss): the cell's value, read-only. */
+  /** A pinned row that isn't a task (an unbound boss): the cell's value, read-only. */
   readonlyText?: string;
   column: TaskColumn | null;
-  ctx: ColumnContext;
   onCommit: (patch: TaskPatch) => void;
   /** Called after a successful commit so the grid can advance a row. */
   onCommitted?: () => void;
@@ -50,12 +49,11 @@ export function ValueBar({
   rowLabel,
   readonlyText,
   column,
-  ctx,
   onCommit,
   onCommitted,
 }: ValueBarProps) {
   const editable = Boolean(task && column && column.editor.kind !== "readonly");
-  const committed = task && column ? column.formValue(task, ctx) : "";
+  const committed = task && column ? column.formValue(task) : "";
 
   const [draft, setDraft] = useState(committed);
   const [rejected, setRejected] = useState(false);
@@ -78,7 +76,7 @@ export function ValueBar({
 
   const save = () => {
     if (!task || !column?.commit) return;
-    const patch = column.commit(draft, task, ctx);
+    const patch = column.commit(draft, task);
     if (!patch) {
       setRejected(true);
       return;
@@ -162,7 +160,7 @@ export function ValueBar({
           // Derived columns still show their full value — the point of the bar
           // is reading as much as writing.
           <span className="truncate text-[13px] text-muted-foreground">
-            {column.text(task, ctx) || "—"}
+            {column.text(task) || "—"}
           </span>
         ) : isText && expanded ? (
           <textarea
@@ -191,7 +189,7 @@ export function ValueBar({
             aria-label={`${column.label} value`}
             className={cn(fieldClass, "w-auto max-w-xs flex-none cursor-pointer pr-6")}
           >
-            {column.editor.options(ctx).map((o) => (
+            {column.editor.options().map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>

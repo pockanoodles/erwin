@@ -3,9 +3,9 @@
  * through the registries (src/modules/{index,client,server,hooks}.ts); a
  * module's own route files under src/app belong to it.
  *
- * Some couplings are older than the boundary. They're listed in KNOWN with
- * what removes each one, and the list can only shrink: a new coupling fails
- * this test, and so does a listed one that's gone (delete its line).
+ * A coupling that has to exist for a while goes in KNOWN with what removes
+ * it, and the list can only shrink: a new coupling fails this test, and so
+ * does a listed one that's gone (delete its line).
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -73,25 +73,11 @@ const REGISTRIES = new Set([
   "src/modules/hooks.ts",
 ]);
 
-/** "<importing file> -> <module>", each with what will remove it. */
-const KNOWN = new Set([
-  // Goals ("Lords") on the Tasks page: the tab strip, the row picker, the
-  // board, the sheet's column and boss rows. Removed by task-list slots
-  // Ladder fills.
-  "src/app/(common)/tasks/page.tsx -> ladder",
-  "src/components/tasks/BoardView/BoardTask.tsx -> ladder",
-  "src/components/tasks/BoardView/BoardView.tsx -> ladder",
-  "src/components/tasks/LordSidebar.tsx -> ladder",
-  "src/components/tasks/TaskList.tsx -> ladder",
-  "src/components/tasks/TaskRow/TaskRowToolbar.tsx -> ladder",
-  "src/components/tasks/TaskRow/index.tsx -> ladder",
-  "src/components/tasks/TasksTopBar.tsx -> ladder",
-  "src/components/tasks/datasheet/BossPane.tsx -> ladder",
-  "src/components/tasks/datasheet/TaskSheet.tsx -> ladder",
-  "src/components/tasks/datasheet/boss-cells.tsx -> ladder",
-  "src/components/tasks/datasheet/columns.tsx -> ladder",
-  "src/components/tasks/datasheet/sheet-rows.ts -> ladder",
-]);
+/**
+ * "<importing file> -> <module>", each with what will remove it. Empty since
+ * 2026-10-25: anything added here is a debt, written down with its way out.
+ */
+const KNOWN = new Set<string>([]);
 
 const ROOT = path.resolve(__dirname, "../../..");
 const IMPORT =

@@ -12,9 +12,6 @@ import {
 } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-import type { ModuleId } from "@/modules/types";
-
-import type { Lord } from "@/store/lord";
 import type { TaskColumnId } from "@/store/taskListViewSettings";
 
 import {
@@ -44,8 +41,12 @@ import {
  * to be a `field === "dueDate" ? … : field === "lord" ? …` ladder repeated in
  * the cell renderer and again in the editor, and adding a column meant finding
  * every ladder. Here a column is one object and the grid stays generic.
+ *
+ * These are the core's columns. A module adds its own through its Tasks lens
+ * (components/tasks/lens.ts): Courses the Mat column, Ladder the Lord column.
  */
 
+/** The core's sort keys; a module's column brings its own. */
 export type SortKey =
   | "title"
   | "status"
@@ -55,13 +56,8 @@ export type SortKey =
   | "energyLevel"
   | "preferredTime"
   | "duration"
-  | "lord"
   | "schedule"
-  | "materials";
-
-export interface ColumnContext {
-  lords: Lord[];
-}
+  | (string & {});
 
 /** A patch as `onInlineEdit` wants it: a whole task plus the API's goal setter. */
 export type TaskPatch = Task & { goalId?: string | null };
@@ -70,7 +66,7 @@ export type ColumnEditor =
   | { kind: "text" }
   | { kind: "number"; unit: string }
   | { kind: "date" }
-  | { kind: "enum"; options: (ctx: ColumnContext) => EnumOption[] }
+  | { kind: "enum"; options: () => EnumOption[] }
   /** Derived from other fields — shown in the bar, not editable there. */
   | { kind: "readonly" };
 
@@ -87,22 +83,22 @@ export interface TaskColumn {
   width: number;
   align?: "left" | "right";
   /** What the cell shows. Truncated by the grid — never wraps. */
-  render: (task: Task, ctx: ColumnContext) => ReactNode;
+  render: (task: Task) => ReactNode;
   /** The full value as plain text. This is what the value bar displays. */
-  text: (task: Task, ctx: ColumnContext) => string;
+  text: (task: Task) => string;
   editor: ColumnEditor;
   /** The current value in the shape the editor's form control wants. */
-  formValue: (task: Task, ctx: ColumnContext) => string;
+  formValue: (task: Task) => string;
   /** Turn a committed form value into a patch. `null` = reject, keep editing. */
-  commit?: (raw: string, task: Task, ctx: ColumnContext) => TaskPatch | null;
-  /** The module this column belongs to: it's only offered while that module is on. */
-  module?: ModuleId;
+  commit?: (raw: string, task: Task) => TaskPatch | null;
+  /** A module's column: the core column it follows in the sheet. */
+  after?: TaskColumnId;
+  /** A module's column: what it sorts by. Empty values sort last either way. */
+  sortValue?: (task: Task) => string | number | null;
 }
 
-/** The Lord editor's "let the vault's rules decide" choice. */
-const AUTO_GOALS = "__auto__";
-
-const EMPTY = <span className="text-muted-foreground/40">—</span>;
+/** An empty cell. */
+export const EMPTY = <span className="text-muted-foreground/40">—</span>;
 
 /** `<input type="date">` speaks yyyy-MM-dd, and task dates are UTC midnight. */
 function toDateInput(value: Date | string | null | undefined): string {
@@ -165,22 +161,6 @@ function enumOptions(values: string[], emptyLabel: string): EnumOption[] {
   ];
 }
 
-function lordOf(task: Task, { lords }: ColumnContext): Lord | undefined {
-  return lords.find((lord) =>
-    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-  );
-}
-
-/** Courses' fact: materials linked to the task (lib types CourseTaskFacts). */
-function materialsText(task: Task): string {
-  const count = task.materialCount;
-  if (!count) return "";
-  const noun = count.total === 1 ? "material" : "materials";
-  return count.cited
-    ? `${count.total} ${noun} · ${count.cited} cited in the instructions`
-    : `${count.total} ${noun} from the same module`;
-}
-
 function scheduleText(task: Task): string {
   if (!task.isAutoScheduled) return "Manual";
   if (task.scheduledStart && task.scheduledEnd) {
@@ -192,14 +172,8 @@ function scheduleText(task: Task): string {
   return "Auto";
 }
 
-/** The columns on offer while these modules are on. */
-export function columnsFor(
-  onModules: ReadonlySet<ModuleId>
-): readonly TaskColumn[] {
-  return TASK_COLUMNS.filter((c) => !c.module || onModules.has(c.module));
-}
-
-/** Render order. Title is pinned visible by the column picker. */
+/** Render order. Title is pinned visible by the column picker. A module's
+ *  columns slot in after theirs (`after`). */
 export const TASK_COLUMNS: readonly TaskColumn[] = [
   {
     id: "status",
@@ -318,28 +292,6 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
     commit: (raw, t) => ({ ...t, dueDate: fromDateInput(raw) }),
   },
   {
-    id: "materials",
-    module: "courses",
-    label: "Mat",
-    sortKey: "materials",
-    width: 56,
-    align: "right",
-    // Cited materials are the instructor saying "read this", so a count with
-    // any cited gets the accent; a module-only count stays quiet.
-    render: (t) => {
-      const count = t.materialCount;
-      if (!count) return EMPTY;
-      return (
-        <span className={cn("tabular-nums", count.cited ? "text-rust-text" : "text-muted-foreground")}>
-          {count.total}
-        </span>
-      );
-    },
-    text: materialsText,
-    editor: { kind: "readonly" },
-    formValue: materialsText,
-  },
-  {
     id: "duration",
     label: "Duration",
     sortKey: "duration",
@@ -361,51 +313,6 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
       const n = Number(raw);
       return Number.isFinite(n) && n > 0 ? { ...t, duration: n } : null;
     },
-  },
-  {
-    id: "lord",
-    module: "ladder",
-    label: "Lord",
-    sortKey: "lord",
-    width: 168,
-    render: (t, ctx) => {
-      const lord = lordOf(t, ctx);
-      if (lord) {
-        return <span className="text-foreground">{lord.title}</span>;
-      }
-      // Linked to a goal outside the active hex's lords — not unassigned.
-      if (t.goalLinks?.length) {
-        return (
-          <span
-            className="italic text-muted-foreground"
-            title="Linked to a goal outside the current hex"
-          >
-            Other hex
-          </span>
-        );
-      }
-      return EMPTY;
-    },
-    text: (t, ctx) =>
-      lordOf(t, ctx)?.title ?? (t.goalLinks?.length ? "Other hex" : ""),
-    editor: {
-      kind: "enum",
-      options: ({ lords }) => [
-        { value: AUTO_GOALS, label: "Auto (vault rules)" },
-        { value: "", label: "Unassigned" },
-        ...lords.map((l) => ({ value: l.id, label: l.title })),
-      ],
-    },
-    // An unpinned task's Lord comes from the vault (School claims Canvas), and
-    // the bar says so; picking any Lord, even the same one, pins it by hand.
-    formValue: (t, ctx) => (t.goalsPinned ? (lordOf(t, ctx)?.id ?? "") : AUTO_GOALS),
-    // The API's single-goal setter replaces the task's links with one to the
-    // chosen Lord (empty clears them); `goalsPinned: true` makes choosing the
-    // Lord the rules already gave it count as a choice.
-    commit: (raw, t) =>
-      raw === AUTO_GOALS
-        ? { ...t, goalsPinned: false }
-        : { ...t, goalId: raw || null, goalsPinned: true },
   },
   {
     id: "schedule",

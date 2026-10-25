@@ -6,7 +6,6 @@ import {
   HiCalendar,
   HiFlag,
   HiOutlineClock,
-  HiOutlineFlag,
   HiOutlinePencil,
   HiOutlineRefresh,
   HiOutlineTrash,
@@ -32,48 +31,23 @@ import {
   newDate,
   startOfDay,
 } from "@/lib/date-utils";
-import { cn } from "@/lib/utils";
-
-import { useLordStore } from "@/store/lord";
-import { useModuleOn } from "@/store/modules";
 
 import { Priority, type Task } from "@/types/task";
 
 import type { TaskPatch } from "../datasheet/columns";
+import { useTasksLenses } from "../use-tasks-lenses";
 import {
   formatContextualDate,
   formatDeferLabel,
   formatEnumValue,
 } from "../utils/task-list-utils";
+import { ToolbarButton } from "./ToolbarButton";
 
 interface TaskRowToolbarProps {
   task: Task;
   onPatch: (patch: TaskPatch) => void;
   onOpenModal: (task: Task) => void;
   onDelete: (taskId: string) => void;
-}
-
-function ToolbarButton({
-  active,
-  children,
-  className,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { active?: boolean }) {
-  return (
-    <button
-      type="button"
-      className={cn(
-        "inline-flex h-11 min-w-11 items-center gap-1.5 px-2 font-mono text-[11px] uppercase tracking-[0.0875em] transition-colors duration-150",
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground",
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </button>
-  );
 }
 
 function DateField({
@@ -220,7 +194,8 @@ function DeferField({
 
 /**
  * Quick-edit toolbar shown under an expanded TaskRow. Heavy fields (recurrence,
- * tags, description) stay in TaskModal — this is due / defer / priority / lord.
+ * tags, description) stay in TaskModal — this is due / defer / priority, and
+ * whatever a module adds (Ladder: the Lord picker).
  */
 export function TaskRowToolbar({
   task,
@@ -228,11 +203,7 @@ export function TaskRowToolbar({
   onOpenModal,
   onDelete,
 }: TaskRowToolbarProps) {
-  const { lords } = useLordStore();
-  const ladderOn = useModuleOn("ladder");
-  const taskLord = lords.find((lord) =>
-    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-  );
+  const lenses = useTasksLenses();
 
   const patch = (partial: Partial<TaskPatch>) =>
     onPatch({ ...task, ...partial });
@@ -279,35 +250,16 @@ export function TaskRowToolbar({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {ladderOn ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <ToolbarButton
-              active={Boolean(taskLord)}
-              aria-label="Lord"
-              title="Assign Lord"
-            >
-              <HiOutlineFlag className="h-4 w-4" />
-              <span className="hidden max-w-36 truncate sm:inline">
-                {taskLord ? taskLord.title : "Lord"}
-              </span>
-            </ToolbarButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="rounded-none">
-            <DropdownMenuItem onSelect={() => patch({ goalId: null })}>
-              Unassigned
-            </DropdownMenuItem>
-            {lords.map((lord) => (
-              <DropdownMenuItem
-                key={lord.id}
-                onSelect={() => patch({ goalId: lord.id })}
-              >
-                {lord.title}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
+      {lenses.map((lens, i) =>
+        lens.Control ? (
+          <lens.Control
+            key={i}
+            task={task}
+            onPatch={onPatch}
+            variant="toolbar"
+          />
+        ) : null
+      )}
 
       {task.isRecurring ? (
         <span
