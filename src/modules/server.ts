@@ -3,6 +3,7 @@
  * import Prisma). The core reads this list and never imports a module's
  * server code itself.
  */
+import { syncCanvasIfDue } from "@/modules/courses/server";
 import { reconcileReachOuts } from "@/modules/people/reach-out";
 import type { ModuleId } from "@/modules/types";
 
@@ -19,7 +20,9 @@ export interface ServerContributions {
 }
 
 export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
-  courses: {},
+  courses: {
+    jobs: [{ id: "courses.canvas-sync", run: syncCanvasIfDue }],
+  },
   ladder: {},
   people: {
     jobs: [{ id: "people.reconcile", run: reconcileReachOuts }],

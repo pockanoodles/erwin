@@ -21,3 +21,19 @@ export function getBackgroundIntervalMs(): number {
  * hours to show up. Matches the schema default on `TaskProvider`.
  */
 export const DEFAULT_CANVAS_SYNC_MINUTES = 15;
+
+/**
+ * Ticks and syncs drift by seconds. Without slack, a 15-minute interval on a
+ * 15-minute tick sees 14m59s since the last sync, skips, and really syncs
+ * every other tick.
+ */
+const DUE_SLACK_MS = 2 * 60_000;
+
+/** Whether something last synced at `last` is due again after `intervalMs`. */
+export function isDue(
+  last: Date | null,
+  now: Date,
+  intervalMs: number
+): boolean {
+  return !last || now.getTime() - last.getTime() >= intervalMs - DUE_SLACK_MS;
+}

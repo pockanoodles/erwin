@@ -12,7 +12,7 @@
  * step couldn't do (a course, its materials, the inbox, a submissions list)
  * goes into the provider's error (`sync-problems.ts`), which the Courses top
  * bar shows and ops' health check pages on. Runs from the background
- * scheduler (`job-sync-runner.ts`) and the Sync Canvas button.
+ * scheduler (Courses' job in `src/modules/courses/server.ts`) and the Sync Canvas button.
  */
 import { Prisma } from "@prisma/client";
 
