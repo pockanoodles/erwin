@@ -46,7 +46,13 @@ function Identity({ data }: { data: LadderPayload }) {
       </p>
 
       <div className="mt-4">
-        <p className="er-label">{hex.inheritedFrom ? `Build · from ${hex.inheritedFrom}` : "Build"}</p>
+        <p className="er-label">
+          {hex.inheritedFrom
+            ? `Build · from ${hex.inheritedFrom}`
+            : hex.buildProjected
+              ? "Build · from your vault"
+              : "Build"}
+        </p>
         {hex.build.length > 0 ? (
           <ul className="mt-1.5 flex flex-wrap gap-1.5">
             {hex.build.map((key) => (

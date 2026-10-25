@@ -92,7 +92,8 @@ export function hexDayRange(hex: Pick<Hex, "year" | "index">): {
  *
  * A new hex inherits the Build of the hex before it. A Build holds until it is
  * respecced, the way the map's Current Build does, and seasons there don't
- * break at hex boundaries.
+ * break at hex boundaries. A Build the vault set stays the vault's until the
+ * next projection says otherwise.
  */
 export async function ensureCurrentHex(
   prisma: Db,
@@ -125,12 +126,13 @@ export async function ensureCurrentHex(
     const previous = await tx.goalCycle.findFirst({
       where: { userId, startDate: { lt: hex.startDate } },
       orderBy: { startDate: "desc" },
-      select: { focusStats: true },
+      select: { focusStats: true, buildProjected: true },
     });
     return tx.goalCycle.create({
       data: {
         theme: "",
         focusStats: previous?.focusStats ?? [],
+        buildProjected: previous?.buildProjected ?? false,
         startDate: hex.startDate,
         endDate: hex.endDate,
         status: "active",

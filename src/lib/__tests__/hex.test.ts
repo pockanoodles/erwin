@@ -59,7 +59,7 @@ describe("ensureCurrentHex", () => {
         findFirst: jest
           .fn()
           .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce({ focusStats: ["arcane", "intelligence"] }),
+          .mockResolvedValueOnce({ focusStats: ["arcane", "intelligence"], buildProjected: true }),
         updateMany: jest.fn().mockResolvedValue({ count: 1 }),
         create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
           created.push(data);
@@ -71,6 +71,11 @@ describe("ensureCurrentHex", () => {
     const db = { $transaction: (fn: (t: typeof tx) => unknown) => fn(tx) } as unknown as Db;
     await ensureCurrentHex(db, "user");
     expect(created).toHaveLength(1);
-    expect(created[0]).toMatchObject({ theme: "", focusStats: ["arcane", "intelligence"], status: "active" });
+    expect(created[0]).toMatchObject({
+      theme: "",
+      focusStats: ["arcane", "intelligence"],
+      buildProjected: true,
+      status: "active",
+    });
   });
 });

@@ -356,15 +356,19 @@ model Task {
  * Erwin v2.2: a two-month planning block. One active at a time per user; mirrors how Kaito already plans the year.
  */
 model GoalCycle {
-  id         String   @id @default(cuid())
-  theme      String
+  id             String   @id @default(cuid())
+  theme          String
   /**
    * The hex's Build: 2–3 stat keys being pushed this cycle. Vocabulary in src/lib/erwin/stats.ts (mirrors ops/brain _map.md).
    */
-  focusStats String[] @default([])
-  startDate  DateTime
-  endDate    DateTime
-  status     String   @default("active") // enum: 'active' | 'completed' | 'archived'
+  focusStats     String[] @default([])
+  /**
+   * The Build came from the vault's map (ops' goal sync sends it with every projection), so Erwin shows it read-only.
+   */
+  buildProjected Boolean  @default(false)
+  startDate      DateTime
+  endDate        DateTime
+  status         String   @default("active") // enum: 'active' | 'completed' | 'archived'
 
   goals Goal[]
 

@@ -53,9 +53,11 @@ export function LadderTopBarActions() {
     <BarButton
       onClick={() => editable && setBuildOpen(true)}
       title={
-        editable
-          ? "Choose the stats this hex pushes"
-          : "Only the running hex's Build can change, since a past one is its record"
+        !editable
+          ? "Only the running hex's Build can change, since a past one is its record"
+          : data.hex.buildProjected
+            ? "Your vault's map sets this Build. The theme changes here"
+            : "Choose the stats this hex pushes"
       }
       aria-disabled={!editable || undefined}
     >

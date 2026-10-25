@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { applyGoalRules, calendarDay, type BossBinding } from "@/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "@/lib/erwin/hex";
-import { sanitizeStatKeys } from "@/lib/erwin/stats";
+import { sanitizeStatKeys, type StatKey } from "@/lib/erwin/stats";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -65,11 +65,13 @@ function bindingReport(goals: ProjectedGoal[], bindings: BossBinding[]) {
 
 /**
  * POST /api/erwin/goals/project
- * Body: { cycleId?: string, goals: ProjectedGoal[] }
+ * Body: { cycleId?: string, goals: ProjectedGoal[], build?: string[] }
  * Idempotently reconciles the set of projected goals for the target cycle
  * (defaults to the active hex), then files tasks under them (lib/erwin/goal-rules).
- * Returns { cycleId, created, updated, deleted, linked, linkedTasks, unlinkedTasks,
- * unresolvedBindings, dateMismatches, awaitingKillMark }.
+ * `build` is the map's Current Build: sent, it becomes the cycle's Build and
+ * can't be changed in Erwin; left out, the Build is Erwin's to edit again.
+ * Returns { cycleId, build, created, updated, deleted, linked, linkedTasks,
+ * unlinkedTasks, unresolvedBindings, dateMismatches, awaitingKillMark }.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -81,6 +83,14 @@ export async function POST(request: NextRequest) {
 
     const json = await request.json();
     const goals: ProjectedGoal[] = Array.isArray(json?.goals) ? json.goals : [];
+
+    let build: StatKey[] | null = null;
+    if (json?.build !== undefined) {
+      build = sanitizeStatKeys(json.build);
+      if (build === null || build.length === 0) {
+        return new NextResponse("build must be a non-empty list of stat keys", { status: 400 });
+      }
+    }
 
     // Validate every goal up front so the transaction is all-or-nothing.
     const seen = new Set<string>();
@@ -145,6 +155,11 @@ export async function POST(request: NextRequest) {
     const desired = new Set(goals.map((g) => g.externalId));
 
     const result = await prisma.$transaction(async (tx) => {
+      await tx.goalCycle.update({
+        where: { id: cycleId },
+        data: build ? { focusStats: build, buildProjected: true } : { buildProjected: false },
+      });
+
       const before = await tx.goal.findMany({
         where: { userId, externalId: { startsWith: PROJECTION_PREFIX } },
         select: { id: true, externalId: true },
@@ -242,7 +257,7 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ cycleId, ...result });
+    return NextResponse.json({ cycleId, build, ...result });
   } catch (error) {
     logger.error(
       "Error projecting goals:",

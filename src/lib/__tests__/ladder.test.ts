@@ -40,8 +40,8 @@ const input = (hex: LadderInput["hex"]): LadderInput => ({
     { id: "o3", goalIds: [] },
   ],
   cycles: [
-    { id: "hex5", theme: "Employment arc", focusStats: ["arcane", "intelligence"], first: "2026-09-01" },
-    { id: "hex4", theme: "", focusStats: ["intelligence", "vigor"], first: "2026-07-01" },
+    { id: "hex5", theme: "Employment arc", focusStats: ["arcane", "intelligence"], buildProjected: true, first: "2026-09-01" },
+    { id: "hex4", theme: "", focusStats: ["intelligence", "vigor"], buildProjected: false, first: "2026-07-01" },
   ],
 });
 
@@ -52,6 +52,7 @@ describe("buildLadder — the running hex", () => {
   it("places today inside the hex", () => {
     expect(ladder.hex).toMatchObject({ state: "current", first: "2026-09-01", last: "2026-10-31", days: 61, elapsed: 54 });
     expect(ladder.hex.build).toEqual(["arcane", "intelligence"]);
+    expect(ladder.hex.buildProjected).toBe(true);
   });
 
   it("counts the hex's work and the felled boss, and keeps lifetime from earlier hexes", () => {
@@ -101,7 +102,12 @@ describe("buildLadder — the running hex", () => {
 describe("buildLadder — other hexes", () => {
   it("shows a finished hex as its sheet stood on its last day", () => {
     const ladder = buildLadder(input({ year: 2026, index: 4 }));
-    expect(ladder.hex).toMatchObject({ state: "past", build: ["intelligence", "vigor"], inheritedFrom: null });
+    expect(ladder.hex).toMatchObject({
+      state: "past",
+      build: ["intelligence", "vigor"],
+      buildProjected: false,
+      inheritedFrom: null,
+    });
     expect(ladder.stats.find((s) => s.key === "intelligence")).toMatchObject({ xp: 0.5, gained: 0.5 });
     expect(ladder.goals.map((g) => [g.id, g.done])).toEqual([["school", 1]]);
   });
@@ -113,6 +119,7 @@ describe("buildLadder — other hexes", () => {
       elapsed: 0,
       cycleId: null,
       build: ["arcane", "intelligence"],
+      buildProjected: true,
       inheritedFrom: "Sep–Oct",
     });
     expect(ladder.goals.map((g) => g.id)).toEqual(["school", "gym"]);

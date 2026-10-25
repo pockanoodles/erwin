@@ -14,7 +14,11 @@ import { cn } from "@/lib/utils";
 
 import { useLadderStore } from "@/store/ladder";
 
-/** Respec: the stats the running hex pushes, and what it's about. */
+/**
+ * Respec: the stats the running hex pushes, and what it's about. A Build the
+ * vault's map sets shows here read-only, since the goal sync would put it
+ * back each morning; the theme is Erwin's either way.
+ */
 export function BuildDialog() {
   const open = useLadderStore((s) => s.buildOpen);
   const setOpen = useLadderStore((s) => s.setBuildOpen);
@@ -32,6 +36,7 @@ export function BuildDialog() {
   }, [open, data]);
 
   const cycleId = data?.hex.cycleId;
+  const fromVault = data?.hex.buildProjected ?? false;
   const toggle = (key: StatKey) =>
     setBuild((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
@@ -40,7 +45,7 @@ export function BuildDialog() {
     if (!cycleId) return;
     setSaving(true);
     try {
-      await updateCycle(cycleId, { focusStats: build, theme: theme.trim() });
+      await updateCycle(cycleId, fromVault ? { theme: theme.trim() } : { focusStats: build, theme: theme.trim() });
       setOpen(false);
       await load();
     } catch (err) {
@@ -56,10 +61,9 @@ export function BuildDialog() {
         <DialogHeader>
           <DialogTitle>Build for {data?.hex.label}</DialogTitle>
           <DialogDescription>
-            Pick the two or three stats this hex pushes. The Ladder shows how much of the XP you earn lands on them.
-            {data?.managedExternally
-              ? " Your vault's map keeps a Build of its own that doesn't sync here, so set the same stats."
-              : ""}
+            {fromVault
+              ? "Your vault's map sets this Build under Current Build, and the goal sync brings it here each morning. Respec it there. The theme is yours to change."
+              : "Pick the two or three stats this hex pushes. The Ladder shows how much of the XP you earn lands on them."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={save} className="space-y-5">
@@ -71,12 +75,16 @@ export function BuildDialog() {
                   key={key}
                   type="button"
                   aria-pressed={on}
-                  onClick={() => toggle(key)}
+                  aria-disabled={fromVault || undefined}
+                  title={fromVault ? "Set in your vault's map" : undefined}
+                  onClick={() => !fromVault && toggle(key)}
                   className={cn(
                     "er-plate er-plate-sm flex h-12 flex-col items-start justify-center px-2.5 text-left transition-colors duration-150",
                     on
                       ? "text-background [--plate:var(--er-ink)]"
-                      : "text-foreground [--plate:var(--er-surface)] hover:[--plate:var(--er-hover)]"
+                      : fromVault
+                        ? "cursor-default text-muted-foreground [--plate:var(--er-surface)]"
+                        : "text-foreground [--plate:var(--er-surface)] hover:[--plate:var(--er-hover)]"
                   )}
                 >
                   <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em]">{STAT_ABBREV[key]}</span>
@@ -98,12 +106,14 @@ export function BuildDialog() {
           </div>
           <div className="flex items-center gap-3">
             <Button type="submit" size="sm" disabled={saving || !cycleId}>
-              {saving ? "Saving…" : "Save Build"}
+              {saving ? "Saving…" : fromVault ? "Save theme" : "Save Build"}
             </Button>
             <Button type="button" size="sm" variant="quiet" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <span className="ml-auto font-mono text-[11px] text-muted-foreground">{build.length} picked</span>
+            <span className="ml-auto font-mono text-[11px] text-muted-foreground">
+              {fromVault ? "From your vault" : `${build.length} picked`}
+            </span>
           </div>
         </form>
       </DialogContent>

@@ -22,25 +22,19 @@ import { hexDayRange, hexLabel, hexMonths, hexOfDay } from "./hex";
 import { STAT_KEYS, isStatKey, type StatKey } from "./stats";
 import {
   creditedGoals,
+  economyOf,
   levelProgress,
-  scoreEvent,
+  standsAlone,
   statsOf,
   sumStats,
+  xpEvents,
   type XpEvent,
-  type XpGoal,
+  type XpGoalRow,
+  type XpTaskRow,
 } from "./xp";
 
-export interface LadderGoalRow {
-  id: string;
+export interface LadderGoalRow extends XpGoalRow {
   title: string;
-  isBoss: boolean;
-  status: string;
-  develops: string[];
-  parentIds: string[];
-  /** The day it is dated on (a boss's day), YYYY-MM-DD. */
-  day: string | null;
-  /** The day it last changed: when an undated boss was felled. */
-  updatedDay: string;
   targetDate: string | null;
   externalId: string | null;
   importanceScore: number | null;
@@ -51,19 +45,17 @@ export interface LadderGoalRow {
   bound: boolean;
 }
 
-export interface LadderTaskRow {
-  id: string;
+export interface LadderTaskRow extends XpTaskRow {
   title: string;
-  /** The day it was finished, YYYY-MM-DD. */
-  day: string;
   courseName: string | null;
-  goalIds: string[];
 }
 
 export interface LadderCycleRow {
   id: string;
   theme: string;
   focusStats: string[];
+  /** The vault's map sets this Build, so it can't change in Erwin. */
+  buildProjected: boolean;
   /** Its first day, YYYY-MM-DD, which names the hex it covers. */
   first: string;
 }
@@ -121,30 +113,13 @@ export function buildLadder(input: LadderInput): LadderPayload {
   const build = (cycle?.focusStats ?? before?.focusStats ?? []).filter(isStatKey);
 
   const byId = new Map(input.goals.map((goal) => [goal.id, goal]));
-  const economy = new Map<string, XpGoal>(
-    input.goals.map((goal) => [
-      goal.id,
-      { id: goal.id, isBoss: goal.isBoss, develops: goal.develops, parentIds: goal.parentIds },
-    ])
-  );
+  const economy = economyOf(input.goals);
   const titleOf = new Map<string, string>([
     ...input.done.map((task) => [task.id, task.title] as const),
     ...input.goals.map((goal) => [goal.id, goal.title] as const),
   ]);
 
-  const events: XpEvent[] = [
-    ...input.done.map((task) =>
-      scoreEvent({ kind: "task", id: task.id, day: task.day, goalIds: task.goalIds }, economy)
-    ),
-    ...input.goals
-      .filter((goal) => goal.isBoss && goal.status === "done")
-      .map((goal) =>
-        scoreEvent(
-          { kind: "boss", id: goal.id, day: goal.day ?? goal.updatedDay, goalIds: [goal.id] },
-          economy
-        )
-      ),
-  ];
+  const events = xpEvents(input.goals, input.done, economy);
   const within = (from: string, to: string) => (event: XpEvent) => event.day >= from && event.day <= to;
   const hexEvents = events.filter(within(first, last));
   // A finished hex shows the sheet as it stood on its last day.
@@ -155,12 +130,10 @@ export function buildLadder(input: LadderInput): LadderPayload {
   // The goals on show: the hex's own (the running hex's, for one that hasn't
   // begun), plus any goal its work credited. Bosses are milestones on a
   // goal's path, so only a boss with nothing above it gets a row.
-  const isRow = (goal: LadderGoalRow) =>
-    !goal.isBoss || goal.parentIds.every((parentId) => !byId.has(parentId));
   const shownCycleId = state === "future" ? input.currentCycleId : (cycle?.id ?? null);
   const rowIds = new Set<string>();
   for (const goal of input.goals) {
-    if (goal.cycleId === shownCycleId && isRow(goal)) rowIds.add(goal.id);
+    if (goal.cycleId === shownCycleId && standsAlone(goal, byId)) rowIds.add(goal.id);
   }
   for (const event of hexEvents) for (const { goalId } of event.credit) rowIds.add(goalId);
   const rowStats = new Map([...rowIds].map((id) => [id, statsOf(id, economy)]));
@@ -291,6 +264,7 @@ export function buildLadder(input: LadderInput): LadderPayload {
       cycleId: cycle?.id ?? null,
       theme: cycle?.theme ?? "",
       build,
+      buildProjected: (cycle ?? before)?.buildProjected ?? false,
       inheritedFrom: !cycle && before && build.length ? hexMonths(hexOfDay(before.first).index) : null,
     },
     stats,

@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.goalCycle.findMany({
         where: { userId },
-        select: { id: true, theme: true, focusStats: true, startDate: true },
+        select: { id: true, theme: true, focusStats: true, buildProjected: true, startDate: true },
       }),
     ]);
 
@@ -127,6 +127,7 @@ export async function GET(request: NextRequest) {
           id: cycle.id,
           theme: cycle.theme,
           focusStats: cycle.focusStats,
+          buildProjected: cycle.buildProjected,
           first: dateOnly(cycle.startDate),
         })),
       })

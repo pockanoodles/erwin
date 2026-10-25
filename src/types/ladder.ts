@@ -26,6 +26,8 @@ export interface LadderHex extends HexRef {
   cycleId: string | null;
   theme: string;
   build: StatKey[];
+  /** The vault's map sets the Build (ops' goal sync copies it each morning), so it can't change here. */
+  buildProjected: boolean;
   /** A hex that hasn't begun shows the Build it will inherit: from these months. */
   inheritedFrom: string | null;
 }

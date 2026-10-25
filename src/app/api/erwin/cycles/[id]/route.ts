@@ -47,7 +47,8 @@ export async function GET(
 /**
  * PUT /api/erwin/cycles/[id]
  * Updates a cycle. Activating it (status "active") deactivates the current
- * active cycle to keep one active cycle per user.
+ * active cycle to keep one active cycle per user. A Build the vault projected
+ * (buildProjected) answers 409 to a change; its theme still edits here.
  */
 export async function PUT(
   request: NextRequest,
@@ -82,6 +83,16 @@ export async function PUT(
       }
       focusStats = cleaned;
     }
+    const changesBuild =
+      focusStats !== undefined &&
+      (focusStats.length !== existing.focusStats.length ||
+        focusStats.some((key) => !existing.focusStats.includes(key)));
+    if (changesBuild && existing.buildProjected) {
+      return new NextResponse(
+        "This hex's Build comes from the vault's map, so change it there",
+        { status: 409 }
+      );
+    }
 
     const updated = await prisma.$transaction(async (tx) => {
       if (status === "active") {
@@ -91,7 +102,8 @@ export async function PUT(
         where: { id, userId },
         data: {
           ...(theme !== undefined && { theme }),
-          ...(focusStats !== undefined && { focusStats }),
+          // A projected Build stays exactly as the vault sent it.
+          ...(focusStats !== undefined && !existing.buildProjected && { focusStats }),
           ...(startDate !== undefined && { startDate: newDate(startDate) }),
           ...(endDate !== undefined && { endDate: newDate(endDate) }),
           ...(status !== undefined && { status }),
