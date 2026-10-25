@@ -9,6 +9,8 @@ import { DEFAULT_CANVAS_SYNC_MINUTES } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinCanvasAPI";
 
 const credentialsSchema = z.object({
@@ -47,6 +49,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
 
     const row = await prisma.taskProvider.findFirst({
       where: { userId: auth.userId, type: "CANVAS" },
@@ -92,6 +96,8 @@ export async function POST(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
 
     const userId = auth.userId;
     const json: unknown = await request.json();

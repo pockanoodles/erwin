@@ -9,6 +9,8 @@ import { openWorkWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { hiddenTaskSources } from "@/modules/state";
+
 const LOG_SOURCE = "ErwinLadderAPI";
 
 /** A date-only value (a boss's day, stored at noon UTC) keeps its own date. */
@@ -31,6 +33,7 @@ export async function GET(request: NextRequest) {
 
     const userId = auth.userId;
     const now = newDate();
+    const hidden = await hiddenTaskSources(userId);
     const settings = await prisma.userSettings.findUnique({
       where: { userId },
       select: { timeZone: true },
@@ -83,7 +86,7 @@ export async function GET(request: NextRequest) {
       }),
       // Open the way the top bar counts it: work you can act on now.
       prisma.task.findMany({
-        where: openWorkWhere(userId, now),
+        where: openWorkWhere(userId, now, hidden),
         select: { id: true, goalLinks: { select: { goalId: true } } },
       }),
       prisma.goalCycle.findMany({

@@ -6,6 +6,8 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinActivityAPI";
 
 const DEFAULT_LIMIT = 200;
@@ -30,6 +32,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const params = request.nextUrl.searchParams;
     const courseId = params.get("courseId");
     const sinceRaw = params.get("since");

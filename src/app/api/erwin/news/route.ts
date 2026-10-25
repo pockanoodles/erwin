@@ -5,6 +5,8 @@ import { cleanCanvasHtml } from "@/lib/canvas/clean-html";
 import { cleanOptionsFor } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+
+import { moduleOffResponse } from "@/modules/api";
 import type { NewsItem, NewsMessage } from "@/types/course-activity";
 
 const LOG_SOURCE = "ErwinNewsAPI";
@@ -22,6 +24,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const courseId = request.nextUrl.searchParams.get("courseId");
     const courses = await prisma.course.findMany({
       where: { userId: auth.userId, ...(courseId ? { id: courseId } : {}) },

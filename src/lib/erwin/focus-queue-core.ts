@@ -18,6 +18,8 @@ import {
 } from "@/lib/erwin/rank-stage1";
 import { prisma } from "@/lib/prisma";
 
+import { hiddenTaskSources } from "@/modules/state";
+
 export function toTaskForRanking(r: {
   id: string;
   title: string;
@@ -102,9 +104,10 @@ export async function buildFocusQueueCore(
   userId: string
 ): Promise<FocusQueueCoreResult> {
   const now = newDate();
+  const hidden = await hiddenTaskSources(userId);
 
   const rows = await prisma.task.findMany({
-    where: openWorkWhere(userId, now),
+    where: openWorkWhere(userId, now, hidden),
     include: {
       tags: true,
       project: true,

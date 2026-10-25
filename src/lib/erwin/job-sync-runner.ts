@@ -9,6 +9,8 @@ import { DEFAULT_CANVAS_SYNC_MINUTES } from "@/lib/erwin/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { isModuleOn } from "@/modules/state";
+
 const LOG_SOURCE = "ErwinJobSyncRunner";
 
 /**
@@ -83,6 +85,11 @@ export async function runPeriodicCanvasSyncs(): Promise<CanvasSyncRunStats> {
   let failed = 0;
 
   for (const p of providers) {
+    // Courses off means Canvas isn't read at all until it's back on.
+    if (!(await isModuleOn(p.userId, "courses"))) {
+      skipped += 1;
+      continue;
+    }
     const baseIntervalMin = p.syncIntervalMinutes ?? DEFAULT_CANVAS_SYNC_MINUTES;
     // Something due soon can only speed sync up: with the 15-minute default,
     // a flat 30 here slowed it down exactly when a deadline was close.

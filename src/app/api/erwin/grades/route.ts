@@ -4,6 +4,8 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { loadGradebooks } from "@/lib/erwin/gradebook";
 import { logger } from "@/lib/logger";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinGradesAPI";
 
 /**
@@ -20,6 +22,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const courseId = request.nextUrl.searchParams.get("courseId") ?? undefined;
     return NextResponse.json(await loadGradebooks(auth.userId, courseId));
   } catch (error) {

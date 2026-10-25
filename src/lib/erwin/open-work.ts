@@ -11,6 +11,8 @@ import type { Prisma } from "@prisma/client";
 
 import { CLOSED_STATES } from "@/lib/canvas/gradebook-plan";
 
+import { visibleSourceWhere } from "@/modules/state";
+
 const CLOSED_SUBMISSIONS = [...CLOSED_STATES];
 
 /** Not done and not closed by Canvas. */
@@ -23,9 +25,15 @@ export function notClosedWhere(): Prisma.TaskWhereInput {
 
 /**
  * Work someone can act on now: not closed, a top-level task, not deferred,
- * and — for Canvas — already unlocked.
+ * and — for Canvas — already unlocked. `hidden` is the task sources of the
+ * modules this person has off (`hiddenTaskSources`): that work is still
+ * stored, it just isn't theirs to act on while the module is off.
  */
-export function openWorkWhere(userId: string, now: Date): Prisma.TaskWhereInput {
+export function openWorkWhere(
+  userId: string,
+  now: Date,
+  hidden: readonly string[] = []
+): Prisma.TaskWhereInput {
   return {
     userId,
     parentTaskId: null,
@@ -33,6 +41,7 @@ export function openWorkWhere(userId: string, now: Date): Prisma.TaskWhereInput 
       notClosedWhere(),
       { OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }] },
       { OR: [{ unlockAt: null }, { unlockAt: { lte: now } }] },
+      visibleSourceWhere(hidden),
     ],
   };
 }

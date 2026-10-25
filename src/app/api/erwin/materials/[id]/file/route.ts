@@ -9,6 +9,8 @@ import { isInsideMaterialsRoot } from "@/lib/canvas/material-files";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinMaterialFileAPI";
 
 /**
@@ -26,6 +28,8 @@ export async function GET(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const { id } = await params;
     const material = await prisma.courseMaterial.findFirst({
       where: { id, kind: "FILE", course: { userId: auth.userId } },

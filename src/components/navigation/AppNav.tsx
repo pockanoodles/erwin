@@ -55,10 +55,17 @@ export function AppNav({ className }: AppNavProps) {
   const modules = useOnModules();
   const loadModules = useModulesStore((s) => s.load);
 
-  // Another tab or device may have changed them; the store throttles this.
+  // Another tab or device may have changed them: check on navigation (the
+  // store throttles that) and whenever the window comes back to the front.
   useEffect(() => {
     void loadModules();
   }, [loadModules, pathname]);
+
+  useEffect(() => {
+    const onFocus = () => void loadModules({ force: true });
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [loadModules]);
 
   // Navigating is the drawer's job done — leaving it open would bury the page
   // the tap just loaded.

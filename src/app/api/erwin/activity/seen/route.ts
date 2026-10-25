@@ -6,6 +6,8 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinActivitySeenAPI";
 
 const bodySchema = z.union([
@@ -34,6 +36,8 @@ export async function POST(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const parsed = bodySchema.safeParse(await request.json().catch(() => null));
     if (!parsed.success) {
       return NextResponse.json(

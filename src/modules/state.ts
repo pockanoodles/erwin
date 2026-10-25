@@ -1,9 +1,9 @@
 /**
  * Which modules a person has on, read from `UserModule` (server only: this
- * imports Prisma, so nothing the browser loads may import it).
+ * imports Prisma, so nothing the browser loads may import it). No Next.js
+ * imports, so the sync worker can use it too; the API's 409 lives in
+ * `src/modules/api.ts`.
  */
-import { NextResponse } from "next/server";
-
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
@@ -47,27 +47,6 @@ export function visibleSourceWhere(
 ): Prisma.TaskWhereInput {
   if (hidden.length === 0) return {};
   return { OR: [{ source: null }, { source: { notIn: [...hidden] } }] };
-}
-
-/**
- * What a module's API answers while it's off: a 409 that says so, so a
- * script calling it (ops) fails loudly instead of writing into a module
- * nobody can see. Null when the module is on.
- */
-export async function moduleOffResponse(
-  userId: string,
-  id: ModuleId
-): Promise<NextResponse | null> {
-  if (await isModuleOn(userId, id)) return null;
-  const { name } = moduleById(id);
-  return NextResponse.json(
-    {
-      error: "module_off",
-      module: id,
-      message: `${name} is off. Turn it on in Modules.`,
-    },
-    { status: 409 }
-  );
 }
 
 /**

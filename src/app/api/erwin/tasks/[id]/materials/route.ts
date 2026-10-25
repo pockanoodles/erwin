@@ -6,6 +6,8 @@ import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinTaskMaterialsAPI";
 
 // Linked from the description first (the instructor pointed at it), then by module order.
@@ -29,6 +31,8 @@ export async function GET(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const { id } = await params;
     const task = await prisma.task.findFirst({
       where: { id, userId: auth.userId },

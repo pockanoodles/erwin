@@ -2,6 +2,8 @@ import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { hiddenTaskSources, visibleSourceWhere } from "@/modules/state";
+
 import { ProjectStatus } from "@/types/project";
 import {
   EnergyLevel,
@@ -130,8 +132,11 @@ export async function scheduleAllTasksForUser(
       );
     }
 
-    // Get all tasks marked for auto-scheduling that are not locked
+    // Get all tasks marked for auto-scheduling that are not locked. Tasks
+    // from a module that's off aren't placed; any slot one already had stays
+    // as it was until the module is back on.
     const now = newDate();
+    const hidden = await hiddenTaskSources(userId);
     const tasksToSchedule = await prisma.task.findMany({
       where: {
         isAutoScheduled: true,
@@ -144,6 +149,7 @@ export async function scheduleAllTasksForUser(
         },
         userId,
         OR: [{ postponedUntil: null }, { postponedUntil: { lte: now } }],
+        AND: [visibleSourceWhere(hidden)],
       },
       include: {
         project: true,

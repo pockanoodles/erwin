@@ -1,12 +1,12 @@
 "use client";
 
-import { brand } from "@/lib/brand";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
 import { formatDay } from "@/components/goals/types";
+import { FirstRun } from "@/components/today/FirstRun";
+import { Button } from "@/components/ui/button";
 
 import { isToday } from "@/lib/date-utils";
 import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
@@ -108,30 +108,7 @@ export function CommandDashboard() {
               failing, Settings has the logs.
             </p>
           )}
-          {status === "ready" && tasks.length === 0 && (
-            // The first screen a new install shows, so it says what Erwin
-            // needs and offers the three ways to give it that. Connecting
-            // Canvas is the main action because coursework is what Erwin
-            // ranks best.
-            <div className="max-w-xl space-y-5 p-6 md:p-10">
-              <p className="er-label">Nothing to rank yet</p>
-              <p className="text-lg leading-relaxed text-foreground">
-                {brand.name} ranks what you have to do, so give it something to rank.
-                Connect your courses or a calendar, or add a task by hand.
-              </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <Button asChild>
-                  <Link href="/settings#task-sync">Connect Canvas</Link>
-                </Button>
-                <Button asChild variant="outline">
-                  <Link href="/settings#accounts">Add a calendar</Link>
-                </Button>
-                <Button asChild variant="quiet">
-                  <Link href="/tasks">Add a task</Link>
-                </Button>
-              </div>
-            </div>
-          )}
+          {status === "ready" && tasks.length === 0 && <FirstRun />}
           <ol>
             {tasks.map((task, i) => {
               const badge = tierBadge(task);

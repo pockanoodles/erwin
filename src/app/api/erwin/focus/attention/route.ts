@@ -7,6 +7,8 @@ import { openWorkWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { hiddenTaskSources } from "@/modules/state";
+
 const LOG_SOURCE = "ErwinFocusAttentionAPI";
 
 type GoalRow = {
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
     }
 
     const now = newDate();
+    const hidden = await hiddenTaskSources(auth.userId);
     const goalFields = {
       title: true,
       externalId: true,
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest) {
     } as const;
 
     const rows = await prisma.task.findMany({
-      where: openWorkWhere(auth.userId, now),
+      where: openWorkWhere(auth.userId, now, hidden),
       select: {
         id: true,
         title: true,

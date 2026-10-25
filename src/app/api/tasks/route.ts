@@ -13,6 +13,8 @@ import {
 } from "@/lib/task-sync/task-change-tracker";
 import { normalizeRecurrenceRule } from "@/lib/utils/normalize-recurrence-rules";
 
+import { hiddenTaskSources, visibleSourceWhere } from "@/modules/state";
+
 import { EnergyLevel, TaskStatus, TimePreference } from "@/types/task";
 
 const LOG_SOURCE = "tasks-route";
@@ -40,6 +42,7 @@ export async function GET(request: NextRequest) {
     const hideUpcomingTasks = searchParams.get("hideUpcomingTasks") === "true";
 
     const now = newDate();
+    const hidden = await hiddenTaskSources(userId);
     const tasks = await prisma.task.findMany({
       where: {
         // Filter by the current user's ID
@@ -50,12 +53,6 @@ export async function GET(request: NextRequest) {
           preferredTime: { in: timePreference },
         }),
         ...(tagIds.length > 0 && { tags: { some: { id: { in: tagIds } } } }),
-        ...(search && {
-          OR: [
-            { title: { contains: search } },
-            { description: { contains: search } },
-          ],
-        }),
         ...(startDate &&
           endDate && {
             dueDate: {
@@ -68,9 +65,26 @@ export async function GET(request: NextRequest) {
             gte: newDate(taskStartDate),
           },
         }),
-        ...(hideUpcomingTasks && {
-          OR: [{ startDate: null }, { startDate: { lte: now } }],
-        }),
+        // Each condition that needs an OR gets its own entry here: two
+        // spread `OR` keys would silently overwrite each other, which is how
+        // a search used to vanish whenever upcoming tasks were hidden.
+        AND: [
+          // Tasks from a module that's off stay stored but leave the list.
+          visibleSourceWhere(hidden),
+          ...(search
+            ? [
+                {
+                  OR: [
+                    { title: { contains: search } },
+                    { description: { contains: search } },
+                  ],
+                },
+              ]
+            : []),
+          ...(hideUpcomingTasks
+            ? [{ OR: [{ startDate: null }, { startDate: { lte: now } }] }]
+            : []),
+        ],
       },
       include: {
         tags: true,

@@ -4,6 +4,8 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinTaskMaterialCountsAPI";
 
 /**
@@ -18,6 +20,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const rows = await prisma.taskMaterialLink.groupBy({
       by: ["taskId", "reason"],
       where: { task: { userId: auth.userId } },

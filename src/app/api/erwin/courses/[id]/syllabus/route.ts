@@ -5,6 +5,8 @@ import { cleanCourseHtml } from "@/lib/canvas/material-html";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinCourseSyllabusAPI";
 
 /**
@@ -20,6 +22,8 @@ export async function GET(
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
     const { id } = await params;
     const course = await prisma.course.findUnique({
       where: { id, userId: auth.userId },

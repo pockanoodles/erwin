@@ -5,6 +5,8 @@ import { notClosedWhere } from "@/lib/erwin/open-work";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
+import { moduleOffResponse } from "@/modules/api";
+
 const LOG_SOURCE = "ErwinCoursesAPI";
 
 /**
@@ -29,6 +31,8 @@ export async function GET(request: NextRequest) {
     if ("response" in auth) {
       return auth.response;
     }
+    const off = await moduleOffResponse(auth.userId, "courses");
+    if (off) return off;
 
     const materialFields = {
       id: true,
