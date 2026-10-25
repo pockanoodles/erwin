@@ -1,0 +1,87 @@
+import {
+  MODULES,
+  hiddenSourcesOf,
+  isModuleId,
+  moduleForPath,
+  moduleForSource,
+  nextPosition,
+  resolveModuleStates,
+} from "@/modules";
+
+describe("resolveModuleStates", () => {
+  it("gives a module nobody touched its default and its catalog place", () => {
+    const states = resolveModuleStates([]);
+    expect(states.map((s) => s.id)).toEqual(MODULES.map((m) => m.id));
+    expect(states.find((s) => s.id === "courses")?.on).toBe(false);
+    expect(states.find((s) => s.id === "ladder")?.on).toBe(true);
+  });
+
+  it("lets a row override the default and order the rail", () => {
+    const states = resolveModuleStates([
+      { moduleId: "ladder", enabled: false, position: 0 },
+      { moduleId: "courses", enabled: true, position: 5 },
+    ]);
+    expect(states).toEqual([
+      { id: "ladder", on: false, position: 0 },
+      { id: "courses", on: true, position: 5 },
+    ]);
+  });
+
+  it("ignores rows for modules this build doesn't ship", () => {
+    const states = resolveModuleStates([
+      { moduleId: "gone", enabled: true, position: 0 },
+    ]);
+    expect(states.map((s) => s.id)).not.toContain("gone");
+  });
+
+  it("breaks a tie in position by catalog order", () => {
+    const states = resolveModuleStates([
+      { moduleId: "ladder", enabled: true, position: 0 },
+      { moduleId: "courses", enabled: true, position: 0 },
+    ]);
+    expect(states.map((s) => s.id)).toEqual(["courses", "ladder"]);
+  });
+});
+
+describe("hiddenSourcesOf", () => {
+  it("hides Canvas tasks only while Courses is off", () => {
+    expect(hiddenSourcesOf(resolveModuleStates([]))).toEqual(["CANVAS"]);
+    expect(
+      hiddenSourcesOf(
+        resolveModuleStates([
+          { moduleId: "courses", enabled: true, position: 0 },
+        ])
+      )
+    ).toEqual([]);
+  });
+});
+
+describe("lookups", () => {
+  it("finds a module by its page, including the page's own paths", () => {
+    expect(moduleForPath("/courses")?.id).toBe("courses");
+    expect(moduleForPath("/goals/x")?.id).toBe("ladder");
+    expect(moduleForPath("/coursesx")).toBeUndefined();
+    expect(moduleForPath("/tasks")).toBeUndefined();
+  });
+
+  it("finds the module that owns a task source", () => {
+    expect(moduleForSource("CANVAS")?.id).toBe("courses");
+    expect(moduleForSource("GOOGLE")).toBeUndefined();
+    expect(moduleForSource(null)).toBeUndefined();
+  });
+
+  it("knows its own ids", () => {
+    expect(isModuleId("courses")).toBe(true);
+    expect(isModuleId("settings")).toBe(false);
+  });
+
+  it("puts a module turned on after everything already in the rail", () => {
+    expect(nextPosition([])).toBe(0);
+    expect(
+      nextPosition([
+        { id: "courses", on: true, position: 0 },
+        { id: "ladder", on: true, position: 3 },
+      ])
+    ).toBe(4);
+  });
+});

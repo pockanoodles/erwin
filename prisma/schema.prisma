@@ -101,6 +101,7 @@ model User {
   goalCycles           GoalCycle[]
   goals                Goal[]
   courses              Course[]
+  modules              UserModule[]
 }
 
 model VerificationToken {
@@ -872,6 +873,24 @@ model RankerState {
   updatedAt              DateTime @updatedAt
 
   @@index([userId])
+}
+
+/**
+ * A module someone has turned on or off (src/modules). No row means the module's default. Turning one off never deletes its data.
+ */
+model UserModule {
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  moduleId  String
+  enabled   Boolean
+  /**
+   * Order in the rail's module section, lowest first.
+   */
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@id([userId, moduleId])
 }
 
 model Tag {

@@ -17,6 +17,7 @@
     "<THIRD_PARTY_MODULES>",
     "^@/components/(.*)$",
     "^@/lib/(.*)$",
+    "^@/modules(.*)$",
     "^@/hooks/(.*)$",
     "^@/store/(.*)$",
     "^@/types/(.*)$",
