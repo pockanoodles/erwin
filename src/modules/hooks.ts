@@ -2,6 +2,7 @@
  * What the core asks of every module, and the events it raises for them to
  * hear (server only).
  */
+import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import { MODULES } from "@/modules";
@@ -51,23 +52,32 @@ export async function moduleTaskFacts(
   return merged;
 }
 
-/** The strongest lift any module a person has on gives each task (0–1). */
-export async function moduleLift(
+/**
+ * What the modules a person has on tell Focus's ranking about each task: the
+ * strongest lift any of them gives it, and its stakes from the one that owns
+ * it.
+ */
+export async function moduleRankSignals(
   db: Db,
   userId: string,
   taskIds: string[],
   isOn: (id: ModuleId) => boolean
-): Promise<Map<string, number>> {
-  const best = new Map<string, number>();
-  if (taskIds.length === 0) return best;
+): Promise<Map<string, RankSignals>> {
+  const merged = new Map<string, RankSignals>();
+  if (taskIds.length === 0) return merged;
   for (const m of MODULES) {
-    const ask = SERVER_MODULES[m.id].lift;
+    const ask = SERVER_MODULES[m.id].rankSignals;
     if (!ask || !isOn(m.id)) continue;
-    for (const [id, lift] of await ask(db, userId, taskIds)) {
-      best.set(id, Math.max(best.get(id) ?? lift, lift));
+    for (const [id, signals] of await ask(db, userId, taskIds)) {
+      const had = merged.get(id);
+      const lift =
+        had?.lift != null && signals.lift != null
+          ? Math.max(had.lift, signals.lift)
+          : (signals.lift ?? had?.lift);
+      merged.set(id, { ...had, ...signals, lift });
     }
   }
-  return best;
+  return merged;
 }
 
 /** Every key a goal can claim each task by that a module supplies, on or off. */

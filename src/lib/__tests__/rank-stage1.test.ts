@@ -267,38 +267,52 @@ describe("impactWorkIsUrgent", () => {
 });
 
 describe("visibilityBoost", () => {
-  // Ten pieces of work with impact; p80 is the 8th smallest (0.8).
-  const pool = Array.from({ length: 10 }, (_, i) =>
-    makeTask({ impact: (i + 1) / 10, dueDate: at(24 * 20) })
+  // Ten assignments in one course; p80 of their points is the 8th smallest (80).
+  const course = Array.from({ length: 10 }, (_, i) =>
+    makeTask({ stakes: (i + 1) * 10, stakesGroup: "c1", dueDate: at(24 * 20) })
   );
 
-  test("far-out work in the top fifth by impact is boosted", () => {
-    expect(visibilityBoost(pool[9], pool, NOW)).toBeCloseTo(0.15, 6);
-    expect(visibilityBoost(pool[8], pool, NOW)).toBeCloseTo(0.15, 6);
+  test("far-out work above its group's 80th percentile is boosted", () => {
+    expect(visibilityBoost(course[9], course, NOW)).toBeCloseTo(0.15, 6);
+    expect(visibilityBoost(course[8], course, NOW)).toBeCloseTo(0.15, 6);
   });
 
   test("work at or below the 80th percentile is not", () => {
-    expect(visibilityBoost(pool[7], pool, NOW)).toBe(0);
-    expect(visibilityBoost(pool[0], pool, NOW)).toBe(0);
+    expect(visibilityBoost(course[7], course, NOW)).toBe(0);
+    expect(visibilityBoost(course[0], course, NOW)).toBe(0);
   });
 
-  test("nothing within a week, nothing without a due date or impact", () => {
-    const soon = makeTask({ impact: 1, dueDate: at(24 * 6) });
-    const undated = makeTask({ impact: 1, dueDate: null });
+  test("nothing within a week, nothing without a due date or stakes", () => {
+    const soon = makeTask({
+      stakes: 500,
+      stakesGroup: "c1",
+      dueDate: at(24 * 6),
+    });
+    const undated = makeTask({ stakes: 500, stakesGroup: "c1", dueDate: null });
     const plain = makeTask({ dueDate: at(24 * 20) });
-    expect(visibilityBoost(soon, [...pool, soon], NOW)).toBe(0);
-    expect(visibilityBoost(undated, [...pool, undated], NOW)).toBe(0);
-    expect(visibilityBoost(plain, [...pool, plain], NOW)).toBe(0);
+    expect(visibilityBoost(soon, [...course, soon], NOW)).toBe(0);
+    expect(visibilityBoost(undated, [...course, undated], NOW)).toBe(0);
+    expect(visibilityBoost(plain, [...course, plain], NOW)).toBe(0);
   });
 
-  test("the percentile counts only work that carries impact", () => {
-    const big = makeTask({ impact: 0.9, dueDate: at(24 * 20) });
-    const small = makeTask({ impact: 0.1, dueDate: at(24 * 20) });
-    const plain = Array.from({ length: 8 }, () =>
-      makeTask({ dueDate: at(24 * 20) })
+  test("stakes compare only within their group", () => {
+    // 200 points tops another course's list, but not this one's.
+    const other = makeTask({
+      stakes: 200,
+      stakesGroup: "c2",
+      dueDate: at(24 * 20),
+    });
+    const big = Array.from({ length: 5 }, () =>
+      makeTask({ stakes: 300, stakesGroup: "c2", dueDate: at(24 * 20) })
     );
-    // With only two impact-bearing tasks, p80 is the larger one: no boost.
-    expect(visibilityBoost(big, [big, small, ...plain], NOW)).toBe(0);
+    expect(visibilityBoost(other, [...course, other, ...big], NOW)).toBe(0);
+    const alone = makeTask({
+      stakes: 100,
+      stakesGroup: "c3",
+      dueDate: at(24 * 20),
+    });
+    // Alone in its group, it is its own 80th percentile.
+    expect(visibilityBoost(alone, [...course, alone], NOW)).toBe(0);
   });
 });
 

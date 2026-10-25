@@ -3,11 +3,16 @@
  * import Prisma). The core reads this list and never imports a module's
  * server code itself.
  */
+import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
-import { courseClaimKeys, courseTaskFacts } from "@/modules/courses/facts";
+import {
+  courseClaimKeys,
+  courseRankSignals,
+  courseTaskFacts,
+} from "@/modules/courses/facts";
 import { syncCanvasIfDue } from "@/modules/courses/server";
-import { goalLift, goalTaskFacts } from "@/modules/ladder/facts";
+import { goalRankSignals, goalTaskFacts } from "@/modules/ladder/facts";
 import { linkChangedTasksToGoals } from "@/modules/ladder/server";
 import { reconcileReachOuts } from "@/modules/people/reach-out";
 import type { ModuleId } from "@/modules/types";
@@ -47,12 +52,16 @@ export interface ServerContributions {
     userId: string,
     tasks: FactsRequest[]
   ) => Promise<Map<string, TaskFacts>>;
-  /** How much it lifts tasks it doesn't own, 0–1, for Focus's ranking. Asked only while it's on. */
-  lift?: (
+  /**
+   * What it tells Focus's ranking about tasks: a lift for work it doesn't own
+   * (Ladder's goals), stakes for its own (Courses' points). Asked only while
+   * it's on.
+   */
+  rankSignals?: (
     db: Db,
     userId: string,
     taskIds: string[]
-  ) => Promise<Map<string, number>>;
+  ) => Promise<Map<string, RankSignals>>;
   /** Keys a goal can claim tasks by beyond source and project ("course:<id>"), on or off. */
   claimKeys?: (
     db: Db | DbTransaction,
@@ -65,12 +74,13 @@ export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
   courses: {
     jobs: [{ id: "courses.canvas-sync", run: syncCanvasIfDue }],
     taskFacts: courseTaskFacts,
+    rankSignals: courseRankSignals,
     claimKeys: courseClaimKeys,
   },
   ladder: {
     afterTasksChange: linkChangedTasksToGoals,
     taskFacts: goalTaskFacts,
-    lift: goalLift,
+    rankSignals: goalRankSignals,
   },
   people: {
     jobs: [{ id: "people.reconcile", run: reconcileReachOuts }],

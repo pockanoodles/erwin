@@ -10,9 +10,12 @@
  *  - `gradeProjection`, for work Focus judged DANGER: the course grade now
  *    and if this is missed.
  *
- * And the key a goal claims a course's work by: `course:<Canvas course id>`.
+ * For Focus's ranking, each task's stakes: its points, compared within its
+ * course. And the key a goal claims a course's work by:
+ * `course:<Canvas course id>`.
  */
 import { projectMissedGrades } from "@/lib/erwin/load-grade-projections";
+import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import type { FactsRequest, TaskFacts } from "@/modules/server";
@@ -68,6 +71,33 @@ export async function courseTaskFacts(
     });
   }
   return facts;
+}
+
+export async function courseRankSignals(
+  db: Db,
+  userId: string,
+  taskIds: string[]
+): Promise<Map<string, RankSignals>> {
+  const rows = await db.courseAssignment.findMany({
+    where: { taskId: { in: taskIds }, course: { userId } },
+    select: {
+      taskId: true,
+      pointsPossible: true,
+      course: { select: { canvasId: true } },
+    },
+  });
+  return new Map(
+    rows.flatMap((r) =>
+      r.taskId
+        ? [
+            [
+              r.taskId,
+              { stakes: r.pointsPossible ?? 0, stakesGroup: r.course.canvasId },
+            ] as const,
+          ]
+        : []
+    )
+  );
 }
 
 export async function courseClaimKeys(

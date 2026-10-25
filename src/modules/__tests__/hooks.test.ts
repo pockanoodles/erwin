@@ -1,6 +1,10 @@
 import type { Db } from "@/lib/prisma";
 
-import { moduleClaimKeys, moduleLift, moduleTaskFacts } from "@/modules/hooks";
+import {
+  moduleClaimKeys,
+  moduleRankSignals,
+  moduleTaskFacts,
+} from "@/modules/hooks";
 import type { FactsRequest } from "@/modules/server";
 import type { ModuleId } from "@/modules/types";
 
@@ -21,24 +25,27 @@ jest.mock("@/modules/server", () => ({
         async (_db: unknown, _user: string, ids: string[]) =>
           new Map(ids.map((id) => [id, [`course:${id}`]]))
       ),
+      rankSignals: jest.fn(
+        async () => new Map([["a", { stakes: 100, stakesGroup: "c1" }]])
+      ),
     },
     ladder: {
       taskFacts: jest.fn(async () => new Map([["a", { ladderGoals: ["g"] }]])),
-      lift: jest.fn(
+      rankSignals: jest.fn(
         async () =>
           new Map([
-            ["a", 0.4],
-            ["b", 0.9],
+            ["a", { lift: 0.4 }],
+            ["b", { lift: 0.9 }],
           ])
       ),
       claimKeys: jest.fn(async () => new Map([["a", ["venture:x"]]])),
     },
     people: {
-      lift: jest.fn(
+      rankSignals: jest.fn(
         async () =>
           new Map([
-            ["a", 0.7],
-            ["b", 0.2],
+            ["a", { lift: 0.7 }],
+            ["b", { lift: 0.2 }],
           ])
       ),
     },
@@ -77,16 +84,26 @@ describe("moduleTaskFacts", () => {
   });
 });
 
-describe("moduleLift", () => {
-  it("keeps the strongest lift among modules that are on", async () => {
-    const lift = await moduleLift(db, "u", ["a", "b"], on("ladder", "people"));
-    expect(lift.get("a")).toBe(0.7);
-    expect(lift.get("b")).toBe(0.9);
+describe("moduleRankSignals", () => {
+  it("keeps the strongest lift, and the owner's stakes", async () => {
+    const signals = await moduleRankSignals(
+      db,
+      "u",
+      ["a", "b"],
+      on("courses", "ladder", "people")
+    );
+    expect(signals.get("a")).toEqual({
+      lift: 0.7,
+      stakes: 100,
+      stakesGroup: "c1",
+    });
+    expect(signals.get("b")).toEqual({ lift: 0.9 });
   });
 
   it("leaves out a module that's off", async () => {
-    const lift = await moduleLift(db, "u", ["a", "b"], on("people"));
-    expect(lift.get("b")).toBe(0.2);
+    const signals = await moduleRankSignals(db, "u", ["a", "b"], on("people"));
+    expect(signals.get("a")).toEqual({ lift: 0.7 });
+    expect(signals.get("b")).toEqual({ lift: 0.2 });
   });
 });
 

@@ -3,6 +3,7 @@
  * each task climbs toward, for Today and Focus to show, and how much its most
  * important active goal lifts it in Focus's ranking.
  */
+import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db } from "@/lib/prisma";
 
 import type { FactsRequest, TaskFacts } from "@/modules/server";
@@ -11,11 +12,11 @@ import type { FactsRequest, TaskFacts } from "@/modules/server";
  * A task serves several goals; it surfaces on its most important one. A goal
  * done or set aside no longer makes its work matter more.
  */
-export async function goalLift(
+export async function goalRankSignals(
   db: Db,
   userId: string,
   taskIds: string[]
-): Promise<Map<string, number>> {
+): Promise<Map<string, RankSignals>> {
   const links = await db.taskGoalLink.findMany({
     where: {
       taskId: { in: taskIds },
@@ -28,7 +29,7 @@ export async function goalLift(
     const score = (link.goal.importanceScore ?? 0) / 100;
     lift.set(link.taskId, Math.max(lift.get(link.taskId) ?? score, score));
   }
-  return lift;
+  return new Map([...lift].map(([id, value]) => [id, { lift: value }]));
 }
 
 /** `ladderGoals`: every goal a task is filed under, done ones included. */

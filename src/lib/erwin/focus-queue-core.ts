@@ -13,6 +13,7 @@ import {
 import { computeFocusBriefing } from "@/lib/erwin/briefing";
 import { openWorkWhere } from "@/lib/erwin/open-work";
 import {
+  type RankSignals,
   type TaskForRanking,
   filterTasksForRanking,
   isDangerResolved,
@@ -21,7 +22,7 @@ import {
 } from "@/lib/erwin/rank-stage1";
 import { prisma } from "@/lib/prisma";
 
-import { moduleLift, moduleTaskFacts } from "@/modules/hooks";
+import { moduleRankSignals, moduleTaskFacts } from "@/modules/hooks";
 import type { TaskFacts } from "@/modules/server";
 import { moduleView } from "@/modules/state";
 
@@ -43,7 +44,7 @@ export function toTaskForRanking(
     postponedUntil?: Date | null;
     parentTaskId?: string | null;
   },
-  lift: number | null = null
+  signals: RankSignals = {}
 ): TaskForRanking {
   return {
     id: r.id,
@@ -61,7 +62,9 @@ export function toTaskForRanking(
     createdAt: r.createdAt,
     postponedUntil: r.postponedUntil ?? null,
     parentTaskId: r.parentTaskId ?? null,
-    lift,
+    lift: signals.lift ?? null,
+    stakes: signals.stakes ?? null,
+    stakesGroup: signals.stakesGroup ?? null,
   };
 }
 
@@ -110,8 +113,8 @@ export async function buildFocusQueueCore(
   });
 
   const ids = rows.map((r) => r.id);
-  const lift = await moduleLift(prisma, userId, ids, modules.isOn);
-  const minimal = rows.map((r) => toTaskForRanking(r, lift.get(r.id) ?? null));
+  const signals = await moduleRankSignals(prisma, userId, ids, modules.isOn);
+  const minimal = rows.map((r) => toTaskForRanking(r, signals.get(r.id)));
   const filtered = filterTasksForRanking(minimal, now);
 
   const availability = await computeErwinAvailabilitySummary(userId, now);

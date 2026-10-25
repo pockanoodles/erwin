@@ -3,8 +3,9 @@
  * Spec: technical spec §5.2 (May 1, 2026).
  *
  * It knows no module. What a task is worth arrives as `impact` (set by the
- * module that owns it: Courses scores coursework by its share of the grade)
- * and `lift` (another module vouching for it: Ladder, by its goals).
+ * module that owns it: Courses scores coursework by its share of the grade),
+ * `lift` (another module vouching for it: Ladder, by its goals) and
+ * `stakes` (how big it is among its peers: Courses, points within a course).
  */
 import type { Task } from "@prisma/client";
 
@@ -68,6 +69,13 @@ export type TaskForRanking = Pick<
    * `null` when nothing lifts it.
    */
   lift?: number | null;
+  /**
+   * How much rides on it in its group's own units, and the group it's
+   * compared within (Courses: points, within one course). Only the
+   * long-horizon boost reads them.
+   */
+  stakes?: number | null;
+  stakesGroup?: string | null;
   /** Subtasks never surface in Focus; the parent is the work item. */
   parentTaskId?: string | null;
 };
@@ -246,10 +254,8 @@ function percentile80(values: number[]): number {
 
 /**
  * Long-horizon visibility boost (spec §5.2.7): work due more than a week out
- * whose impact is in the pool's top fifth surfaces early, so a big project
- * isn't first seen the week it's due. (Before impact was generic this
- * compared Canvas points within one course; impact already weighs a course's
- * grade groups, so it compares across courses.)
+ * whose stakes top the 80th percentile of its group's surfaces early, so a
+ * big project isn't first seen the week it's due.
  */
 export function visibilityBoost(
   task: TaskForRanking,
@@ -260,18 +266,26 @@ export function visibilityBoost(
   if (h == null || h <= 24 * 7) {
     return 0;
   }
-  const impact = task.impact ?? 0;
-  if (impact <= 0) {
+  const stakes = task.stakes ?? 0;
+  if (stakes <= 0 || !task.stakesGroup) {
     return 0;
   }
   const p80 = percentile80(
-    candidates.flatMap((t) => (t.impact == null ? [] : [t.impact]))
+    candidates
+      .filter((t) => t.stakesGroup === task.stakesGroup)
+      .map((t) => t.stakes ?? 0)
   );
-  if (!Number.isFinite(p80) || impact <= p80) {
+  if (!Number.isFinite(p80) || stakes <= p80) {
     return 0;
   }
   return VISIBILITY_BOOST;
 }
+
+/** What modules tell the ranking about a task (`moduleRankSignals`). */
+export type RankSignals = Pick<
+  TaskForRanking,
+  "lift" | "stakes" | "stakesGroup"
+>;
 
 /**
  * Assign urgency tier (spec §5.2.2). DANGER uses resolved danger (including skip spiral).
