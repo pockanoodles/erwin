@@ -38,7 +38,8 @@ interface ProjectedGoal {
 /**
  * What pump 7 should say out loud about the boss bindings: a named assignment
  * Erwin doesn't have, a vault date Canvas disagrees with, and a boss Canvas
- * says is felled while the vault heading still lacks its ✅ (the rune ledger).
+ * says is felled while the vault heading still lacks its ✅. Erwin pays the
+ * boss either way; the ✅ keeps the vault's record in step.
  */
 function bindingReport(goals: ProjectedGoal[], bindings: BossBinding[]) {
   const sent = new Map(goals.map((g) => [g.externalId, g]));

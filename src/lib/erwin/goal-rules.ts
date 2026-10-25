@@ -9,7 +9,8 @@ import type { Db, DbTransaction } from "@/lib/prisma";
  *    `sources:` (School claims CANVAS).
  *  - A boss that names a Canvas assignment claims that task, and Canvas wins
  *    on the facts: the task's due date becomes the boss's date, and
- *    submitting it fells the boss. Runes still pay only on the vault's ✅.
+ *    submitting it fells the boss, which pays its XP (lib/erwin/xp.ts). A
+ *    boss with no assignment is felled by the ✅ on its vault heading.
  *
  * Runs after every projection and every Canvas sync, so a new assignment is
  * filed the moment it lands rather than at 06:55 the next morning. A task
