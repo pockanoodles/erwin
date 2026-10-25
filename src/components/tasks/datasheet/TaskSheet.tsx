@@ -9,7 +9,6 @@ import { cn } from "@/lib/utils";
 import { useTaskModule } from "@/modules/client";
 
 import { useLordStore, type Boss } from "@/store/lord";
-import { useMaterialCountsStore } from "@/store/materialCounts";
 import { useOnModules } from "@/store/modules";
 import {
   useTaskListViewSettings,
@@ -103,8 +102,7 @@ export function TaskSheet({
   packetOpen,
 }: TaskSheetProps) {
   const lords = useLordStore((s) => s.lords);
-  const materialCounts = useMaterialCountsStore((s) => s.counts);
-  const ctx = useMemo(() => ({ lords, materialCounts }), [lords, materialCounts]);
+  const ctx = useMemo(() => ({ lords }), [lords]);
 
   const columnWidths = useTaskListViewSettings((s) => s.columnWidths);
   const setColumnWidth = useTaskListViewSettings((s) => s.setColumnWidth);

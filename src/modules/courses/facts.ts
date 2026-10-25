@@ -8,7 +8,9 @@
  *    reads it to tell a hand-ticked completion from one Canvas confirmed;
  *  - `gradeWeightPercent`: roughly how much of the course grade it's worth;
  *  - `gradeProjection`, for work Focus judged DANGER: the course grade now
- *    and if this is missed.
+ *    and if this is missed;
+ *  - `materialCount`: course materials linked to it, and how many its
+ *    instructions cite (the Tasks sheet's Mat column).
  *
  * For Focus's ranking, each task's stakes: its points, compared within its
  * course. And the key a goal claims a course's work by:
@@ -39,6 +41,19 @@ export async function courseTaskFacts(
     },
   });
 
+  const linkCounts = await db.taskMaterialLink.groupBy({
+    by: ["taskId", "reason"],
+    where: { taskId: { in: tasks.map((t) => t.id) } },
+    _count: { _all: true },
+  });
+  const materials = new Map<string, { total: number; cited: number }>();
+  for (const row of linkCounts) {
+    const entry = materials.get(row.taskId) ?? { total: 0, cited: 0 };
+    entry.total += row._count._all;
+    if (row.reason === "DESCRIPTION") entry.cited += row._count._all;
+    materials.set(row.taskId, entry);
+  }
+
   const danger = new Set(tasks.filter((t) => t.danger).map((t) => t.id));
   const projections = await projectMissedGrades(
     db,
@@ -68,6 +83,7 @@ export async function courseTaskFacts(
             letterIfMissed: p.letterGradeIfMissed,
           }
         : null,
+      materialCount: materials.get(r.taskId) ?? null,
     });
   }
   return facts;

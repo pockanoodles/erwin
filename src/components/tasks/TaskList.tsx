@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-media-query";
 
 import { filterTasksByLord, useLordStore } from "@/store/lord";
-import { useMaterialCountsStore } from "@/store/materialCounts";
 import { useOnModules } from "@/store/modules";
 import {
   TaskColumnId,
@@ -96,7 +95,6 @@ export function TaskList({
   } = useTaskListViewSettings();
   const { listStyle, setListStyle } = useTaskPageSettings();
   const { lords, bosses, activeLordId } = useLordStore();
-  const materialCounts = useMaterialCountsStore((s) => s.counts);
 
   const visible = useMemo(
     () => new Set<TaskColumnId>([...visibleColumns, "title"]),
@@ -212,8 +210,8 @@ export function TaskList({
           if (!b.duration) return -1;
           return direction * (a.duration - b.duration);
         case "materials": {
-          const aCount = materialCounts[a.id]?.total ?? 0;
-          const bCount = materialCounts[b.id]?.total ?? 0;
+          const aCount = a.materialCount?.total ?? 0;
+          const bCount = b.materialCount?.total ?? 0;
           if (!aCount) return 1;
           if (!bCount) return -1;
           return direction * (aCount - bCount);
@@ -246,7 +244,7 @@ export function TaskList({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modeFilteredTasks, sortBy, sortDirection, lords, materialCounts]);
+  }, [modeFilteredTasks, sortBy, sortDirection, lords]);
 
   // The sheet's rows: the boss band on top of the sorted tasks. It follows the
   // Lord tab and search; felled bosses show only when completed work does.

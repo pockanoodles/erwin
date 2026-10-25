@@ -23,7 +23,6 @@ const OWNED: Record<string, string[]> = {
     "src/lib/erwin/load-grade-projections.ts",
     "src/store/courseLibrary.ts",
     "src/store/courseActivity.ts",
-    "src/store/materialCounts.ts",
     "src/types/course-activity.ts",
     "src/types/course-materials.ts",
     "src/types/gradebook.ts",
@@ -35,7 +34,6 @@ const OWNED: Record<string, string[]> = {
     "src/app/api/erwin/news/",
     "src/app/api/erwin/activity/",
     "src/app/api/erwin/tasks/[id]/materials/",
-    "src/app/api/erwin/tasks/material-counts/",
   ],
   ladder: [
     "src/modules/ladder/",
@@ -77,12 +75,6 @@ const REGISTRIES = new Set([
 
 /** "<importing file> -> <module>", each with what will remove it. */
 const KNOWN = new Set([
-  // The Tasks page's materials column (counts of Canvas files per task).
-  // Removed by sheet columns as a module contribution.
-  "src/app/(common)/tasks/page.tsx -> courses",
-  "src/components/tasks/datasheet/TaskSheet.tsx -> courses",
-  "src/components/tasks/TaskList.tsx -> courses",
-  "src/components/tasks/datasheet/columns.tsx -> courses",
   // Ladder settles bosses from Canvas's gradebook and names courses in the
   // XP log. Removed by proofs as a Courses contribution to Ladder.
   "src/lib/erwin/boss-proof.ts -> courses",

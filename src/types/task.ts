@@ -58,6 +58,8 @@ export interface CourseTaskFacts {
   gradeWeightPercent?: number | null;
   /** Only on work Focus judged DANGER. */
   gradeProjection?: GradeProjection | null;
+  /** Course materials linked to it; `cited` are linked from its instructions. */
+  materialCount?: { total: number; cited: number } | null;
 }
 
 export interface Task extends CourseTaskFacts {

@@ -3,7 +3,6 @@ import { create } from "zustand";
 import { invalidateResources } from "@/hooks/use-resource";
 import type { LibraryCourse } from "@/types/course-materials";
 
-import { useMaterialCountsStore } from "@/store/materialCounts";
 
 /** The Courses page's four views, switched from the top bar. */
 export type CoursesView = "activity" | "grades" | "news" | "library";
@@ -78,9 +77,10 @@ export const useCourseLibraryStore = create<CourseLibraryState>()((set, get) => 
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error ?? `Sync failed (${res.status})`);
       }
-      // Bodies, packets and counts may all have moved.
+      // Bodies and packets may have moved; the Tasks sheet's material counts
+      // come with its next task list.
       invalidateResources("/api/erwin/");
-      await Promise.all([get().fetchCourses(), useMaterialCountsStore.getState().fetchCounts()]);
+      await get().fetchCourses();
     } catch (e) {
       set({ lastSyncError: e instanceof Error ? e.message : "Sync failed" });
     } finally {

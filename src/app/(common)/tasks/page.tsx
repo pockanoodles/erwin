@@ -12,7 +12,6 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 
 import { useLordStore } from "@/store/lord";
-import { useMaterialCountsStore } from "@/store/materialCounts";
 import { useModuleOn } from "@/store/modules";
 import { useProjectStore } from "@/store/project";
 import { useTaskStore } from "@/store/task";
@@ -39,8 +38,6 @@ export default function TasksPage() {
   const { fetchProjects } = useProjectStore();
   const { fetchLords, clear: clearLords } = useLordStore();
   const ladderOn = useModuleOn("ladder");
-  const fetchMaterialCounts = useMaterialCountsStore((s) => s.fetchCounts);
-  const coursesOn = useModuleOn("courses");
   const { viewMode } = useTaskPageSettings();
   // View switching and Create Task live in the app top bar
   // (components/tasks/TasksTopBar.tsx); the page only owns the modal itself.
@@ -59,12 +56,6 @@ export default function TasksPage() {
     if (ladderOn) fetchLords();
     else if (ladderOn === false) clearLords();
   }, [ladderOn, fetchLords, clearLords]);
-
-  // Material counts are Canvas's, so they're only asked for while Courses
-  // is on (its API answers 409 while it's off).
-  useEffect(() => {
-    if (coursesOn) fetchMaterialCounts();
-  }, [coursesOn, fetchMaterialCounts]);
 
   const handleCreateTask = async (task: NewTask) => {
     await createTask(task);

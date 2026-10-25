@@ -15,7 +15,6 @@ import { cn } from "@/lib/utils";
 import type { ModuleId } from "@/modules/types";
 
 import type { Lord } from "@/store/lord";
-import type { MaterialCount } from "@/store/materialCounts";
 import type { TaskColumnId } from "@/store/taskListViewSettings";
 
 import {
@@ -62,8 +61,6 @@ export type SortKey =
 
 export interface ColumnContext {
   lords: Lord[];
-  /** Canvas materials linked to each task, by task id. */
-  materialCounts: Record<string, MaterialCount>;
 }
 
 /** A patch as `onInlineEdit` wants it: a whole task plus the API's goal setter. */
@@ -174,8 +171,9 @@ function lordOf(task: Task, { lords }: ColumnContext): Lord | undefined {
   );
 }
 
-function materialsText(task: Task, { materialCounts }: ColumnContext): string {
-  const count = materialCounts[task.id];
+/** Courses' fact: materials linked to the task (lib types CourseTaskFacts). */
+function materialsText(task: Task): string {
+  const count = task.materialCount;
   if (!count) return "";
   const noun = count.total === 1 ? "material" : "materials";
   return count.cited
@@ -328,8 +326,8 @@ export const TASK_COLUMNS: readonly TaskColumn[] = [
     align: "right",
     // Cited materials are the instructor saying "read this", so a count with
     // any cited gets the accent; a module-only count stays quiet.
-    render: (t, ctx) => {
-      const count = ctx.materialCounts[t.id];
+    render: (t) => {
+      const count = t.materialCount;
       if (!count) return EMPTY;
       return (
         <span className={cn("tabular-nums", count.cited ? "text-rust-text" : "text-muted-foreground")}>
