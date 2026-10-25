@@ -3,15 +3,17 @@ import {
   computeStage1Scores,
   computeUrgencyTier,
   deadlinePressure,
-  effectiveGoalImpact,
-  effectiveGradeImpact,
+  effectiveImpact,
+  effectiveLift,
   effortFit,
   filterTasksForRanking,
-  isPersonalFillerCandidate,
+  impactWorkIsUrgent,
+  isFillerCandidate,
   isSkipCooling,
   orderTasksStage1,
   pickTopTaskStage1,
   skipPenalty,
+  visibilityBoost,
 } from "../erwin/rank-stage1";
 
 const NOW = new Date("2026-06-01T12:00:00.000Z");
@@ -32,18 +34,14 @@ function makeTask(overrides: Partial<TaskForRanking> = {}): TaskForRanking {
     unlockAt: null,
     lockAt: null,
     duration: 30,
-    gradeImpactScore: null,
-    submissionStatus: null,
-    source: "MANUAL",
-    category: null,
+    impact: null,
+    closedAt: null,
     priority: null,
-    pointsPossible: null,
-    courseId: null,
     skipCount: 0,
     lastSkippedAt: null,
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     postponedUntil: null,
-    goalImportanceScore: null,
+    lift: null,
     ...overrides,
   };
 }
@@ -82,49 +80,41 @@ describe("deadlinePressure", () => {
   });
 });
 
-describe("effectiveGradeImpact", () => {
-  test("null grade impact is 0", () => {
-    expect(
-      effectiveGradeImpact(makeTask({ gradeImpactScore: null }), NOW)
-    ).toBe(0);
+describe("effectiveImpact", () => {
+  test("null impact is 0", () => {
+    expect(effectiveImpact(makeTask({ impact: null }), NOW)).toBe(0);
   });
 
-  test("no due date returns raw grade impact", () => {
-    expect(
-      effectiveGradeImpact(
-        makeTask({ gradeImpactScore: 0.8, dueDate: null }),
-        NOW
-      )
-    ).toBe(0.8);
+  test("no due date returns raw impact", () => {
+    expect(effectiveImpact(makeTask({ impact: 0.8, dueDate: null }), NOW)).toBe(
+      0.8
+    );
   });
 
-  test("before due date returns raw grade impact", () => {
+  test("before due date returns raw impact", () => {
     expect(
-      effectiveGradeImpact(
-        makeTask({ gradeImpactScore: 0.8, dueDate: at(10) }),
-        NOW
-      )
+      effectiveImpact(makeTask({ impact: 0.8, dueDate: at(10) }), NOW)
     ).toBe(0.8);
   });
 
   test("past lock halves impact (floored at 0.05)", () => {
     const task = makeTask({
-      gradeImpactScore: 0.8,
+      impact: 0.8,
       dueDate: at(-120),
       lockAt: at(-24),
     });
-    expect(effectiveGradeImpact(task, NOW)).toBeCloseTo(0.4, 5);
+    expect(effectiveImpact(task, NOW)).toBeCloseTo(0.4, 5);
   });
 
   test("late without lock applies per-day penalty", () => {
     // 2 days late → penalty 0.2 → 0.8 * 0.8 = 0.64
-    const task = makeTask({ gradeImpactScore: 0.8, dueDate: at(-48) });
-    expect(effectiveGradeImpact(task, NOW)).toBeCloseTo(0.64, 5);
+    const task = makeTask({ impact: 0.8, dueDate: at(-48) });
+    expect(effectiveImpact(task, NOW)).toBeCloseTo(0.64, 5);
   });
 
   test("penalty is floored at 0.05", () => {
-    const task = makeTask({ gradeImpactScore: 0.1, dueDate: at(-1000) });
-    expect(effectiveGradeImpact(task, NOW)).toBe(0.05);
+    const task = makeTask({ impact: 0.1, dueDate: at(-1000) });
+    expect(effectiveImpact(task, NOW)).toBe(0.05);
   });
 });
 
@@ -184,40 +174,33 @@ describe("computeUrgencyTier", () => {
   });
 });
 
-describe("effectiveGoalImpact", () => {
-  test("unlinked task contributes 0", () => {
-    expect(effectiveGoalImpact(makeTask({ goalImportanceScore: null }))).toBe(
-      0
-    );
+describe("effectiveLift", () => {
+  test("a task nothing lifts contributes 0", () => {
+    expect(effectiveLift(makeTask({ lift: null }))).toBe(0);
   });
 
-  test("importance 90 normalizes to 0.9", () => {
-    expect(
-      effectiveGoalImpact(makeTask({ goalImportanceScore: 90 }))
-    ).toBeCloseTo(0.9, 5);
+  test("passes a 0–1 lift through", () => {
+    expect(effectiveLift(makeTask({ lift: 0.9 }))).toBeCloseTo(0.9, 5);
   });
 
-  test("clamps above 100 to 1", () => {
-    expect(effectiveGoalImpact(makeTask({ goalImportanceScore: 150 }))).toBe(1);
+  test("clamps above 1 to 1", () => {
+    expect(effectiveLift(makeTask({ lift: 1.5 }))).toBe(1);
   });
 
   test("clamps below 0 to 0", () => {
-    expect(effectiveGoalImpact(makeTask({ goalImportanceScore: -10 }))).toBe(0);
+    expect(effectiveLift(makeTask({ lift: -0.1 }))).toBe(0);
   });
 });
 
 describe("filterTasksForRanking", () => {
-  test("removes completed, submitted/graded, and still-locked tasks", () => {
+  test("removes completed, closed, and still-locked tasks", () => {
     const completed = makeTask({ status: "completed" });
-    const submitted = makeTask({ submissionStatus: "submitted" });
-    const graded = makeTask({ submissionStatus: "graded" });
+    // Canvas closed it without a submission: it's not done, but it's gone.
+    const missed = makeTask({ closedAt: at(-2) });
     const locked = makeTask({ unlockAt: at(24) });
     const open = makeTask({ status: "todo" });
 
-    const kept = filterTasksForRanking(
-      [completed, submitted, graded, locked, open],
-      NOW
-    );
+    const kept = filterTasksForRanking([completed, missed, locked, open], NOW);
 
     expect(kept.map((t) => t.id)).toEqual([open.id]);
   });
@@ -240,39 +223,82 @@ describe("filterTasksForRanking", () => {
   test("removes subtasks so only the parent can surface", () => {
     const parent = makeTask({ id: "parent" });
     const child = makeTask({ id: "child", parentTaskId: "parent" });
-    expect(filterTasksForRanking([parent, child], NOW).map((t) => t.id)).toEqual(
-      ["parent"]
-    );
+    expect(
+      filterTasksForRanking([parent, child], NOW).map((t) => t.id)
+    ).toEqual(["parent"]);
   });
 });
 
-describe("isPersonalFillerCandidate", () => {
-  test("personal manual task is a filler candidate", () => {
-    expect(isPersonalFillerCandidate(makeTask({ source: "MANUAL" }))).toBe(
-      true
-    );
+describe("isFillerCandidate", () => {
+  test("a task nothing rides on is a filler candidate", () => {
+    expect(isFillerCandidate(makeTask())).toBe(true);
   });
 
-  test("canvas task is not a filler candidate", () => {
-    expect(isPersonalFillerCandidate(makeTask({ source: "CANVAS" }))).toBe(
-      false
-    );
+  test("a task its module gave an impact is not", () => {
+    expect(isFillerCandidate(makeTask({ impact: 0.2 }))).toBe(false);
   });
 
   test("high-priority task is not a filler candidate", () => {
-    expect(
-      isPersonalFillerCandidate(
-        makeTask({ source: "MANUAL", priority: "high" })
-      )
-    ).toBe(false);
+    expect(isFillerCandidate(makeTask({ priority: "high" }))).toBe(false);
   });
 
-  test("goal-linked task is never a filler candidate", () => {
-    expect(
-      isPersonalFillerCandidate(
-        makeTask({ source: "MANUAL", goalImportanceScore: 80 })
-      )
-    ).toBe(false);
+  test("a lifted task is never a filler candidate", () => {
+    expect(isFillerCandidate(makeTask({ lift: 0.8 }))).toBe(false);
+  });
+
+  test("even a lift of 0 counts: a goal still vouches for it", () => {
+    expect(isFillerCandidate(makeTask({ lift: 0 }))).toBe(false);
+  });
+});
+
+describe("impactWorkIsUrgent", () => {
+  test("true when work with impact is due within a day", () => {
+    const pool = [makeTask({ impact: 0.3, dueDate: at(10) }), makeTask()];
+    expect(impactWorkIsUrgent(pool, NOW)).toBe(true);
+  });
+
+  test("false when only work without impact is urgent", () => {
+    const pool = [
+      makeTask({ dueDate: at(2) }),
+      makeTask({ impact: 0.3, dueDate: at(100) }),
+    ];
+    expect(impactWorkIsUrgent(pool, NOW)).toBe(false);
+  });
+});
+
+describe("visibilityBoost", () => {
+  // Ten pieces of work with impact; p80 is the 8th smallest (0.8).
+  const pool = Array.from({ length: 10 }, (_, i) =>
+    makeTask({ impact: (i + 1) / 10, dueDate: at(24 * 20) })
+  );
+
+  test("far-out work in the top fifth by impact is boosted", () => {
+    expect(visibilityBoost(pool[9], pool, NOW)).toBeCloseTo(0.15, 6);
+    expect(visibilityBoost(pool[8], pool, NOW)).toBeCloseTo(0.15, 6);
+  });
+
+  test("work at or below the 80th percentile is not", () => {
+    expect(visibilityBoost(pool[7], pool, NOW)).toBe(0);
+    expect(visibilityBoost(pool[0], pool, NOW)).toBe(0);
+  });
+
+  test("nothing within a week, nothing without a due date or impact", () => {
+    const soon = makeTask({ impact: 1, dueDate: at(24 * 6) });
+    const undated = makeTask({ impact: 1, dueDate: null });
+    const plain = makeTask({ dueDate: at(24 * 20) });
+    expect(visibilityBoost(soon, [...pool, soon], NOW)).toBe(0);
+    expect(visibilityBoost(undated, [...pool, undated], NOW)).toBe(0);
+    expect(visibilityBoost(plain, [...pool, plain], NOW)).toBe(0);
+  });
+
+  test("the percentile counts only work that carries impact", () => {
+    const big = makeTask({ impact: 0.9, dueDate: at(24 * 20) });
+    const small = makeTask({ impact: 0.1, dueDate: at(24 * 20) });
+    const plain = Array.from({ length: 8 }, () =>
+      makeTask({ dueDate: at(24 * 20) })
+    );
+    // With only two impact-bearing tasks, p80 is the larger one: no boost.
+    expect(visibilityBoost(big, [big, small, ...plain], NOW)).toBe(0);
   });
 });
 
@@ -289,24 +315,20 @@ describe("computeStage1Scores", () => {
     expect(scores.fillerDemoted).toBe(false);
   });
 
-  test("personal task is demoted when a Canvas task is urgent", () => {
-    const canvasUrgent = makeTask({ source: "CANVAS", dueDate: at(10) });
-    const personal = makeTask({ source: "MANUAL", dueDate: at(100) });
-    const pool = [canvasUrgent, personal];
+  test("filler is demoted when work with impact is urgent", () => {
+    const courseworkUrgent = makeTask({ impact: 0.5, dueDate: at(10) });
+    const personal = makeTask({ dueDate: at(100) });
+    const pool = [courseworkUrgent, personal];
     const norm = new Map(pool.map((t) => [t.id, 0.5]));
 
     const personalScores = computeStage1Scores(personal, pool, NOW, null, norm);
     expect(personalScores.fillerDemoted).toBe(true);
   });
 
-  test("goal-linked personal task is not demoted alongside urgent Canvas work", () => {
-    const canvasUrgent = makeTask({ source: "CANVAS", dueDate: at(10) });
-    const goalPersonal = makeTask({
-      source: "MANUAL",
-      dueDate: at(100),
-      goalImportanceScore: 80,
-    });
-    const pool = [canvasUrgent, goalPersonal];
+  test("a lifted personal task is not demoted alongside urgent coursework", () => {
+    const courseworkUrgent = makeTask({ impact: 0.5, dueDate: at(10) });
+    const goalPersonal = makeTask({ dueDate: at(100), lift: 0.8 });
+    const pool = [courseworkUrgent, goalPersonal];
     const norm = new Map(pool.map((t) => [t.id, 0.5]));
 
     const goalScores = computeStage1Scores(goalPersonal, pool, NOW, null, norm);
@@ -314,47 +336,26 @@ describe("computeStage1Scores", () => {
   });
 });
 
-describe("orderTasksStage1 — goal impact path", () => {
-  test("a high-importance goal task outranks a low-impact Canvas task", () => {
-    const canvasLow = makeTask({
-      source: "CANVAS",
-      gradeImpactScore: 0.1,
-      dueDate: at(100),
-      pointsPossible: 10,
-      courseId: "c1",
-    });
-    const goalTask = makeTask({
-      source: "MANUAL",
-      goalImportanceScore: 90,
-      dueDate: at(100),
-    });
+describe("orderTasksStage1 — lift path", () => {
+  test("a task lifted by an important goal outranks low-impact coursework", () => {
+    const courseworkLow = makeTask({ impact: 0.1, dueDate: at(100) });
+    const goalTask = makeTask({ lift: 0.9, dueDate: at(100) });
 
-    const ordered = orderTasksStage1([canvasLow, goalTask], NOW, {
+    const ordered = orderTasksStage1([courseworkLow, goalTask], NOW, {
       slotMinutes: null,
     });
 
     expect(ordered[0].id).toBe(goalTask.id);
-    expect(ordered[1].id).toBe(canvasLow.id);
+    expect(ordered[1].id).toBe(courseworkLow.id);
   });
 
-  test("goal-linked personal task ranks ahead of a demoted plain personal task", () => {
-    const canvasUrgent = makeTask({
-      source: "CANVAS",
-      gradeImpactScore: 0.5,
-      dueDate: at(10),
-    });
-    const goalPersonal = makeTask({
-      source: "MANUAL",
-      goalImportanceScore: 80,
-      dueDate: at(100),
-    });
-    const plainPersonal = makeTask({
-      source: "MANUAL",
-      dueDate: at(100),
-    });
+  test("a lifted personal task ranks ahead of a demoted plain one", () => {
+    const courseworkUrgent = makeTask({ impact: 0.5, dueDate: at(10) });
+    const goalPersonal = makeTask({ lift: 0.8, dueDate: at(100) });
+    const plainPersonal = makeTask({ dueDate: at(100) });
 
     const ordered = orderTasksStage1(
-      [canvasUrgent, goalPersonal, plainPersonal],
+      [courseworkUrgent, goalPersonal, plainPersonal],
       NOW,
       { slotMinutes: null }
     );
@@ -374,7 +375,7 @@ describe("orderTasksStage1 — goal impact path", () => {
 describe("pickTopTaskStage1", () => {
   test("filters out completed tasks before picking the top", () => {
     const completed = makeTask({ status: "completed", dueDate: at(1) });
-    const goalTask = makeTask({ goalImportanceScore: 95, dueDate: at(100) });
+    const goalTask = makeTask({ lift: 0.95, dueDate: at(100) });
 
     const top = pickTopTaskStage1([completed, goalTask], NOW, {
       slotMinutes: null,
@@ -430,11 +431,11 @@ describe("skip cooldown", () => {
     // score-only penalty would leave it at #1 and Skip would do nothing.
     const overdue = makeTask({
       dueDate: at(-10),
-      gradeImpactScore: 0.9,
+      impact: 0.9,
       lastSkippedAt: at(-0.01),
       skipCount: 1,
     });
-    const calm = makeTask({ dueDate: at(72), gradeImpactScore: 0.1 });
+    const calm = makeTask({ dueDate: at(72), impact: 0.1 });
 
     const ordered = orderTasksStage1([overdue, calm], NOW, {
       slotMinutes: null,
@@ -445,11 +446,11 @@ describe("skip cooldown", () => {
   test("it returns to the lead once the cooldown lapses", () => {
     const overdue = makeTask({
       dueDate: at(-10),
-      gradeImpactScore: 0.9,
+      impact: 0.9,
       lastSkippedAt: at(-5),
       skipCount: 1,
     });
-    const calm = makeTask({ dueDate: at(72), gradeImpactScore: 0.1 });
+    const calm = makeTask({ dueDate: at(72), impact: 0.1 });
 
     const ordered = orderTasksStage1([overdue, calm], NOW, {
       slotMinutes: null,
@@ -467,13 +468,13 @@ describe("skip cooldown", () => {
   test("between two cooling tasks the normal ordering still decides", () => {
     const urgent = makeTask({
       dueDate: at(-10),
-      gradeImpactScore: 0.9,
+      impact: 0.9,
       lastSkippedAt: NOW,
       skipCount: 1,
     });
     const calm = makeTask({
       dueDate: at(72),
-      gradeImpactScore: 0.1,
+      impact: 0.1,
       lastSkippedAt: NOW,
       skipCount: 1,
     });

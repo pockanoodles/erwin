@@ -256,12 +256,27 @@ model Task {
   source         String?
   lastSyncedAt   DateTime?
 
-  // Erwin: Canvas LMS + ranking (optional; tasks that predate Canvas sync omit these)
+  // Erwin: what Focus ranks by. The module that owns a task can set these;
+  // a task made by hand leaves them empty.
+  /**
+   * /**
+   * Can't be done after this (Canvas: when the assignment locks).
+   */
   lockAt              DateTime?
+  /**
+   * Can't be started before this (Canvas: when the assignment unlocks).
+   */
   unlockAt            DateTime?
   taskProviderId      String?
   taskProvider        TaskProvider? @relation(fields: [taskProviderId], references: [id], onDelete: SetNull)
-  gradeImpactScore    Float?
+  /**
+   * How much this task matters, 0–1, set by the module that owns it (Courses: its share of the grade, scaled across open coursework). Null when no module says.
+   */
+  impact              Float?
+  /**
+   * When its source closed it without it being done (Canvas: missed, or the course ended). A closed task is no longer open work.
+   */
+  closedAt            DateTime?
   /**
    * Canvas: % of final course grade (0–100) for display; not pool-normalized
    */

@@ -34,7 +34,7 @@ import {
 } from "@/lib/canvas/sync-canvas-materials";
 import { syncCanvasNews } from "@/lib/canvas/sync-canvas-news";
 import {
-  normalizeGradeImpactScoresForUser,
+  normalizeCourseworkImpact,
   projectCourseTasks,
 } from "@/lib/canvas/sync-canvas-tasks";
 import { courseLabel, syncErrorText, syncProblem } from "@/lib/canvas/sync-problems";
@@ -231,7 +231,7 @@ export async function syncCanvasForUser(
   });
   stats.purged = purged;
 
-  await normalizeGradeImpactScoresForUser(userId);
+  await normalizeCourseworkImpact(userId);
   // File new assignments under School (the vault's `sources: [CANVAS]`) and
   // refresh bound bosses' dates now, not at the next morning's projection.
   await tasksChanged(prisma, userId);

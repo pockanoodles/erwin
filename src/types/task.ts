@@ -70,12 +70,15 @@ export interface Task {
   externalListId?: string | null;
   lastSyncedAt?: Date | null;
 
-  // Erwin / Canvas (optional)
+  // Erwin: what Focus ranks by (set by the module that owns the task)
   lockAt?: Date | null;
   unlockAt?: Date | null;
+  /** How much this task matters, 0–1; null when no module says. */
+  impact?: number | null;
+  /** When its source closed it without it being done (Canvas: missed). */
+  closedAt?: Date | null;
   courseName?: string | null;
   courseId?: string | null;
-  gradeImpactScore?: number | null;
   /** Canvas: approximate % of final course grade (Focus UI) */
   gradeWeightPercent?: number | null;
   skipCount?: number;

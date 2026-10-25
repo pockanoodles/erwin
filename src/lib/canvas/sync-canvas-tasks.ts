@@ -11,7 +11,7 @@
 
 import { Prisma } from "@prisma/client";
 
-import { DONE_STATES, isActionable } from "@/lib/canvas/gradebook-plan";
+import { CLOSED_STATES, DONE_STATES, isActionable } from "@/lib/canvas/gradebook-plan";
 import type { GradebookSyncResult } from "@/lib/canvas/sync-canvas-gradebook";
 import type { CanvasAssignment, CanvasCourse } from "@/lib/canvas/types";
 import { prisma } from "@/lib/prisma";
@@ -110,6 +110,7 @@ export async function projectCourseTasks(
       externalTaskId: true,
       status: true,
       completedAt: true,
+      closedAt: true,
       _count: { select: { subtasks: true } },
     },
   });
@@ -128,7 +129,7 @@ export async function projectCourseTasks(
     const gid = a.assignment_group_id ?? null;
     const group = gid != null ? groupById.get(gid) : undefined;
     const weight = group?.group_weight ?? null;
-    const gradeImpactScore = computeGradeImpactRaw({
+    const impact = computeGradeImpactRaw({
       points: a.points_possible,
       maxInGroup: maxPointsInGroup(assignments, gid),
       groupWeightPercent: weight,
@@ -136,11 +137,14 @@ export async function projectCourseTasks(
       gradingType: plan.gradingType,
     });
 
-    // todo: apply assignment group drop_lowest rules when adjusting gradeImpactScore (spec §5.2.7 / §8.1)
+    // todo: apply assignment group drop_lowest rules when adjusting impact (spec §5.2.7 / §8.1)
 
     // A hand-marked completion stands: group and external submissions never
     // show up in Canvas, so "unsubmitted" can't reopen the task.
     const done = prev?.status === "completed" || DONE_STATES.has(plan.state);
+    // Closed without a submission: it locked (missed) or the course ended.
+    // Dated by the lock when there is one, kept from the sync that first saw it.
+    const closed = !done && CLOSED_STATES.has(plan.state);
     const payload = {
       title: plan.name,
       description: a.description ?? null,
@@ -159,8 +163,11 @@ export async function projectCourseTasks(
       syncStatus: "SYNCED",
       userId,
       taskProviderId: providerId,
-      gradeImpactScore,
-      gradeWeightPercent: Math.min(100, Math.max(0, gradeImpactScore * 100)),
+      impact,
+      closedAt: closed
+        ? (prev?.closedAt ?? (plan.lockAt && plan.lockAt <= now ? plan.lockAt : now))
+        : null,
+      gradeWeightPercent: Math.min(100, Math.max(0, impact * 100)),
       courseId: String(course.id),
       courseName: course.name,
       assignmentGroupName: group?.name ?? null,
@@ -203,23 +210,23 @@ export async function projectCourseTasks(
 }
 
 /**
- * Spec §5.2.3: normalize Canvas grade impact to 0–1 across the user's active Canvas pool.
+ * Spec §5.2.3: scale coursework's impact to 0–1 across the user's open Canvas pool.
  */
-export async function normalizeGradeImpactScoresForUser(userId: string): Promise<void> {
+export async function normalizeCourseworkImpact(userId: string): Promise<void> {
   const tasks = await prisma.task.findMany({
     where: {
       userId,
       status: { not: "completed" },
       source: "CANVAS",
-      gradeImpactScore: { not: null },
+      impact: { not: null },
     },
-    select: { id: true, gradeImpactScore: true },
+    select: { id: true, impact: true },
   });
   if (tasks.length === 0) {
     return;
   }
   const max = Math.max(
-    ...tasks.map((t) => t.gradeImpactScore ?? 0),
+    ...tasks.map((t) => t.impact ?? 0),
     1e-9
   );
   if (max <= 1e-9) {
@@ -230,7 +237,7 @@ export async function normalizeGradeImpactScoresForUser(userId: string): Promise
       prisma.task.update({
         where: { id: t.id },
         data: {
-          gradeImpactScore: (t.gradeImpactScore ?? 0) / max,
+          impact: (t.impact ?? 0) / max,
         },
       })
     )

@@ -77,11 +77,8 @@ const REGISTRIES = new Set([
 
 /** "<importing file> -> <module>", each with what will remove it. */
 const KNOWN = new Set([
-  // The ranking engine reads Canvas's submission states and grade weights
-  // straight off Task. Removed by moving Task's Canvas columns into a table
-  // Courses owns and giving ranking a module-agnostic impact (plan step 8).
-  "src/lib/erwin/rank-stage1.ts -> courses",
-  "src/lib/erwin/open-work.ts -> courses",
+  // Focus's payloads add Canvas's grade facts and projections. Removed by
+  // task facts as a module contribution (plan step 8b).
   "src/lib/erwin/enrich-focus-task.ts -> courses",
   "src/app/api/erwin/focus/briefing/route.ts -> courses",
   "src/app/api/erwin/focus/queue/route.ts -> courses",

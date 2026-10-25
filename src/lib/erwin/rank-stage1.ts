@@ -1,10 +1,12 @@
 /**
- * Erwin Stage 1 ranking (deterministic): filters, urgency tiers, base score, personal filler lane.
+ * Erwin Stage 1 ranking (deterministic): filters, urgency tiers, base score, filler lane.
  * Spec: technical spec §5.2 (May 1, 2026).
+ *
+ * It knows no module. What a task is worth arrives as `impact` (set by the
+ * module that owns it: Courses scores coursework by its share of the grade)
+ * and `lift` (another module vouching for it: Ladder, by its goals).
  */
 import type { Task } from "@prisma/client";
-
-import { CLOSED_STATES } from "@/lib/canvas/gradebook-plan";
 
 const W_IMPACT = 0.35;
 const W_DEADLINE = 0.45;
@@ -51,24 +53,21 @@ export type TaskForRanking = Pick<
   | "unlockAt"
   | "lockAt"
   | "duration"
-  | "gradeImpactScore"
-  | "submissionStatus"
-  | "source"
-  | "category"
+  | "impact"
+  | "closedAt"
   | "priority"
-  | "pointsPossible"
-  | "courseId"
   | "skipCount"
   | "lastSkippedAt"
   | "createdAt"
   | "postponedUntil"
 > & {
   /**
-   * Erwin v2.2: importance (0–100) of the linked Goal, if any. Resolved by the
-   * orchestration layer (`focus-queue-core`) from the `goal` relation and fed
-   * into the impact term parallel to gradeImpactScore. `null` when unlinked.
+   * How much another module lifts this task, 0–1 (Ladder: the importance of
+   * its most important active goal). `focus-queue-core` asks the module
+   * registry; it feeds the impact term beside the task's own `impact`.
+   * `null` when nothing lifts it.
    */
-  goalImportanceScore?: number | null;
+  lift?: number | null;
   /** Subtasks never surface in Focus; the parent is the work item. */
   parentTaskId?: string | null;
 };
@@ -111,7 +110,7 @@ export function isSkipSpiralDanger(task: TaskForRanking, now: Date): boolean {
   if ((task.skipCount ?? 0) < 3) {
     return false;
   }
-  if ((task.gradeImpactScore ?? 0) <= 0.5) {
+  if ((task.impact ?? 0) <= 0.5) {
     return false;
   }
   const h = hoursUntilDueDate(task, now);
@@ -182,10 +181,10 @@ export function deadlinePressure(task: TaskForRanking, now: Date): number {
 }
 
 /**
- * Late penalty on grade importance after due_at (spec §5.2.4).
+ * Late penalty on a task's own impact after due_at (spec §5.2.4).
  */
-export function effectiveGradeImpact(task: TaskForRanking, now: Date): number {
-  const g = task.gradeImpactScore ?? 0;
+export function effectiveImpact(task: TaskForRanking, now: Date): number {
+  const g = task.impact ?? 0;
   if (!task.dueDate) {
     return g;
   }
@@ -203,26 +202,25 @@ export function effectiveGradeImpact(task: TaskForRanking, now: Date): number {
 }
 
 /**
- * Erwin v2.2 — goal importance as a 0–1 impact signal parallel to grade impact.
- * `goalImportanceScore` is a user-set 0–100 value on the linked Goal; unlinked
- * tasks contribute 0 so grade-only behavior is unchanged.
+ * Another module's lift as a 0–1 impact signal parallel to the task's own.
+ * Tasks nothing lifts contribute 0, so impact-only ranking is unchanged.
  */
-export function effectiveGoalImpact(task: TaskForRanking): number {
-  const g = task.goalImportanceScore;
-  if (g == null) {
+export function effectiveLift(task: TaskForRanking): number {
+  const l = task.lift;
+  if (l == null) {
     return 0;
   }
-  return Math.min(1, Math.max(0, g / 100));
+  return Math.min(1, Math.max(0, l));
 }
 
 /**
- * Raw (pre-pool-normalization) impact for a task: the stronger of its grade
- * impact and its goal impact. A task surfaces on its best reason to matter (a
- * big grade OR an important personal goal); taking the max avoids
+ * Raw (pre-pool-normalization) impact for a task: the stronger of its own
+ * impact and its lift. A task surfaces on its best reason to matter (a big
+ * grade OR an important personal goal); taking the max avoids
  * double-counting a task that is both.
  */
 function rawImpact(task: TaskForRanking, now: Date): number {
-  return Math.max(effectiveGradeImpact(task, now), effectiveGoalImpact(task));
+  return Math.max(effectiveImpact(task, now), effectiveLift(task));
 }
 
 /**
@@ -246,20 +244,12 @@ function percentile80(values: number[]): number {
   return s[Math.max(0, idx)] ?? Number.POSITIVE_INFINITY;
 }
 
-function coursePointsList(
-  candidates: TaskForRanking[],
-  courseId: string | null
-): number[] {
-  if (!courseId) {
-    return [];
-  }
-  return candidates
-    .filter((t) => t.courseId === courseId && t.source === "CANVAS")
-    .map((t) => t.pointsPossible ?? 0);
-}
-
 /**
- * Long-horizon visibility boost (spec §5.2.7).
+ * Long-horizon visibility boost (spec §5.2.7): work due more than a week out
+ * whose impact is in the pool's top fifth surfaces early, so a big project
+ * isn't first seen the week it's due. (Before impact was generic this
+ * compared Canvas points within one course; impact already weighs a course's
+ * grade groups, so it compares across courses.)
  */
 export function visibilityBoost(
   task: TaskForRanking,
@@ -270,13 +260,14 @@ export function visibilityBoost(
   if (h == null || h <= 24 * 7) {
     return 0;
   }
-  const pts = task.pointsPossible ?? 0;
-  if (pts <= 0 || task.source !== "CANVAS") {
+  const impact = task.impact ?? 0;
+  if (impact <= 0) {
     return 0;
   }
-  const list = coursePointsList(candidates, task.courseId ?? null);
-  const p80 = percentile80(list);
-  if (!Number.isFinite(p80) || pts <= p80) {
+  const p80 = percentile80(
+    candidates.flatMap((t) => (t.impact == null ? [] : [t.impact]))
+  );
+  if (!Number.isFinite(p80) || impact <= p80) {
     return 0;
   }
   return VISIBILITY_BOOST;
@@ -310,7 +301,7 @@ export function computeUrgencyTier(
 }
 
 /**
- * Normalizes the combined impact signal (grade impact ∪ goal impact) across the
+ * Normalizes the combined impact signal (own impact ∪ lift) across the
  * candidate pool so grade-driven and goal-driven tasks compete on one 0–1 scale.
  */
 function normalizeImpactPool(
@@ -337,26 +328,29 @@ function nominalSlotMinutes(slotMinutes: number | null): number {
 }
 
 /**
- * Personal / manual tasks deprioritized when any Canvas task is DANGER or HIGH (filler lane).
+ * Filler: work nothing rides on — no impact from its module, no lift from
+ * another, not marked high priority. It waits while any work that does carry
+ * impact is DANGER or HIGH (the filler lane).
  */
-export function isPersonalFillerCandidate(task: TaskForRanking): boolean {
+export function isFillerCandidate(task: TaskForRanking): boolean {
   if (task.priority === "high") {
     return false;
   }
-  // Erwin v2.2: goal-linked tasks carry their own impact signal and compete in
-  // the main pool — they are never demoted to the personal filler lane.
-  if (task.goalImportanceScore != null) {
+  // Lifted tasks (a goal vouches for them) compete in the main pool and are
+  // never demoted to the filler lane.
+  if (task.lift != null) {
     return false;
   }
-  return task.source !== "CANVAS";
+  return task.impact == null;
 }
 
-export function canvasHasDangerOrHigh(
+/** Whether any work that carries impact is DANGER or HIGH, which puts filler on hold. */
+export function impactWorkIsUrgent(
   candidates: TaskForRanking[],
   now: Date
 ): boolean {
   return candidates.some((t) => {
-    if (t.source !== "CANVAS") {
+    if (t.impact == null) {
       return false;
     }
     const danger = isDangerResolved(t, now);
@@ -383,13 +377,13 @@ export function computeStage1Scores(
 ): Stage1Scores {
   const danger = isDangerResolved(task, now);
   const urgencyTier = computeUrgencyTier(task, now, danger);
-  const demote =
-    canvasHasDangerOrHigh(candidates, now) && isPersonalFillerCandidate(task);
+  const demote = impactWorkIsUrgent(candidates, now) && isFillerCandidate(task);
 
-  // Impact term (weight 0.35) is the pool-normalized max of grade impact and
-  // goal impact — a personal goal is a first-class reason to work on a task, so
-  // it competes in the main pool alongside grade-driven Canvas work rather than
-  // in the filler lane. Deadline (0.45) and effort (0.2) weights are unchanged.
+  // Impact term (weight 0.35) is the pool-normalized max of the task's own
+  // impact and its lift — a personal goal is a first-class reason to work on a
+  // task, so it competes in the main pool alongside grade-driven coursework
+  // rather than in the filler lane. Deadline (0.45) and effort (0.2) weights
+  // are unchanged.
   const ni = normImpact.get(task.id) ?? 0;
   const dp = deadlinePressure(task, now);
   const slot = nominalSlotMinutes(slotMinutes);
@@ -423,8 +417,9 @@ export function filterTasksForRanking(
     if (COMPLETED_STATUSES.has(t.status)) {
       return false;
     }
-    // Handed in, graded, excused, or closed by Canvas without a submission.
-    if (t.submissionStatus && CLOSED_STATES.has(t.submissionStatus)) {
+    // Closed by its source without being done (Canvas: missed, or the course
+    // ended). Work Canvas took in is completed, caught above.
+    if (t.closedAt) {
       return false;
     }
     if (t.unlockAt && new Date(t.unlockAt) > now) {
@@ -442,8 +437,8 @@ export interface OrderStage1Options {
 }
 
 /**
- * Ordering: post-skip cooldown, then filler demotion when Canvas is urgent,
- * then DANGER, then base score, then due, title.
+ * Ordering: post-skip cooldown, then filler demotion when work with impact is
+ * urgent, then DANGER, then base score, then due, title.
  */
 export function orderTasksStage1(
   tasks: TaskForRanking[],

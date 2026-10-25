@@ -20,6 +20,21 @@ import { prisma } from "@/lib/prisma";
 
 import { moduleView } from "@/modules/state";
 
+function liftFromGoals(
+  links:
+    | Array<{ goal: { importanceScore: number | null; status: string } }>
+    | null
+    | undefined
+): number | null {
+  const best = (links ?? []).reduce<number | null>((top, link) => {
+    if (link.goal.status !== "active") return top;
+    const score = link.goal.importanceScore;
+    if (score == null) return top;
+    return top == null ? score : Math.max(top, score);
+  }, null);
+  return best == null ? null : best / 100;
+}
+
 export function toTaskForRanking(r: {
   id: string;
   title: string;
@@ -28,13 +43,9 @@ export function toTaskForRanking(r: {
   unlockAt: Date | null;
   lockAt: Date | null;
   duration: number | null;
-  gradeImpactScore: number | null;
-  submissionStatus: string | null;
-  source: string | null;
-  category: string | null;
+  impact: number | null;
+  closedAt: Date | null;
   priority: string | null;
-  pointsPossible: number | null;
-  courseId: string | null;
   skipCount: number;
   lastSkippedAt: Date | null;
   createdAt: Date;
@@ -50,13 +61,9 @@ export function toTaskForRanking(r: {
     unlockAt: r.unlockAt,
     lockAt: r.lockAt,
     duration: r.duration,
-    gradeImpactScore: r.gradeImpactScore,
-    submissionStatus: r.submissionStatus,
-    source: r.source,
-    category: r.category,
+    impact: r.impact,
+    closedAt: r.closedAt,
     priority: r.priority,
-    pointsPossible: r.pointsPossible,
-    courseId: r.courseId,
     skipCount: r.skipCount,
     lastSkippedAt: r.lastSkippedAt,
     createdAt: r.createdAt,
@@ -65,13 +72,7 @@ export function toTaskForRanking(r: {
     // Erwin v3: a task can serve several goals — it surfaces on its most
     // important one (see rank-stage1 computeStage1Scores). A goal done or set
     // aside no longer makes its work matter more.
-    goalImportanceScore:
-      r.goalLinks?.reduce<number | null>((best, link) => {
-        if (link.goal.status !== "active") return best;
-        const score = link.goal.importanceScore;
-        if (score == null) return best;
-        return best == null ? score : Math.max(best, score);
-      }, null) ?? null,
+    lift: liftFromGoals(r.goalLinks),
   };
 }
 

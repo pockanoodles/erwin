@@ -115,7 +115,8 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
     unlockAt: parseDate(raw.unlockAt),
     courseName: (raw.courseName as string | null | undefined) ?? null,
     courseId: (raw.courseId as string | null | undefined) ?? null,
-    gradeImpactScore: (raw.gradeImpactScore as number | null | undefined) ?? null,
+    impact: (raw.impact as number | null | undefined) ?? null,
+    closedAt: parseDate(raw.closedAt),
     gradeWeightPercent:
       raw.gradeWeightPercent == null
         ? undefined
