@@ -48,7 +48,8 @@ export interface LadderGoalRow extends XpGoalRow {
 
 export interface LadderTaskRow extends XpTaskRow {
   title: string;
-  courseName: string | null;
+  /** Its course's short label, from Courses' facts; null for other work. */
+  course: string | null;
 }
 
 export interface LadderCycleRow {
@@ -247,14 +248,14 @@ export function buildLadder(input: LadderInput): LadderPayload {
     add(xpOnDay, event.day, total(sumStats([event])));
   }
 
-  const courseOf = new Map(input.done.map((task) => [task.id, task.courseName]));
+  const courseOf = new Map(input.done.map((task) => [task.id, task.course]));
   const log: LadderEvent[] = hexEvents
     .map((event) => ({
       kind: event.kind,
       id: event.id,
       title: titleOf.get(event.id) ?? "",
       day: event.day,
-      courseName: event.kind === "task" ? (courseOf.get(event.id) ?? null) : null,
+      course: event.kind === "task" ? (courseOf.get(event.id) ?? null) : null,
       goalIds: event.credit.map((c) => c.goalId),
       stats: event.stats,
       lost: event.lost,

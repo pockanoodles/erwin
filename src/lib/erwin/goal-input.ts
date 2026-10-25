@@ -5,15 +5,17 @@
 
 import type { Db } from "@/lib/prisma";
 
+import { moduleClaimOptions, moduleProofItems } from "@/modules/hooks";
+
 /** Task sources a goal can claim whole. */
 export const CLAIMABLE_SOURCES = ["CANVAS", "GOOGLE", "OUTLOOK", "PEOPLE"] as const;
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 
 /**
- * A goal's claims: whole sources, `course:<Canvas course id>` (what a task
- * carries as its courseId) and `project:<id>`, each one the user's own.
- * Undefined when the request leaves them alone.
+ * A goal's claims: whole sources, `project:<id>`, or a claim a module offers
+ * (Courses: `course:<Canvas course id>`), each one the user's own. Undefined
+ * when the request leaves them alone.
  */
 export async function checkClaims(db: Db, userId: string, raw: unknown): Promise<Checked<string[] | undefined>> {
   if (raw === undefined) return { ok: true, value: undefined };
@@ -21,18 +23,15 @@ export async function checkClaims(db: Db, userId: string, raw: unknown): Promise
     return { ok: false, error: "taskSources must be a list of claims" };
   }
   const claims = [...new Set(raw as string[])];
-  const courseIds = claims.flatMap((c) => (c.startsWith("course:") ? [c.slice(7)] : []));
   const projectIds = claims.flatMap((c) => (c.startsWith("project:") ? [c.slice(8)] : []));
+  const offered = new Set((await moduleClaimOptions(db, userId)).map((o) => o.key));
   const loose = claims.filter(
-    (c) => !c.startsWith("course:") && !c.startsWith("project:") && !(CLAIMABLE_SOURCES as readonly string[]).includes(c)
+    (c) => !c.startsWith("project:") && !(CLAIMABLE_SOURCES as readonly string[]).includes(c) && !offered.has(c)
   );
   if (loose.length) return { ok: false, error: `unknown claim ${loose[0]}` };
-  const [courses, projects] = await Promise.all([
-    courseIds.length ? db.course.count({ where: { canvasId: { in: courseIds }, userId } }) : 0,
-    projectIds.length ? db.project.count({ where: { id: { in: projectIds }, userId } }) : 0,
-  ]);
-  if (courses !== courseIds.length || projects !== projectIds.length) {
-    return { ok: false, error: "a claimed course or project wasn't found" };
+  const projects = projectIds.length ? await db.project.count({ where: { id: { in: projectIds }, userId } }) : 0;
+  if (projects !== projectIds.length) {
+    return { ok: false, error: "a claimed project wasn't found" };
   }
   return { ok: true, value: claims };
 }
@@ -60,10 +59,7 @@ export async function checkProof(
     return { ok: false, error: "a boss has one proof: a Canvas item or a task" };
   }
   if (canvasAssignmentId) {
-    const item = await db.courseAssignment.findFirst({
-      where: { canvasId: canvasAssignmentId, course: { userId } },
-      select: { id: true },
-    });
+    const [item] = await moduleProofItems(db, userId, [canvasAssignmentId]);
     if (!item) return { ok: false, error: "that Canvas item isn't in your gradebook" };
   }
   if (proofTaskId) {

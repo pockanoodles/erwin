@@ -1,8 +1,6 @@
 import type { Db, DbTransaction } from "@/lib/prisma";
 
-import { moduleClaimKeys } from "@/modules/hooks";
-
-import { settlesBoss } from "./boss-proof";
+import { moduleClaimKeys, moduleProofItems } from "@/modules/hooks";
 
 /**
  * Files tasks under the goals they serve, and settles bosses from their proof.
@@ -144,12 +142,7 @@ export async function applyGoalRules(
   const canvasIds = proven.flatMap((g) => (g.canvasAssignmentId ? [g.canvasAssignmentId] : []));
   const taskIds = proven.flatMap((g) => (!g.canvasAssignmentId && g.proofTaskId ? [g.proofTaskId] : []));
   const [items, proofTasks] = await Promise.all([
-    canvasIds.length
-      ? db.courseAssignment.findMany({
-          where: { canvasId: { in: canvasIds }, course: { userId } },
-          select: { canvasId: true, state: true, dueAt: true, task: { select: { id: true, goalsPinned: true } } },
-        })
-      : [],
+    moduleProofItems(db, userId, canvasIds),
     taskIds.length
       ? db.task.findMany({
           where: { id: { in: taskIds }, userId },
@@ -157,7 +150,7 @@ export async function applyGoalRules(
         })
       : [],
   ]);
-  const itemByCanvasId = new Map(items.map((i) => [i.canvasId, i]));
+  const itemByCanvasId = new Map(items.map((i) => [i.ref, i]));
   const taskById = new Map(proofTasks.map((t) => [t.id, t]));
 
   const bindings: BossBinding[] = [];
@@ -176,7 +169,7 @@ export async function applyGoalRules(
       });
       if (!item) continue;
       due = item.dueAt;
-      handedIn = settlesBoss(item.state);
+      handedIn = item.settles;
       task = item.task;
     } else {
       const proof = taskById.get(boss.proofTaskId!);

@@ -8,14 +8,16 @@ import type { Db, DbTransaction } from "@/lib/prisma";
 
 import {
   courseClaimKeys,
+  courseClaimOptions,
   courseRankSignals,
   courseTaskFacts,
 } from "@/modules/courses/facts";
+import { courseProofItems } from "@/modules/courses/proof";
 import { syncCanvasIfDue } from "@/modules/courses/server";
 import { goalRankSignals, goalTaskFacts } from "@/modules/ladder/facts";
 import { linkChangedTasksToGoals } from "@/modules/ladder/server";
 import { reconcileReachOuts } from "@/modules/people/reach-out";
-import type { ModuleId } from "@/modules/types";
+import type { ClaimOption, ModuleId, ProofItem } from "@/modules/types";
 
 export interface ModuleJob {
   /** Names it in logs. */
@@ -62,6 +64,14 @@ export interface ServerContributions {
     userId: string,
     taskIds: string[]
   ) => Promise<Map<string, RankSignals>>;
+  /** What it keeps that a boss can name as proof: these refs, or all. On or off. */
+  proofItems?: (
+    db: Db | DbTransaction,
+    userId: string,
+    refs?: string[]
+  ) => Promise<ProofItem[]>;
+  /** The claims it offers goals, for the goal form and to check a claim. On or off. */
+  claimOptions?: (db: Db, userId: string) => Promise<ClaimOption[]>;
   /** Keys a goal can claim tasks by beyond source and project ("course:<id>"), on or off. */
   claimKeys?: (
     db: Db | DbTransaction,
@@ -76,6 +86,8 @@ export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
     taskFacts: courseTaskFacts,
     rankSignals: courseRankSignals,
     claimKeys: courseClaimKeys,
+    claimOptions: courseClaimOptions,
+    proofItems: courseProofItems,
   },
   ladder: {
     afterTasksChange: linkChangedTasksToGoals,

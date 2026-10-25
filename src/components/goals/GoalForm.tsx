@@ -10,6 +10,8 @@ import { suggestProof } from "@/lib/erwin/boss-proof";
 import { STAT_ABBREV, STAT_KEYS, type StatKey } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
 
+import type { ClaimOption } from "@/modules/types";
+
 export interface GoalFormValues {
   title: string;
   whyItMatters: string | null;
@@ -18,7 +20,7 @@ export interface GoalFormValues {
   develops: string[];
   isBoss: boolean;
   targetDate: string | null;
-  /** Where its work comes from: "CANVAS", "course:<id>", "project:<id>". */
+  /** Where its work comes from: "CANVAS", a module's claim ("course:<id>"), "project:<id>". */
   taskSources: string[];
   /** A boss's proof: one Canvas gradebook item, or one task. */
   canvasAssignmentId: string | null;
@@ -29,8 +31,8 @@ export interface GoalFormValues {
 /** GET /api/erwin/goals/sources: what a goal can claim and a boss can name as proof. */
 export interface GoalSources {
   sources: string[];
-  /** Claimed as `course:<canvasId>`. */
-  courses: { canvasId: string; code: string | null; name: string }[];
+  /** What the modules offer to claim (Courses: each course). */
+  claimOptions: ClaimOption[];
   projects: { id: string; name: string }[];
   items: {
     canvasId: string;
@@ -242,7 +244,7 @@ export function GoalForm({
         <div className="space-y-1.5">
           <FieldLabel>Counts toward it</FieldLabel>
           {sources ? (
-            sources.sources.length + sources.courses.length + sources.projects.length > 0 ? (
+            sources.sources.length + sources.claimOptions.length + sources.projects.length > 0 ? (
               <>
                 <div className="flex flex-wrap gap-1">
                   {sources.sources.map((source) => (
@@ -250,14 +252,14 @@ export function GoalForm({
                       {SOURCE_NAMES[source] ?? source}
                     </Chip>
                   ))}
-                  {sources.courses.map((course) => (
+                  {sources.claimOptions.map((option) => (
                     <Chip
-                      key={course.canvasId}
-                      title={course.name}
-                      on={claims.includes(`course:${course.canvasId}`)}
-                      onClick={() => setClaims((c) => toggle(c, `course:${course.canvasId}`))}
+                      key={option.key}
+                      title={option.title}
+                      on={claims.includes(option.key)}
+                      onClick={() => setClaims((c) => toggle(c, option.key))}
                     >
-                      {shortCode(course.code, course.name)}
+                      {option.label}
                     </Chip>
                   ))}
                   {sources.projects.map((project) => (

@@ -9,6 +9,7 @@ import { logger } from "@/lib/logger";
 import { prisma, type DbTransaction } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
+import { moduleProofItems } from "@/modules/hooks";
 
 const LOG_SOURCE = "ErwinGoalsProjectAPI";
 
@@ -77,16 +78,13 @@ async function suggestBindings(db: DbTransaction, userId: string, goals: Project
   );
   if (unbound.length === 0) return [];
   const taken = new Set(goals.flatMap((g) => (g.canvasAssignmentId ? [String(g.canvasAssignmentId)] : [])));
-  const items = await db.courseAssignment.findMany({
-    where: { course: { userId } },
-    select: { canvasId: true, name: true, dueAt: true, course: { select: { code: true } } },
-  });
+  const items = await moduleProofItems(db, userId);
   const candidates = items
-    .filter((item) => !taken.has(item.canvasId))
+    .filter((item) => !taken.has(item.ref))
     .map((item) => ({
-      canvasId: item.canvasId,
+      canvasId: item.ref,
       name: item.name,
-      courseCode: item.course.code,
+      courseCode: item.courseCode,
       dueDay: item.dueAt ? calendarDay(item.dueAt) : null,
     }));
   return unbound.flatMap((boss) => {

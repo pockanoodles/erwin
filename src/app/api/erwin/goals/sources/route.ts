@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { formatInTimeZone } from "@/lib/date-utils";
-import { canvasProof } from "@/lib/erwin/boss-proof";
 import { CLAIMABLE_SOURCES } from "@/lib/erwin/goal-input";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
+import { moduleClaimOptions, moduleProofItems } from "@/modules/hooks";
 
 const LOG_SOURCE = "ErwinGoalSourcesAPI";
 
@@ -18,9 +18,10 @@ const RECENT_DAYS = 60;
  * GET /api/erwin/goals/sources
  *
  * What a goal made in Erwin can claim and a boss can name as proof, for the
- * goal form: whole task sources that have work in them, Canvas courses,
- * projects, every Canvas gradebook item with what it says now, and the tasks
- * from elsewhere (open, or finished in the last 60 days).
+ * goal form: whole task sources that have work in them, what the modules
+ * offer (Courses: its courses), projects, every item a boss can name (Courses:
+ * the gradebook, with what each says now), and the tasks from elsewhere
+ * (open, or finished in the last 60 days).
  */
 export async function GET(request: NextRequest) {
   try {
@@ -35,32 +36,16 @@ export async function GET(request: NextRequest) {
     const dayOf = (d: Date) => formatInTimeZone(d, settings?.timeZone ?? "UTC", "yyyy-MM-dd");
     const since = new Date(Date.now() - RECENT_DAYS * 86_400_000);
 
-    const [bySource, courses, projects, items, bound, tasks] = await Promise.all([
+    const [bySource, claimOptions, projects, items, bound, tasks] = await Promise.all([
       prisma.task.groupBy({ by: ["source"], where: { userId, parentTaskId: null }, _count: true }),
-      prisma.course.findMany({
-        where: { userId },
-        select: { id: true, canvasId: true, code: true, name: true },
-        orderBy: { code: "asc" },
-      }),
+      moduleClaimOptions(prisma, userId),
       prisma.project.findMany({
         where: { userId, status: "active" },
         select: { id: true, name: true },
         orderBy: { name: "asc" },
       }),
-      prisma.courseAssignment.findMany({
-        where: { course: { userId } },
-        select: {
-          canvasId: true,
-          name: true,
-          dueAt: true,
-          state: true,
-          score: true,
-          pointsPossible: true,
-          grade: true,
-          courseId: true,
-        },
-        orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { name: "asc" }],
-      }),
+      // What a boss can name as proof: Courses' gradebook items.
+      moduleProofItems(prisma, userId),
       prisma.goal.findMany({
         where: { userId, isBoss: true, status: { not: "dropped" }, canvasAssignmentId: { not: null } },
         select: { id: true, canvasAssignmentId: true },
@@ -82,22 +67,20 @@ export async function GET(request: NextRequest) {
     ]);
 
     const boundTo = new Map(bound.map((g) => [g.canvasAssignmentId, g.id]));
-    const courseCode = new Map(courses.map((c) => [c.id, c.code]));
     const present = new Set(bySource.map((row) => row.source));
 
     return NextResponse.json({
       sources: CLAIMABLE_SOURCES.filter((source) => present.has(source)),
-      // A course is claimed by its Canvas id, which tasks carry as courseId.
-      courses: courses.map(({ canvasId, code, name }) => ({ canvasId, code, name })),
+      claimOptions,
       projects,
       items: items.map((item) => ({
-        canvasId: item.canvasId,
-        courseId: item.courseId,
-        courseCode: courseCode.get(item.courseId) ?? null,
+        canvasId: item.ref,
+        courseId: item.groupId,
+        courseCode: item.courseCode,
         name: item.name,
         dueDay: item.dueAt ? dayOf(item.dueAt) : null,
-        label: canvasProof(item).label,
-        boundTo: boundTo.get(item.canvasId) ?? null,
+        label: item.label,
+        boundTo: boundTo.get(item.ref) ?? null,
       })),
       tasks: tasks.map((task) => ({
         id: task.id,

@@ -92,7 +92,8 @@ export interface LadderEvent {
   id: string;
   title: string;
   day: string;
-  courseName: string | null;
+  /** The course's short label (SCHM2301) for coursework; null otherwise. */
+  course: string | null;
   /** The goals credited. */
   goalIds: string[];
   stats: Partial<Record<StatKey, number>>;

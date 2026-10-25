@@ -52,6 +52,8 @@ export interface CourseTaskFacts {
   /** Canvas's id for the course. */
   courseId?: string | null;
   courseName?: string | null;
+  /** The course as dense rows name it: its code (SCHM2301). */
+  courseLabel?: string | null;
   /** Canvas's word on the submission: unsubmitted | missing | missed | submitted | pending_review | graded | excused. */
   submissionStatus?: string | null;
   /** Roughly how much of the course grade it's worth, 0–100, to one decimal. */

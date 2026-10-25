@@ -75,10 +75,6 @@ const REGISTRIES = new Set([
 
 /** "<importing file> -> <module>", each with what will remove it. */
 const KNOWN = new Set([
-  // Ladder settles bosses from Canvas's gradebook and names courses in the
-  // XP log. Removed by proofs as a Courses contribution to Ladder.
-  "src/lib/erwin/boss-proof.ts -> courses",
-  "src/components/ladder/XpLog.tsx -> courses",
   // Goals ("Lords") on the Tasks page: the tab strip, the row picker, the
   // board, the sheet's column and boss rows. Removed by task-list slots
   // Ladder fills.

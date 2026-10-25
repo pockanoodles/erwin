@@ -1,7 +1,6 @@
 "use client";
 
 import { FilterStrip, StripCount } from "@/components/sheet/sheet";
-import { courseTab } from "@/components/courses/course-tab";
 
 import { STAT_ABBREV, STAT_KEYS, STAT_NAMES } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
@@ -84,9 +83,9 @@ export function XpLog({ data }: { data: LadderPayload }) {
                   <span className="truncate text-foreground" title={event.title}>
                     {event.title}
                   </span>
-                  {event.courseName ? (
+                  {event.course ? (
                     <span className="hidden flex-none font-mono text-[10px] uppercase tracking-wide text-muted-foreground sm:inline">
-                      {courseTab({ code: null, name: event.courseName })}
+                      {event.course}
                     </span>
                   ) : null}
                   {event.proof ? (

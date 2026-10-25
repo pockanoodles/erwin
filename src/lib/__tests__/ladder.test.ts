@@ -29,10 +29,10 @@ const input = (hex: LadderInput["hex"]): LadderInput => ({
     goal({ id: "exam2", title: "Exam 2", isBoss: true, parentIds: ["school"], day: "2026-11-03" }),
   ],
   done: [
-    { id: "t1", title: "Essay", day: "2026-10-01", courseName: "SCHM2301 Supply Chain", goalIds: ["school"] },
-    { id: "t2", title: "Lab", day: "2026-10-02", courseName: null, goalIds: ["school"] },
-    { id: "t3", title: "Summer reading", day: "2026-08-20", courseName: null, goalIds: ["school"] },
-    { id: "t4", title: "Errand", day: "2026-10-05", courseName: null, goalIds: [] },
+    { id: "t1", title: "Essay", day: "2026-10-01", course: "SCHM2301", goalIds: ["school"] },
+    { id: "t2", title: "Lab", day: "2026-10-02", course: null, goalIds: ["school"] },
+    { id: "t3", title: "Summer reading", day: "2026-08-20", course: null, goalIds: ["school"] },
+    { id: "t4", title: "Errand", day: "2026-10-05", course: null, goalIds: [] },
   ],
   open: [
     { id: "o1", goalIds: ["school"] },

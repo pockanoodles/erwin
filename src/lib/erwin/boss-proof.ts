@@ -1,16 +1,16 @@
 /**
  * Boss proof: how Erwin knows a boss was beaten without anyone ticking a box.
- * A boss names its proof, a Canvas gradebook item or another task, and the
- * proof settles it (lib/erwin/goal-rules.ts): handing the work in, a grade or
- * being excused fells the boss, and the item's due date wins over the boss's
- * own. A boss with no proof is marked by hand, with a ✅ on its vault heading
- * or Done in Erwin.
+ * A boss names its proof, an item a module keeps (Courses: a Canvas
+ * gradebook item, read through the module registry's `proofItems`) or
+ * another task, and the proof settles it (lib/erwin/goal-rules.ts): handing
+ * the work in, a grade or being excused fells the boss, and the item's due
+ * date wins over the boss's own. A boss with no proof is marked by hand,
+ * with a ✅ on its vault heading or Done in Erwin.
  *
  * Pure, so the server and the boss form share one reading of the evidence.
  */
 
-import { formatScore } from "@/lib/canvas/activity-plan";
-import { DONE_STATES } from "@/lib/canvas/gradebook-plan";
+import type { ProofItem } from "@/modules/types";
 
 export type ProofState = "open" | "done" | "missed";
 
@@ -22,41 +22,12 @@ export interface BossProof {
   label: string;
 }
 
-/** A Canvas gradebook item, as the proof of a boss. */
-export interface CanvasEvidence {
-  state: string;
-  score: number | null;
-  pointsPossible: number | null;
-  grade: string | null;
+/** A boss whose proof is a module's item, as that item reads now. */
+export function itemProof(item: ProofItem | undefined): BossProof {
+  return item
+    ? { source: "canvas", state: item.state, label: item.label }
+    : { source: "canvas", state: "open", label: "Not in your gradebook yet" };
 }
-
-export function canvasProof(item: CanvasEvidence): BossProof {
-  const proof = (state: ProofState, label: string): BossProof => ({ source: "canvas", state, label });
-  switch (item.state) {
-    case "graded": {
-      const result = formatScore(item.score, item.pointsPossible, item.grade);
-      return proof("done", result ? `Graded ${result}` : "Graded");
-    }
-    case "excused":
-      return proof("done", "Excused");
-    case "submitted":
-    case "pending_review":
-      return proof("done", "Handed in");
-    case "missed":
-      return proof("missed", "Missed");
-    case "missing":
-      return proof("open", "Missing in Canvas");
-    case "ended":
-      // Nothing to hand in through Canvas, and the date has passed: an
-      // in-class exam is settled when its grade is posted.
-      return proof("open", "Waiting on a grade");
-    default:
-      return proof("open", "Not handed in yet");
-  }
-}
-
-/** A Canvas item settles its boss once it reads as handed in. */
-export const settlesBoss = (state: string) => DONE_STATES.has(state);
 
 export function taskProof(task: { status: string }): BossProof {
   return task.status === "completed"

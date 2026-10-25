@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { formatInTimeZone, newDate } from "@/lib/date-utils";
-import { canvasProof, selfProof, taskProof, type BossProof } from "@/lib/erwin/boss-proof";
+import { itemProof, selfProof, taskProof, type BossProof } from "@/lib/erwin/boss-proof";
 import { ensureCurrentHex, hexOfDay } from "@/lib/erwin/hex";
 import { buildLadder } from "@/lib/erwin/ladder";
 import { openWorkWhere } from "@/lib/erwin/open-work";
@@ -10,7 +10,7 @@ import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
-import { moduleTaskFacts } from "@/modules/hooks";
+import { moduleProofItems, moduleTaskFacts } from "@/modules/hooks";
 import { moduleView } from "@/modules/state";
 
 const LOG_SOURCE = "ErwinLadderAPI";
@@ -99,16 +99,16 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // The XP log names a finished task's course: Courses' fact about it.
+    // The XP log names a finished task's course by its label: Courses' fact.
     const facts = await moduleTaskFacts(
       prisma,
       userId,
       done.map((task) => ({ id: task.id })),
       modules.isOn
     );
-    const courseNameOf = (id: string) => {
-      const name = facts.get(id)?.courseName;
-      return typeof name === "string" ? name : null;
+    const courseOf = (id: string) => {
+      const label = facts.get(id)?.courseLabel;
+      return typeof label === "string" ? label : null;
     };
 
     // What each boss's proof says now: its Canvas gradebook item, or its task.
@@ -118,24 +118,16 @@ export async function GET(request: NextRequest) {
       !goal.canvasAssignmentId && goal.proofTaskId ? [goal.proofTaskId] : []
     );
     const [items, proofTasks] = await Promise.all([
-      canvasIds.length
-        ? prisma.courseAssignment.findMany({
-            where: { canvasId: { in: canvasIds }, course: { userId } },
-            select: { canvasId: true, state: true, score: true, pointsPossible: true, grade: true },
-          })
-        : [],
+      moduleProofItems(prisma, userId, canvasIds),
       proofTaskIds.length
         ? prisma.task.findMany({ where: { id: { in: proofTaskIds }, userId }, select: { id: true, status: true } })
         : [],
     ]);
-    const itemOf = new Map(items.map((item) => [item.canvasId, item]));
+    const itemOf = new Map(items.map((item) => [item.ref, item]));
     const taskOf = new Map(proofTasks.map((task) => [task.id, task]));
     const proofOf = (goal: (typeof goals)[number]): BossProof | null => {
       if (!goal.isBoss) return null;
-      if (goal.canvasAssignmentId) {
-        const item = itemOf.get(goal.canvasAssignmentId);
-        return item ? canvasProof(item) : { source: "canvas", state: "open", label: "Not in your gradebook yet" };
-      }
+      if (goal.canvasAssignmentId) return itemProof(itemOf.get(goal.canvasAssignmentId));
       const task = goal.proofTaskId ? taskOf.get(goal.proofTaskId) : undefined;
       return task ? taskProof(task) : selfProof(goal.status);
     };
@@ -166,7 +158,7 @@ export async function GET(request: NextRequest) {
           id: task.id,
           title: task.title,
           day: dayOf(task.completedAt!),
-          courseName: courseNameOf(task.id),
+          course: courseOf(task.id),
           goalIds: task.goalLinks.map((link) => link.goalId),
         })),
         open: open.map((task) => ({

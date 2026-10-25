@@ -11,7 +11,7 @@ import {
   SERVER_MODULES,
   type TaskFacts,
 } from "@/modules/server";
-import type { ModuleId } from "@/modules/types";
+import type { ClaimOption, ModuleId, ProofItem } from "@/modules/types";
 
 /**
  * Some of a person's tasks were created or changed (all of them when
@@ -96,4 +96,36 @@ export async function moduleClaimKeys(
     }
   }
   return keys;
+}
+
+/**
+ * What the modules keep that a boss can name as proof (these refs, or all of
+ * them), on or off: a boss stays settled by its evidence while the module
+ * that keeps it is turned off.
+ */
+export async function moduleProofItems(
+  db: Db | DbTransaction,
+  userId: string,
+  refs?: string[]
+): Promise<ProofItem[]> {
+  if (refs && refs.length === 0) return [];
+  const items: ProofItem[] = [];
+  for (const m of MODULES) {
+    const ask = SERVER_MODULES[m.id].proofItems;
+    if (ask) items.push(...(await ask(db, userId, refs)));
+  }
+  return items;
+}
+
+/** Every claim the modules offer goals beyond whole sources, on or off. */
+export async function moduleClaimOptions(
+  db: Db,
+  userId: string
+): Promise<ClaimOption[]> {
+  const options: ClaimOption[] = [];
+  for (const m of MODULES) {
+    const ask = SERVER_MODULES[m.id].claimOptions;
+    if (ask) options.push(...(await ask(db, userId)));
+  }
+  return options;
 }

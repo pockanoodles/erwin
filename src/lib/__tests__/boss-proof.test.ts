@@ -1,18 +1,20 @@
-import { canvasProof, selfProof, suggestProof, taskProof, type ProofCandidate } from "../erwin/boss-proof";
+import { itemProof, selfProof, suggestProof, taskProof, type ProofCandidate } from "../erwin/boss-proof";
 
-describe("canvasProof", () => {
-  const item = (state: string, score: number | null = null) => ({ state, score, pointsPossible: 100, grade: null });
-
-  it("fells a boss on a hand-in, a grade or an excusal, and says which", () => {
-    expect(canvasProof(item("graded", 90))).toEqual({ source: "canvas", state: "done", label: "Graded 90 / 100" });
-    expect(canvasProof(item("pending_review"))).toMatchObject({ state: "done", label: "Handed in" });
-    expect(canvasProof(item("excused"))).toMatchObject({ state: "done", label: "Excused" });
-  });
-
-  it("keeps it open until then, and calls a closed item missed", () => {
-    expect(canvasProof(item("unsubmitted"))).toMatchObject({ state: "open", label: "Not handed in yet" });
-    expect(canvasProof(item("ended"))).toMatchObject({ state: "open", label: "Waiting on a grade" });
-    expect(canvasProof(item("missed"))).toMatchObject({ state: "missed", label: "Missed" });
+describe("proofs", () => {
+  it("reads a module's item as it stands, or says it isn't there yet", () => {
+    const item = {
+      ref: "1",
+      name: "Test 2",
+      groupId: "c",
+      courseCode: null,
+      dueAt: null,
+      state: "done" as const,
+      label: "Graded 90 / 100",
+      settles: true,
+      task: null,
+    };
+    expect(itemProof(item)).toEqual({ source: "canvas", state: "done", label: "Graded 90 / 100" });
+    expect(itemProof(undefined)).toEqual({ source: "canvas", state: "open", label: "Not in your gradebook yet" });
   });
 
   it("reads tasks and hand-marked bosses too", () => {

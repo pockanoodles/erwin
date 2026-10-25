@@ -46,7 +46,7 @@ export function GoalDialog() {
     setSources(null);
     fetchGoalSources().then(
       (next) => live && setSources(next),
-      () => live && setSources({ sources: [], courses: [], projects: [], items: [], tasks: [] })
+      () => live && setSources({ sources: [], claimOptions: [], projects: [], items: [], tasks: [] })
     );
     return () => {
       live = false;

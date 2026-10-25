@@ -2,7 +2,8 @@
  * What Courses tells the core about its tasks (src/modules/server.ts), spread
  * onto each Canvas task wherever the core hands tasks out:
  *
- *  - `courseId` (Canvas's id for the course) and `courseName`;
+ *  - `courseId` (Canvas's id for the course), `courseName`, and
+ *    `courseLabel`, the course as dense rows name it (its code: SCHM2301);
  *  - `submissionStatus`, Canvas's word on the submission: unsubmitted |
  *    missing | missed | submitted | pending_review | graded | excused. Ops
  *    reads it to tell a hand-ticked completion from one Canvas confirmed;
@@ -16,11 +17,14 @@
  * within its course. And the key a goal claims a course's work by:
  * `course:<Canvas course id>`.
  */
+import { courseTab } from "@/components/courses/course-tab";
+
 import { projectMissedGrades } from "@/lib/erwin/load-grade-projections";
 import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import type { FactsRequest, TaskFacts } from "@/modules/server";
+import type { ClaimOption } from "@/modules/types";
 
 const oneDecimal = (n: number) => Math.round(n * 10) / 10;
 
@@ -37,7 +41,7 @@ export async function courseTaskFacts(
       courseId: true,
       state: true,
       gradeWeightPercent: true,
-      course: { select: { canvasId: true, name: true } },
+      course: { select: { canvasId: true, code: true, name: true } },
     },
   });
 
@@ -73,6 +77,7 @@ export async function courseTaskFacts(
     facts.set(r.taskId, {
       courseId: r.course.canvasId,
       courseName: r.course.name,
+      courseLabel: courseTab(r.course),
       submissionStatus: r.state,
       gradeWeightPercent: weight == null ? null : oneDecimal(weight),
       gradeProjection: p
@@ -133,4 +138,21 @@ export async function courseClaimKeys(
       r.taskId ? [[r.taskId, [`course:${r.course.canvasId}`]] as const] : []
     )
   );
+}
+
+/** Each course, for a goal to claim its work. */
+export async function courseClaimOptions(
+  db: Db,
+  userId: string
+): Promise<ClaimOption[]> {
+  const courses = await db.course.findMany({
+    where: { userId },
+    select: { canvasId: true, code: true, name: true },
+    orderBy: { code: "asc" },
+  });
+  return courses.map((c) => ({
+    key: `course:${c.canvasId}`,
+    label: courseTab(c),
+    title: c.name,
+  }));
 }

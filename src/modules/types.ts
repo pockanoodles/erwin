@@ -53,3 +53,36 @@ export interface ModuleState {
 
 /** What GET /api/modules returns per module. */
 export type ModuleListing = ModuleManifest & Omit<ModuleState, "id">;
+
+/** A claim a module offers goals beyond whole sources (Courses: a course). */
+export interface ClaimOption {
+  /** What the goal stores in taskSources ("course:<Canvas course id>"). */
+  key: string;
+  /** The chip's text (SCHM2301). */
+  label: string;
+  /** The chip's tooltip (the course's full name). */
+  title: string;
+}
+
+/**
+ * Something a module keeps that a Ladder boss can name as its proof (Courses:
+ * a gradebook item), as it stands now. Ladder settles bosses from these
+ * without reading the module's tables (src/modules/server.ts `proofItems`).
+ */
+export interface ProofItem {
+  /** What the goal stores to name it: Canvas's id, in Goal.canvasAssignmentId. */
+  ref: string;
+  name: string;
+  /** The module's own grouping, for the goal form (Courses: the course row). */
+  groupId: string;
+  /** Canvas's course code, e.g. "SCHM2301.10244.202710". */
+  courseCode: string | null;
+  dueAt: Date | null;
+  state: "open" | "done" | "missed";
+  /** What it says now: "Graded 90 / 100", "Handed in", "Missed". */
+  label: string;
+  /** Handed in, graded or excused: it fells the boss that names it. */
+  settles: boolean;
+  /** The task that is its work, if Erwin tracks one. */
+  task: { id: string; goalsPinned: boolean } | null;
+}
