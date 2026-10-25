@@ -15,6 +15,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - **Activity:** each sync records what changed (new announcements, messages, files and assignments, moved due dates, posted grades, feedback, work gone missing) in one feed, with an unseen count in the top bar. `GET /api/erwin/activity?since=` lets a local tool follow it.
 - **Courses page:** Activity, Grades, News and Library views, with an All tab beside the course tabs.
 - **Goals and progress:** goals link to tasks and courses, and progress shows honest numbers with no streaks.
+- **Ladder:** the goals page is a character sheet for the two-month hex. It shows the eight stats with levels and the XP each hex added, the hex's days with the work finished on each and its bosses, the goals behind each stat, and a log of what earned the XP. XP is derived from finished tasks on every read and never stored. `GET /api/erwin/ladder?year=&index=`.
 - **Calendar and tasks:** Google, Outlook and CalDAV calendars, task sync with Outlook and Google Tasks, auto-scheduling, subtasks, and deferred tasks.
 - **Desktop app:** Electron around the same server, with an embedded database and no account or setup. It saves a copy of the database before any migration that changes it.
 - **Self-host:** Docker Compose with Postgres and a background sync worker, or a single container with the in-process scheduler.
@@ -33,6 +34,8 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - Canvas creates a task for every assignment with something to hand in or a date to meet, including work graded before Erwin first saw it and assignments that unlock later. Undated participation lines and posted-grade placeholders stay in the gradebook only, and assignments Canvas removes are removed.
 - Canvas work that's closed without a submission (`missed`), or that happens in class or in another tool once its date passes (`ended`), leaves Focus and the attention list instead of staying overdue.
 - Focus's "if you miss this" projection reads the stored gradebook, weights groups the way Canvas's current score does, and no longer calls Canvas while the page loads.
+- The goals map is gone, and with it `@xyflow/react` and `@dagrejs/dagre`. Goals and bosses made in Erwin are added and edited from the Ladder, and tasks are still linked to goals from Tasks.
+- A new hex starts with the Build of the hex before it, so a season that spans two hexes keeps its Build.
 
 ### Fixed
 

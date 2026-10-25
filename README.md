@@ -123,6 +123,8 @@ flowchart LR
 
 Linking a task to a goal gives it an impact signal beside its grade impact, which is why a personal goal can outrank coursework once the coursework is far enough from its deadline.
 
+The Ladder page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled deliverable earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. The XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/erwin/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A new cycle starts with the Build of the one before.
+
 ## A sync, step by step
 
 ```mermaid

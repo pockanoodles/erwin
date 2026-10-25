@@ -22,7 +22,9 @@ export interface GoalFormValues {
 interface GoalFormProps {
   initialValues: GoalFormValues;
   submitLabel: string;
-  onSubmit: (values: GoalFormValues) => Promise<void>;
+  /** Goals a new one can sit under, a boss on its path. Omit when editing. */
+  parents?: { id: string; title: string }[];
+  onSubmit: (values: GoalFormValues, parentGoalId: string | null) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -43,10 +45,11 @@ function FieldLabel({
   );
 }
 
-/** Inline form for adding or editing a goal within the active hex. */
+/** The form for adding or editing a goal made in Erwin. */
 export function GoalForm({
   initialValues,
   submitLabel,
+  parents,
   onSubmit,
   onCancel,
 }: GoalFormProps) {
@@ -67,6 +70,7 @@ export function GoalForm({
   const [targetDate, setTargetDate] = useState(
     initialValues.targetDate ? initialValues.targetDate.slice(0, 10) : ""
   );
+  const [parentGoalId, setParentGoalId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleStat = (key: StatKey) => {
@@ -80,15 +84,18 @@ export function GoalForm({
     if (!title.trim()) return;
     setIsSubmitting(true);
     try {
-      await onSubmit({
-        title: title.trim(),
-        whyItMatters: whyItMatters.trim() || null,
-        definitionOfDone: definitionOfDone.trim() || null,
-        importanceScore: importance ? Number(importance) : null,
-        develops,
-        isBoss,
-        targetDate: targetDate || null,
-      });
+      await onSubmit(
+        {
+          title: title.trim(),
+          whyItMatters: whyItMatters.trim() || null,
+          definitionOfDone: definitionOfDone.trim() || null,
+          importanceScore: importance ? Number(importance) : null,
+          develops,
+          isBoss,
+          targetDate: targetDate || null,
+        },
+        parentGoalId || null
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -145,6 +152,24 @@ export function GoalForm({
           })}
         </div>
       </div>
+      {parents && parents.length > 0 ? (
+        <div className="space-y-1.5">
+          <FieldLabel htmlFor="goal-parent">Under</FieldLabel>
+          <select
+            id="goal-parent"
+            value={parentGoalId}
+            onChange={(e) => setParentGoalId(e.target.value)}
+            className="h-9 w-full rounded-md border border-input bg-raised px-2 text-sm text-foreground"
+          >
+            <option value="">Nothing, it stands alone</option>
+            {parents.map((parent) => (
+              <option key={parent.id} value={parent.id}>
+                {parent.title}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       <div className="flex items-end gap-4">
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -154,7 +179,7 @@ export function GoalForm({
             className="h-3.5 w-3.5 accent-foreground"
           />
           <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
-            ⚔ Boss
+            Boss, a dated milestone
           </span>
         </label>
         {isBoss ? (
@@ -196,7 +221,7 @@ export function GoalForm({
         >
           {isSubmitting ? "Saving…" : submitLabel}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+        <Button type="button" size="sm" variant="quiet" onClick={onCancel}>
           Cancel
         </Button>
       </div>

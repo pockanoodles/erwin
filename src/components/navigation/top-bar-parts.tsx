@@ -61,7 +61,9 @@ export function BarButton({
         "flex flex-none items-center px-3 transition-colors duration-150",
         emphasis === "loud"
           ? "er-plate text-rust-foreground hover:[--plate:var(--er-accent-text)]"
-          : "er-brackets text-muted-foreground hover:text-foreground"
+          : "er-brackets text-muted-foreground hover:text-foreground",
+        // Unavailable here, not gone: it keeps its place and reads as such.
+        "aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:text-muted-foreground aria-disabled:hover:[--bracket:var(--er-muted)]"
       )}
       {...rest}
     >

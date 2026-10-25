@@ -20,6 +20,10 @@ import {
   CoursesTopBarActions,
   CoursesTopBarViews,
 } from "@/components/courses/CoursesTopBar";
+import {
+  LadderTopBarActions,
+  LadderTopBarViews,
+} from "@/components/ladder/LadderTopBar";
 import { ErwinStatus } from "@/components/navigation/ErwinStatus";
 import { BarDivider } from "@/components/navigation/top-bar-parts";
 import {
@@ -78,6 +82,8 @@ const ROUTES: readonly RouteChrome[] = [
   {
     match: (p) => p.startsWith("/goals"),
     title: "Ladder",
+    Views: LadderTopBarViews,
+    Actions: LadderTopBarActions,
   },
   { match: (p) => p.startsWith("/progress"), title: "Progress" },
   { match: (p) => p.startsWith("/settings"), title: "Settings" },
