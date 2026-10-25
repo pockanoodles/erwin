@@ -1,7 +1,6 @@
 "use client";
 
-import { brand } from "@/lib/brand";
-import type { ComponentType } from "react";
+import { type ComponentType, useMemo } from "react";
 
 import { usePathname } from "next/navigation";
 
@@ -16,14 +15,6 @@ import {
   CalendarTopBarActions,
   CalendarTopBarViews,
 } from "@/components/calendar/CalendarTopBar";
-import {
-  CoursesTopBarActions,
-  CoursesTopBarViews,
-} from "@/components/courses/CoursesTopBar";
-import {
-  LadderTopBarActions,
-  LadderTopBarViews,
-} from "@/components/ladder/LadderTopBar";
 import { ErwinStatus } from "@/components/navigation/ErwinStatus";
 import { BarDivider } from "@/components/navigation/top-bar-parts";
 import {
@@ -31,10 +22,16 @@ import {
   TasksTopBarViews,
 } from "@/components/tasks/TasksTopBar";
 
-import { useIsMobile } from "@/hooks/use-media-query";
+import { brand } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
+import { MODULES } from "@/modules";
+import { CLIENT_MODULES } from "@/modules/client";
+
+import { useIsMobile } from "@/hooks/use-media-query";
+
 import { useCommandPaletteStore } from "@/store/commandPalette";
+import { useOnModules } from "@/store/modules";
 import { useNavUIStore } from "@/store/navUi";
 
 /**
@@ -58,7 +55,7 @@ interface RouteChrome {
   Actions?: ComponentType;
 }
 
-const ROUTES: readonly RouteChrome[] = [
+const CORE_ROUTES: readonly RouteChrome[] = [
   { match: (p) => p.startsWith("/today"), title: "Today" },
   { match: (p) => p.startsWith("/focus"), title: "Focus" },
   {
@@ -73,21 +70,29 @@ const ROUTES: readonly RouteChrome[] = [
     Views: TasksTopBarViews,
     Actions: TasksTopBarActions,
   },
-  {
-    match: (p) => p.startsWith("/courses"),
-    title: "Courses",
-    Views: CoursesTopBarViews,
-    Actions: CoursesTopBarActions,
-  },
-  {
-    match: (p) => p.startsWith("/goals"),
-    title: "Ladder",
-    Views: LadderTopBarViews,
-    Actions: LadderTopBarActions,
-  },
+  { match: (p) => p.startsWith("/modules"), title: "Modules" },
   { match: (p) => p.startsWith("/progress"), title: "Progress" },
   { match: (p) => p.startsWith("/settings"), title: "Settings" },
 ];
+
+/** A module's page keeps its name in the bar while it's off (the page says
+ *  so), but its controls only draw while it's on. */
+function moduleRoutes(onIds: ReadonlySet<string>): RouteChrome[] {
+  return MODULES.flatMap((m) => {
+    if (!m.page) return [];
+    const href = m.page.href;
+    const on = onIds.has(m.id);
+    const chrome = CLIENT_MODULES[m.id];
+    return [
+      {
+        match: (p: string) => p === href || p.startsWith(`${href}/`),
+        title: m.name,
+        Views: on ? chrome.Views : undefined,
+        Actions: on ? chrome.Actions : undefined,
+      },
+    ];
+  });
+}
 
 export function AppTopBar() {
   const pathname = usePathname() ?? "";
@@ -95,8 +100,13 @@ export function AppTopBar() {
   const { isNavOpen, isDrawerOpen, isHydrated, setNavOpen, setDrawerOpen } =
     useNavUIStore();
   const openPalette = useCommandPaletteStore((s) => s.setOpen);
+  const modules = useOnModules();
 
-  const route = ROUTES.find((r) => r.match(pathname));
+  const routes = useMemo(
+    () => [...CORE_ROUTES, ...moduleRoutes(new Set(modules.map((m) => m.id)))],
+    [modules]
+  );
+  const route = routes.find((r) => r.match(pathname));
   const Views = route?.Views;
   const Actions = route?.Actions;
 

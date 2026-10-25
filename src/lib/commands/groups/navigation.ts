@@ -4,19 +4,42 @@ import {
   HiOutlineCalendar,
   HiOutlineClipboardList,
   HiOutlineCog,
-  HiOutlineCollection,
-  HiOutlineFlag,
   HiOutlineLightningBolt,
   HiOutlineMenu,
+  HiOutlinePuzzle,
   HiOutlineTrendingUp,
 } from "react-icons/hi";
 
+import { CLIENT_MODULES } from "@/modules/client";
+
+import { useOnModules } from "@/store/modules";
 import { useNavUIStore } from "@/store/navUi";
 
 import { Command } from "../types";
 
 export function useNavigationCommands(): Command[] {
   const { isNavOpen, setNavOpen } = useNavUIStore();
+  const modules = useOnModules();
+
+  // A module that's on gets its "Go to" entry; one that's off has none.
+  const moduleCommands: Command[] = modules.flatMap((m) => {
+    if (!m.page) return [];
+    const href = m.page.href;
+    const { icon, shortcut } = CLIENT_MODULES[m.id].command;
+    return [
+      {
+        id: `navigation.${m.id}`,
+        title: `Go to ${m.name}`,
+        keywords: ["navigation", ...m.page.keywords],
+        icon,
+        section: "navigation" as const,
+        shortcut,
+        perform: (router?: AppRouterInstance) => {
+          if (router) router.push(href);
+        },
+      },
+    ];
+  });
 
   return [
     {
@@ -42,17 +65,6 @@ export function useNavigationCommands(): Command[] {
       },
     },
     {
-      id: "navigation.courses",
-      title: "Go to Courses",
-      keywords: ["navigation", "canvas", "materials", "library", "syllabus", "slides"],
-      icon: HiOutlineCollection,
-      section: "navigation",
-      shortcut: "gl",
-      perform: (router?: AppRouterInstance) => {
-        if (router) router.push("/courses");
-      },
-    },
-    {
       id: "navigation.focus",
       title: "Go to Focus",
       keywords: ["navigation"],
@@ -74,15 +86,22 @@ export function useNavigationCommands(): Command[] {
         if (router) router.push("/progress");
       },
     },
+    ...moduleCommands,
     {
-      id: "navigation.goals",
-      title: "Go to Ladder",
-      keywords: ["navigation", "goals", "bosses", "hex", "ladder", "stats", "xp", "level", "build"],
-      icon: HiOutlineFlag,
+      id: "navigation.modules",
+      title: "Go to Modules",
+      keywords: [
+        "navigation",
+        "modules",
+        "add",
+        "turn on",
+        "turn off",
+        "catalog",
+      ],
+      icon: HiOutlinePuzzle,
       section: "navigation",
-      shortcut: "gg",
       perform: (router?: AppRouterInstance) => {
-        if (router) router.push("/goals");
+        if (router) router.push("/modules");
       },
     },
     {

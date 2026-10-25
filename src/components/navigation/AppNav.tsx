@@ -5,9 +5,11 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { useIsMobile } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { useIsMobile } from "@/hooks/use-media-query";
+
+import { useModulesStore, useOnModules } from "@/store/modules";
 import { useNavUIStore } from "@/store/navUi";
 
 import { SettingsMenu } from "./SettingsMenu";
@@ -16,13 +18,12 @@ interface AppNavProps {
   className?: string;
 }
 
-const LINKS = [
+/** The core: every Erwin has these, in this order, and they never move. */
+const CORE_LINKS = [
   { href: "/today", label: "Today" },
   { href: "/focus", label: "Focus" },
   { href: "/calendar", label: "Calendar" },
   { href: "/tasks", label: "Tasks" },
-  { href: "/courses", label: "Courses" },
-  { href: "/goals", label: "Ladder" },
 ];
 
 /** Left nav rail — links only. Collapsing animates the rail's width against a
@@ -36,6 +37,11 @@ const LINKS = [
  *  replaced a semi-transparent tab that floated in the middle of the left
  *  edge, which is the thing this rail should never need again).
  *
+ *  Under the core links sits the Modules row, always there, and under it the
+ *  modules this person has on, in the order they set on /modules. So turning
+ *  a module on only ever grows the middle: the core above and Settings at the
+ *  bottom stay exactly where they were.
+ *
  *  Below `md` the same links render as an overlay drawer instead. A 192px
  *  column inside a 393px viewport is half the screen, so on a phone the rail
  *  stops being a column and starts being something you pull over the page and
@@ -46,6 +52,13 @@ export function AppNav({ className }: AppNavProps) {
   const isMobile = useIsMobile();
   const { isNavOpen, isDrawerOpen, isHydrated, setDrawerOpen } =
     useNavUIStore();
+  const modules = useOnModules();
+  const loadModules = useModulesStore((s) => s.load);
+
+  // Another tab or device may have changed them; the store throttles this.
+  useEffect(() => {
+    void loadModules();
+  }, [loadModules, pathname]);
 
   // Navigating is the drawer's job done — leaving it open would bury the page
   // the tap just loaded.
@@ -73,32 +86,65 @@ export function AppNav({ className }: AppNavProps) {
     isNavOpen ? "opacity-100" : "opacity-0"
   );
 
+  const tabIndex = isMobile ? (isDrawerOpen ? 0 : -1) : isNavOpen ? 0 : -1;
+
+  const navLink = (href: string, text: string) => {
+    const isActive = pathname === href;
+
+    return (
+      <Link
+        key={href}
+        href={href}
+        title={text}
+        tabIndex={tabIndex}
+        className={cn(
+          "mx-2 flex items-center whitespace-nowrap px-2.5 text-[13px] font-normal transition-colors duration-150",
+          // 40px is fine for a pointer and under the 44px touch floor.
+          isMobile ? "h-11" : "h-8",
+          // Where you are is framed, crate-stencil style, in ink corner
+          // brackets. It is not "now", so it stays out of the rust.
+          isActive
+            ? "er-brackets font-medium text-foreground [--bracket:var(--er-ink)]"
+            : "text-muted-foreground hover:bg-hover hover:text-foreground"
+        )}
+      >
+        <span className={isMobile ? undefined : label}>{text}</span>
+      </Link>
+    );
+  };
+
+  const onCatalog = pathname?.startsWith("/modules") ?? false;
+
   const links = (
     <>
-      {LINKS.map((link) => {
-        const isActive = pathname === link.href;
+      {CORE_LINKS.map((link) => navLink(link.href, link.label))}
 
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            title={link.label}
-            tabIndex={isMobile ? (isDrawerOpen ? 0 : -1) : isNavOpen ? 0 : -1}
-            className={cn(
-              "mx-2 flex items-center whitespace-nowrap px-2.5 text-[13px] font-normal transition-colors duration-150",
-              // 40px is fine for a pointer and under the 44px touch floor.
-              isMobile ? "h-11" : "h-8",
-              // Where you are is framed, crate-stencil style, in ink corner
-              // brackets. It is not "now", so it stays out of the rust.
-              isActive
-                ? "er-brackets font-medium text-foreground [--bracket:var(--er-ink)]"
-                : "text-muted-foreground hover:bg-hover hover:text-foreground"
-            )}
-          >
-            <span className={isMobile ? undefined : label}>{link.label}</span>
-          </Link>
-        );
-      })}
+      {/* Always drawn, with or without modules on, so it never appears or
+          vanishes under you. It opens the catalog. */}
+      <Link
+        href="/modules"
+        title="Modules: turn parts of Erwin on or off"
+        tabIndex={tabIndex}
+        className={cn(
+          "mx-2 mt-4 flex items-center justify-between whitespace-nowrap px-2.5 transition-colors duration-150",
+          isMobile ? "h-11" : "h-7",
+          onCatalog ? "er-brackets [--bracket:var(--er-ink)]" : "hover:bg-hover"
+        )}
+      >
+        <span className={cn("er-label", isMobile ? undefined : label)}>
+          Modules
+        </span>
+        <span
+          className={cn(
+            "er-slash font-mono text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground",
+            isMobile ? undefined : label
+          )}
+        >
+          Add
+        </span>
+      </Link>
+
+      {modules.map((m) => (m.page ? navLink(m.page.href, m.name) : null))}
     </>
   );
 
@@ -112,9 +158,7 @@ export function AppNav({ className }: AppNavProps) {
           aria-hidden
           className={cn(
             "fixed inset-0 z-40 bg-background/70 transition-opacity duration-200 motion-reduce:transition-none",
-            isDrawerOpen
-              ? "opacity-100"
-              : "pointer-events-none opacity-0"
+            isDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         />
         <div
@@ -153,7 +197,10 @@ export function AppNav({ className }: AppNavProps) {
         className
       )}
     >
-      <nav className="flex h-full w-rail flex-col py-3" aria-hidden={!isNavOpen}>
+      <nav
+        className="flex h-full w-rail flex-col py-3"
+        aria-hidden={!isNavOpen}
+      >
         {links}
 
         <div className="mt-auto">
