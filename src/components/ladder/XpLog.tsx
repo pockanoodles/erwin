@@ -1,6 +1,6 @@
 "use client";
 
-import { FilterStrip, StripCount } from "@/components/courses/sheet";
+import { FilterStrip, StripCount } from "@/components/sheet/sheet";
 import { courseTab } from "@/components/courses/course-tab";
 
 import { STAT_ABBREV, STAT_KEYS, STAT_NAMES } from "@/lib/erwin/stats";

@@ -34,7 +34,7 @@ import {
   sheetKeyHandler,
   titleCellClass,
   useScrollActiveIntoView,
-} from "./sheet";
+} from "@/components/sheet/sheet";
 
 /**
  * Activity: everything that changed in Canvas, newest first, a band per day —

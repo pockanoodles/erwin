@@ -14,7 +14,7 @@ import { courseTab } from "./course-tab";
 import { GradesSheet } from "./GradesSheet";
 import { LibrarySheet, openCount } from "./LibrarySheet";
 import { NewsSheet } from "./NewsSheet";
-import { UnseenPip } from "./sheet";
+import { UnseenPip } from "@/components/sheet/sheet";
 
 /**
  * /courses — Canvas, mirrored, as one workbook. The top bar picks the view

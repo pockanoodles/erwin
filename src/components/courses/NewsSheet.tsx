@@ -31,7 +31,7 @@ import {
   sheetKeyHandler,
   titleCellClass,
   useScrollActiveIntoView,
-} from "./sheet";
+} from "@/components/sheet/sheet";
 
 /**
  * News: what instructors said — announcements and Canvas Inbox threads,

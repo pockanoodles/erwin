@@ -5,10 +5,10 @@ import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The Courses sheets' shared grammar — the Tasks sheet's, too: 26px ruled
- * rows, a sticky numbered gutter, mono column heads, and a rust frame around
- * the active cell. Every view (Activity, Grades, News, Library) is built from
- * these so they read as one tool.
+ * The datasheet grammar every sheet in Erwin shares — Tasks, Courses' views,
+ * the Ladder, Modules and People: 26px ruled rows, a sticky numbered gutter,
+ * mono column heads, and a rust frame around the active cell, so they all
+ * read as one tool. Core, not any module's: modules build their pages from it.
  */
 
 export const ROW = "h-[26px]";

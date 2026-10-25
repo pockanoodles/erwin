@@ -1,7 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo } from "react";
 
+import {
+  HEAD,
+  ROW,
+  SheetLayout,
+  cellClass,
+  gutterClass,
+  sheetKeyHandler,
+  titleCellClass,
+  useScrollActiveIntoView,
+} from "@/components/sheet/sheet";
 import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
@@ -10,8 +20,6 @@ import { agoLabel, cadenceLabel, dueLabel } from "@/modules/people/cadence";
 import { PersonPane } from "@/modules/people/components/PersonPane";
 import { peopleInView, usePeopleStore } from "@/modules/people/store";
 import type { PersonRow } from "@/modules/people/types";
-
-const ROW = "h-[26px]";
 
 const COLUMNS = [
   { label: "#", width: 44 },
@@ -25,8 +33,8 @@ const COLUMNS = [
 
 /**
  * The People page: everyone as a datasheet, soonest check-in first, with the
- * selected person whole in the pane beside it — the task sheet's reading
- * model. Arrow keys move the selection.
+ * selected person whole in the reading pane — the grammar every sheet shares
+ * (components/sheet), j/k and arrows included.
  */
 export function PeoplePage() {
   const view = usePeopleStore((s) => s.view);
@@ -36,7 +44,6 @@ export function PeoplePage() {
   const selected = usePeopleStore((s) => s.selected);
   const select = usePeopleStore((s) => s.select);
   const load = usePeopleStore((s) => s.load);
-  const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void load();
@@ -52,91 +59,82 @@ export function PeoplePage() {
     selected && selected !== "new"
       ? [...people, ...archived].find((p) => p.id === selected)
       : undefined;
+  const activeIndex = rows.findIndex((r) => r.id === selected);
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-    e.preventDefault();
-    const i = rows.findIndex((r) => r.id === selected);
-    const next = rows[i < 0 ? 0 : i + (e.key === "ArrowDown" ? 1 : -1)];
-    if (next) select(next.id);
-  };
+  useScrollActiveIntoView([selected]);
+  const onKeyDown = sheetKeyHandler({
+    count: rows.length,
+    active: activeIndex,
+    isSelectable: () => true,
+    select: (i) => select(rows[i].id),
+  });
 
   return (
-    <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <div
-        ref={tableRef}
-        tabIndex={0}
-        onKeyDown={onKeyDown}
-        aria-label="People"
-        className="min-h-0 min-w-0 flex-1 overflow-auto outline-none"
-      >
-        <table className="min-w-full table-fixed border-separate border-spacing-0 text-[13px]">
-          <colgroup>
-            {COLUMNS.map((c) => (
-              <col
-                key={c.label}
-                style={c.width ? { width: c.width } : undefined}
-              />
-            ))}
-          </colgroup>
-          <thead>
-            <tr>
-              {COLUMNS.map((c, i) => (
-                <th
-                  key={c.label}
-                  scope="col"
-                  className={cn(
-                    ROW,
-                    "sticky top-0 z-10 border-b border-r border-border bg-muted px-2 text-left",
-                    "font-mono text-[10px] font-normal uppercase tracking-wide text-muted-foreground",
-                    i === 0 && "text-right"
-                  )}
-                >
-                  {c.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((p, i) => (
-              <PersonSheetRow
-                key={p.id}
-                index={i + 1}
-                person={p}
-                now={now}
-                active={p.id === selected}
-                onSelect={() => {
-                  select(p.id);
-                  tableRef.current?.focus();
-                }}
-              />
-            ))}
-          </tbody>
-        </table>
-        {status === "ready" && rows.length === 0 ? (
-          <EmptyState view={view} onAdd={() => select("new")} />
-        ) : null}
-        {status === "error" ? (
-          <p className="p-6 text-sm text-destructive">
-            People couldn&apos;t load. Try again in a moment.
-          </p>
-        ) : null}
-      </div>
-
-      <aside
-        aria-label="Person"
-        className="flex-none overflow-y-auto border-t border-border lg:w-[420px] lg:border-l lg:border-t-0"
-      >
-        {selected === "new" ? (
-          <PersonPane key="new" person={null} />
-        ) : person ? (
-          <PersonPane key={person.id} person={person} />
-        ) : (
-          <p className="p-5 text-sm text-muted-foreground">
-            Select someone to see them here.
-          </p>
-        )}
-      </aside>
+    <div className="flex h-full min-h-0 flex-col">
+      <SheetLayout
+        label="People"
+        onKeyDown={(e) => void onKeyDown(e)}
+        sheet={
+          <>
+            <table className="min-w-full table-fixed border-separate border-spacing-0 text-[13px]">
+              <colgroup>
+                {COLUMNS.map((c) => (
+                  <col
+                    key={c.label}
+                    style={c.width ? { width: c.width } : undefined}
+                  />
+                ))}
+              </colgroup>
+              <thead>
+                <tr>
+                  {COLUMNS.map((c, i) => (
+                    <th
+                      key={c.label}
+                      scope="col"
+                      className={cn(ROW, HEAD, i === 0 && "text-right")}
+                    >
+                      {c.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((p, i) => (
+                  <PersonSheetRow
+                    key={p.id}
+                    index={i + 1}
+                    person={p}
+                    now={now}
+                    active={p.id === selected}
+                    onSelect={() => select(p.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+            {status === "ready" && rows.length === 0 ? (
+              <EmptyState view={view} onAdd={() => select("new")} />
+            ) : null}
+            {status === "error" ? (
+              <p className="p-6 text-sm text-destructive">
+                People couldn&apos;t load. Try again in a moment.
+              </p>
+            ) : null}
+          </>
+        }
+        pane={
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {selected === "new" ? (
+              <PersonPane key="new" person={null} />
+            ) : person ? (
+              <PersonPane key={person.id} person={person} />
+            ) : (
+              <p className="p-5 text-sm text-muted-foreground">
+                Select someone to see them here.
+              </p>
+            )}
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -156,29 +154,24 @@ function PersonSheetRow({
 }) {
   const next = p.nextCheckIn ? new Date(p.nextCheckIn) : null;
   const overdue = next != null && next.getTime() < now.getTime();
-  const cell = cn(
-    ROW,
-    "truncate border-b border-r border-border/60 px-2",
-    active ? "bg-rust/5" : "group-hover:bg-muted/40"
-  );
+  const cell = cellClass(active);
   return (
     <tr
       onClick={onSelect}
       aria-selected={active}
+      data-active-row={active || undefined}
       className="group cursor-default"
     >
+      <td className={gutterClass(active)}>{index}</td>
       <td
         className={cn(
-          ROW,
-          "border-b border-r border-border px-2 text-right font-mono text-[10px] tabular-nums",
-          active
-            ? "bg-accent text-accent-foreground"
-            : "bg-muted text-muted-foreground"
+          cell,
+          titleCellClass(active),
+          "font-medium text-foreground"
         )}
       >
-        {index}
+        {p.name}
       </td>
-      <td className={cn(cell, "font-medium text-foreground")}>{p.name}</td>
       <td className={cn(cell, "text-muted-foreground")}>{p.org}</td>
       <td className={cn(cell, "text-muted-foreground")}>{p.role}</td>
       <td className={cn(cell, "text-muted-foreground")}>

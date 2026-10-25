@@ -29,7 +29,7 @@ import {
   sheetKeyHandler,
   titleCellClass,
   useScrollActiveIntoView,
-} from "./sheet";
+} from "@/components/sheet/sheet";
 
 /**
  * Grades: Canvas's gradebook, mirrored. The All tab is the summary sheet —

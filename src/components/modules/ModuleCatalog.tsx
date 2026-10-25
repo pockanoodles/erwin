@@ -1,12 +1,22 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { toast } from "sonner";
 
+import {
+  HEAD,
+  ROW,
+  SheetLayout,
+  cellClass,
+  gutterClass,
+  sheetKeyHandler,
+  titleCellClass,
+  useScrollActiveIntoView,
+} from "@/components/sheet/sheet";
 import { Button } from "@/components/ui/button";
 
 import { cn } from "@/lib/utils";
@@ -17,12 +27,11 @@ import type { ModuleId, ModuleManifest } from "@/modules/types";
 
 import { useModulesStore } from "@/store/modules";
 
-const ROW = "h-[26px]";
-
 /**
  * The catalog: every module this build ships, as a datasheet, with the
- * selected one shown whole in the pane beside it — the same reading model as
- * the task sheet, where a cell truncates and the pane doesn't.
+ * selected one shown whole in the reading pane — the same grammar as every
+ * other sheet (components/sheet), where a cell truncates and the pane
+ * doesn't.
  *
  * Rows stay in catalog order whatever is on, so turning one on never moves
  * the row under your pointer. The rail order is set from the pane.
@@ -34,7 +43,6 @@ export function ModuleCatalog() {
   const states = useModulesStore((s) => s.states);
   const known = useModulesStore((s) => s.known);
   const load = useModulesStore((s) => s.load);
-  const tableRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     void load({ force: true });
@@ -44,6 +52,7 @@ export function ModuleCatalog() {
   const selectedId: ModuleId =
     param && isModuleId(param) ? param : MODULES[0].id;
   const selected = MODULES.find((m) => m.id === selectedId) ?? MODULES[0];
+  const activeIndex = MODULES.findIndex((m) => m.id === selectedId);
 
   const select = useCallback(
     (id: ModuleId) => {
@@ -57,81 +66,75 @@ export function ModuleCatalog() {
     [known, states]
   );
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
-    e.preventDefault();
-    const i = MODULES.findIndex((m) => m.id === selectedId);
-    const next = MODULES[i + (e.key === "ArrowDown" ? 1 : -1)];
-    if (next) select(next.id);
-  };
+  useScrollActiveIntoView([selectedId]);
+  const onKeyDown = sheetKeyHandler({
+    count: MODULES.length,
+    active: activeIndex,
+    isSelectable: () => true,
+    select: (i) => select(MODULES[i].id),
+  });
 
   return (
-    <div className="flex h-full min-h-0 flex-col lg:flex-row">
-      <div
-        ref={tableRef}
-        tabIndex={0}
-        onKeyDown={onKeyDown}
-        aria-label="Modules"
-        className="min-h-0 min-w-0 flex-1 overflow-auto outline-none"
-      >
-        <table className="min-w-full table-fixed border-separate border-spacing-0 text-[13px]">
-          <colgroup>
-            <col style={{ width: 44 }} />
-            <col style={{ width: 132 }} />
-            <col />
-            <col style={{ width: 220 }} />
-            <col style={{ width: 96 }} />
-          </colgroup>
-          <thead>
-            <tr>
-              {["#", "Module", "Adds", "Sends data to", "State"].map(
-                (label, i) => (
-                  <th
-                    key={label}
-                    scope="col"
-                    className={cn(
-                      ROW,
-                      "sticky top-0 z-10 border-b border-r border-border bg-muted px-2 text-left",
-                      "font-mono text-[10px] font-normal uppercase tracking-wide text-muted-foreground",
-                      i === 0 && "text-right"
-                    )}
-                  >
-                    {label}
-                  </th>
-                )
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {MODULES.map((m, i) => (
-              <CatalogRow
-                key={m.id}
-                index={i + 1}
-                module={m}
-                on={isOn(m.id)}
-                known={known}
-                active={m.id === selectedId}
-                onSelect={() => {
-                  select(m.id);
-                  tableRef.current?.focus();
-                }}
-              />
-            ))}
-          </tbody>
-        </table>
-        <p className="max-w-2xl px-3 py-4 text-xs leading-relaxed text-muted-foreground">
-          Today, Focus, Calendar and Tasks are always there. Modules add to
-          them, and you can turn one off at any time: it leaves the rail and
-          stops working, and nothing it stored is deleted.
-        </p>
-      </div>
-
-      <aside
-        aria-label={`${selected.name} module`}
-        className="flex-none overflow-y-auto border-t border-border lg:w-[420px] lg:border-l lg:border-t-0"
-      >
-        <ModulePane module={selected} on={isOn(selected.id)} known={known} />
-      </aside>
+    <div className="flex h-full min-h-0 flex-col">
+      <SheetLayout
+        label="Modules"
+        onKeyDown={(e) => void onKeyDown(e)}
+        sheet={
+          <>
+            <table className="min-w-full table-fixed border-separate border-spacing-0 text-[13px]">
+              <colgroup>
+                <col style={{ width: 44 }} />
+                <col style={{ width: 132 }} />
+                <col />
+                <col style={{ width: 200 }} />
+                <col style={{ width: 96 }} />
+              </colgroup>
+              <thead>
+                <tr>
+                  {["#", "Module", "Adds", "Sends data to", "State"].map(
+                    (label, i) => (
+                      <th
+                        key={label}
+                        scope="col"
+                        className={cn(ROW, HEAD, i === 0 && "text-right")}
+                      >
+                        {label}
+                      </th>
+                    )
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {MODULES.map((m, i) => (
+                  <CatalogRow
+                    key={m.id}
+                    index={i + 1}
+                    module={m}
+                    on={isOn(m.id)}
+                    known={known}
+                    active={m.id === selectedId}
+                    onSelect={() => select(m.id)}
+                  />
+                ))}
+              </tbody>
+            </table>
+            <p className="max-w-2xl px-3 py-4 text-xs leading-relaxed text-muted-foreground">
+              Today, Focus, Calendar and Tasks are always there. Modules add to
+              them, and you can turn one off at any time: it leaves the rail and
+              stops working, and nothing it stored is deleted.
+            </p>
+          </>
+        }
+        pane={
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <ModulePane
+              module={selected}
+              on={isOn(selected.id)}
+              known={known}
+            />
+          </div>
+        }
+      />
     </div>
   );
 }
@@ -151,29 +154,24 @@ function CatalogRow({
   active: boolean;
   onSelect: () => void;
 }) {
-  const cell = cn(
-    ROW,
-    "truncate border-b border-r border-border/60 px-2",
-    active ? "bg-rust/5" : "group-hover:bg-muted/40"
-  );
+  const cell = cellClass(active);
   return (
     <tr
       onClick={onSelect}
       aria-selected={active}
+      data-active-row={active || undefined}
       className="group cursor-default"
     >
+      <td className={gutterClass(active)}>{index}</td>
       <td
         className={cn(
-          ROW,
-          "border-b border-r border-border px-2 text-right font-mono text-[10px] tabular-nums",
-          active
-            ? "bg-accent text-accent-foreground"
-            : "bg-muted text-muted-foreground"
+          cell,
+          titleCellClass(active),
+          "font-medium text-foreground"
         )}
       >
-        {index}
+        {m.name}
       </td>
-      <td className={cn(cell, "font-medium text-foreground")}>{m.name}</td>
       <td className={cn(cell, "text-muted-foreground")}>{m.adds[0]}</td>
       <td className={cn(cell, "text-muted-foreground")}>
         {m.egress.length > 0

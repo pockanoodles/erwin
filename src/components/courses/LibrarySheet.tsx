@@ -36,7 +36,7 @@ import {
   sheetKeyHandler,
   titleCellClass,
   useScrollActiveIntoView,
-} from "./sheet";
+} from "@/components/sheet/sheet";
 
 /**
  * Library: every mirrored Canvas course as a sheet — Canvas's module order

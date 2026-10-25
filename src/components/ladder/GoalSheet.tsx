@@ -11,7 +11,7 @@ import {
   sheetKeyHandler,
   titleCellClass,
   useScrollActiveIntoView,
-} from "@/components/courses/sheet";
+} from "@/components/sheet/sheet";
 
 import { STAT_ABBREV } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
