@@ -3,9 +3,7 @@
  * never stored, so changing a goal's stats recomputes history instead of
  * leaving a stale number behind.
  *
- * The rules are brain/_map.md's ("Economy"), the ones ops' reflect pump
- * applies for the weekly report (ops/pumps/reflect.py and levels.py), shared
- * by convention like the stat keys:
+ * The rules are brain/_map.md's ("Economy"):
  *
  *  - A finished task is 1 XP, split evenly across the goals it serves and then
  *    across each goal's stats, so total XP always equals credited work and a
@@ -15,9 +13,9 @@
  *    level 1.
  *
  * Erwin credits through its task↔goal links, which lib/erwin/goal-rules.ts
- * files by the same source rules the weekly report credits by. The two part
- * where the vault's ledger logged a week before a late sync backfilled it:
- * that work counts here and stays missing there.
+ * files from the sources a goal claims. This is the one place the economy is
+ * worked out: ops' weekly report and HUD read it from GET /api/erwin/xp
+ * (lib/erwin/xp-report.ts) instead of keeping a ledger of their own.
  */
 
 import { STAT_KEYS, isStatKey, type StatKey } from "./stats";
@@ -67,6 +65,40 @@ export interface XpGoal {
   isBoss: boolean;
   develops: readonly string[];
   parentIds: readonly string[];
+}
+
+/** A goal row, with what decides whether and when a boss pays. */
+export interface XpGoalRow extends XpGoal {
+  status: string;
+  /** The day it is dated on (a boss's day), YYYY-MM-DD. */
+  day: string | null;
+  /** The day it last changed: when an undated boss was felled. */
+  updatedDay: string;
+}
+
+/** A finished task: the day it counts on and the goals it is linked to. */
+export interface XpTaskRow {
+  id: string;
+  /** The day it was finished, YYYY-MM-DD. */
+  day: string;
+  goalIds: readonly string[];
+}
+
+export function economyOf(goals: readonly XpGoal[]): Map<string, XpGoal> {
+  return new Map(
+    goals.map((goal) => [
+      goal.id,
+      { id: goal.id, isBoss: goal.isBoss, develops: goal.develops, parentIds: goal.parentIds },
+    ])
+  );
+}
+
+/**
+ * A goal that stands on its own: anything but a boss under another goal,
+ * which is a milestone on that goal's path rather than a goal of its own.
+ */
+export function standsAlone(goal: XpGoal, goals: ReadonlyMap<string, unknown>): boolean {
+  return !goal.isBoss || goal.parentIds.every((parentId) => !goals.has(parentId));
 }
 
 /**
@@ -147,13 +179,36 @@ export function scoreEvent(source: XpSource, goals: ReadonlyMap<string, XpGoal>)
   return { ...source, credit, stats, lost };
 }
 
-/** Per-stat sums, rounded clear of float drift: nine thirds of an XP is 3,
- *  not 2.9999999999999996, or level 2 would never arrive. */
+/** Every finished task and every felled boss, scored. */
+export function xpEvents(
+  goals: readonly XpGoalRow[],
+  done: readonly XpTaskRow[],
+  economy: ReadonlyMap<string, XpGoal> = economyOf(goals)
+): XpEvent[] {
+  return [
+    ...done.map((task) =>
+      scoreEvent({ kind: "task", id: task.id, day: task.day, goalIds: task.goalIds }, economy)
+    ),
+    ...goals
+      .filter((goal) => goal.isBoss && goal.status === "done")
+      .map((goal) =>
+        scoreEvent(
+          { kind: "boss", id: goal.id, day: goal.day ?? goal.updatedDay, goalIds: [goal.id] },
+          economy
+        )
+      ),
+  ];
+}
+
+/** A sum of XP shares, rounded clear of float drift: nine thirds of an XP is
+ *  3, not 2.9999999999999996, or level 2 would never arrive. */
+export const roundXp = (xp: number) => Math.round(xp * 1e9) / 1e9;
+
 export function sumStats(events: readonly XpEvent[]): StatXp {
   const sum = emptyStatXp();
   for (const event of events) {
     for (const key of STAT_KEYS) sum[key] += event.stats[key] ?? 0;
   }
-  for (const key of STAT_KEYS) sum[key] = Math.round(sum[key] * 1e9) / 1e9;
+  for (const key of STAT_KEYS) sum[key] = roundXp(sum[key]);
   return sum;
 }
