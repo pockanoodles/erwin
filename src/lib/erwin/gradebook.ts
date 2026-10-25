@@ -44,7 +44,7 @@ export async function loadGradebooks(
       assignments: {
         orderBy: [{ dueAt: { sort: "asc", nulls: "last" } }, { position: "asc" }],
         include: {
-          task: { select: { id: true, status: true, rubric: true } },
+          task: { select: { id: true, status: true } },
           activity: { where: { seenAt: null }, select: { id: true } },
         },
       },
@@ -125,7 +125,7 @@ export async function loadGradebooks(
         scoreStatistics: (a.scoreStatistics as ScoreStatistics | null) ?? null,
         comments: storedComments(a.comments),
         rubricAssessment: (a.rubricAssessment as Record<string, RubricMark> | null) ?? null,
-        rubric: Array.isArray(a.task?.rubric) ? (a.task.rubric as unknown as RubricCriterion[]) : null,
+        rubric: Array.isArray(a.rubric) ? (a.rubric as unknown as RubricCriterion[]) : null,
         quiz:
           a.quizTimeLimit != null || a.quizAllowedAttempts != null || a.lockdownBrowser
             ? {

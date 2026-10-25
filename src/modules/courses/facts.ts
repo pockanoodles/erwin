@@ -31,8 +31,8 @@ export async function courseTaskFacts(
       canvasId: true,
       courseId: true,
       state: true,
+      gradeWeightPercent: true,
       course: { select: { canvasId: true, name: true } },
-      task: { select: { gradeWeightPercent: true } },
     },
   });
 
@@ -50,7 +50,7 @@ export async function courseTaskFacts(
   const facts = new Map<string, TaskFacts>();
   for (const r of rows) {
     if (!r.taskId) continue;
-    const weight = r.task?.gradeWeightPercent;
+    const weight = r.gradeWeightPercent;
     const p = projections.get(r.taskId);
     facts.set(r.taskId, {
       courseId: r.course.canvasId,

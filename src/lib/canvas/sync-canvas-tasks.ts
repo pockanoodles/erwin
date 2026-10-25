@@ -4,16 +4,16 @@
  *
  * One task per actionable assignment (`isActionable`), whatever its
  * submission state: work handed in before Erwin first saw it is a completed
- * task, not a gap in the record. Tasks whose assignment Canvas no longer has,
- * or that are no longer actionable, are deleted — unless someone added
- * subtasks to them.
+ * task, not a gap in the record. The task holds what any task has (title,
+ * dates, status, impact); Canvas's own facts stay on the gradebook row, which
+ * links to its task. Tasks that are no longer actionable are deleted —
+ * unless someone added subtasks to them. (A task whose assignment Canvas
+ * dropped loses its row; `sync-canvas.ts` sweeps those up.)
  */
-
-import { Prisma } from "@prisma/client";
 
 import { CLOSED_STATES, DONE_STATES, isActionable } from "@/lib/canvas/gradebook-plan";
 import type { GradebookSyncResult } from "@/lib/canvas/sync-canvas-gradebook";
-import type { CanvasAssignment, CanvasCourse } from "@/lib/canvas/types";
+import type { CanvasAssignment } from "@/lib/canvas/types";
 import { prisma } from "@/lib/prisma";
 
 function estimateDurationMinutes(types: string[] | undefined): number {
@@ -96,7 +96,7 @@ export interface TaskProjectionStats {
 export async function projectCourseTasks(
   userId: string,
   providerId: string,
-  course: CanvasCourse,
+  courseRowId: string,
   gradebook: GradebookSyncResult,
   now: Date
 ): Promise<TaskProjectionStats> {
@@ -104,7 +104,16 @@ export async function projectCourseTasks(
   const groupById = new Map(gradebook.groups.map((g) => [g.id, g]));
 
   const existing = await prisma.task.findMany({
-    where: { userId, taskProviderId: providerId, source: "CANVAS", courseId: String(course.id) },
+    where: {
+      userId,
+      source: "CANVAS",
+      // Linked to this course's gradebook, or carrying one of its
+      // assignments' ids (a task whose link was lost picks it back up).
+      OR: [
+        { courseAssignment: { courseId: courseRowId } },
+        { externalTaskId: { in: [...gradebook.planned.keys()] } },
+      ],
+    },
     select: {
       id: true,
       externalTaskId: true,
@@ -167,22 +176,9 @@ export async function projectCourseTasks(
       closedAt: closed
         ? (prev?.closedAt ?? (plan.lockAt && plan.lockAt <= now ? plan.lockAt : now))
         : null,
-      gradeWeightPercent: Math.min(100, Math.max(0, impact * 100)),
-      courseId: String(course.id),
-      courseName: course.name,
-      assignmentGroupName: group?.name ?? null,
-      pointsPossible: plan.pointsPossible,
-      groupWeight: weight,
-      submissionTypes: plan.submissionTypes,
-      gradingType: plan.gradingType,
-      submissionStatus: plan.state,
-      omitFromFinalGrade: plan.omitFromFinalGrade,
       category: "SCHOOL",
       externalUrl: plan.htmlUrl,
       urgencyTier: "NONE",
-      rubric: a.rubric?.length
-        ? (JSON.parse(JSON.stringify(a.rubric)) as Prisma.InputJsonValue)
-        : Prisma.DbNull,
     };
 
     const task = prev
@@ -193,7 +189,10 @@ export async function projectCourseTasks(
 
     const rowId = gradebook.rowIds.get(extId);
     if (rowId) {
-      await prisma.courseAssignment.update({ where: { id: rowId }, data: { taskId: task.id } });
+      await prisma.courseAssignment.update({
+        where: { id: rowId },
+        data: { taskId: task.id, gradeWeightPercent: Math.min(100, Math.max(0, impact * 100)) },
+      });
     }
   }
 

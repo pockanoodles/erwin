@@ -467,7 +467,11 @@ export async function syncCourseMaterials(
     course.id
   );
   const tasks = await prisma.task.findMany({
-    where: { userId, taskProviderId: providerId, courseId: String(course.id) },
+    where: {
+      userId,
+      taskProviderId: providerId,
+      courseAssignment: { course: { userId, canvasId: String(course.id) } },
+    },
     select: { id: true, externalTaskId: true },
   });
   const taskIdByExternal = new Map(tasks.map((t) => [t.externalTaskId, t.id]));

@@ -152,6 +152,7 @@ export async function syncCourseGradebook(
       groupCanvasId,
       comments,
       scoreStatistics,
+      rubric,
       rubricAssessment,
       quizTimeLimit,
       quizAllowedAttempts,
@@ -163,6 +164,7 @@ export async function syncCourseGradebook(
       ...fields,
       groupId: groupCanvasId ? (groupRowIds.get(groupCanvasId) ?? null) : null,
       scoreStatistics: json(scoreStatistics),
+      rubric: json(rubric),
       lastSyncedAt: now,
     };
     // What the extras supply. A failed read would blank it, so an update

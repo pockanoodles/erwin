@@ -260,42 +260,30 @@ model Task {
   // a task made by hand leaves them empty.
   /**
    * /**
+   * /**
    * Can't be done after this (Canvas: when the assignment locks).
    */
-  lockAt              DateTime?
+  lockAt         DateTime?
   /**
    * Can't be started before this (Canvas: when the assignment unlocks).
    */
-  unlockAt            DateTime?
-  taskProviderId      String?
-  taskProvider        TaskProvider? @relation(fields: [taskProviderId], references: [id], onDelete: SetNull)
+  unlockAt       DateTime?
+  taskProviderId String?
+  taskProvider   TaskProvider? @relation(fields: [taskProviderId], references: [id], onDelete: SetNull)
   /**
    * How much this task matters, 0–1, set by the module that owns it (Courses: its share of the grade, scaled across open coursework). Null when no module says.
    */
-  impact              Float?
+  impact         Float?
   /**
    * When its source closed it without it being done (Canvas: missed, or the course ended). A closed task is no longer open work.
    */
-  closedAt            DateTime?
-  /**
-   * Canvas: % of final course grade (0–100) for display; not pool-normalized
-   */
-  gradeWeightPercent  Float?
-  urgencyTier         String?       @default("NONE")
-  skipCount           Int           @default(0)
-  lastSkippedAt       DateTime?
-  timesSurfaced       Int           @default(0)
-  courseId            String?
-  courseName          String?
-  assignmentGroupName String?
-  pointsPossible      Float?
-  groupWeight         Float?
-  submissionTypes     Json?
-  gradingType         String?
-  submissionStatus    String?
-  omitFromFinalGrade  Boolean       @default(false)
-  category            String?       @default("PERSONAL")
-  externalUrl         String?
+  closedAt       DateTime?
+  urgencyTier    String?       @default("NONE")
+  skipCount      Int           @default(0)
+  lastSkippedAt  DateTime?
+  timesSurfaced  Int           @default(0)
+  category       String?       @default("PERSONAL")
+  externalUrl    String?
 
   // Enhanced sync fields
   externalListId    String? // The external list/folder ID this task belongs to
@@ -341,15 +329,11 @@ model Task {
   goalsPinned Boolean        @default(false)
 
   /**
-   * Canvas rubric criteria as Canvas returns them (`assignment.rubric`); null when the assignment has none.
-   */
-  rubric           Json?
-  /**
    * Course materials this task needs — its module's files/pages and anything its description links to.
    */
   materialLinks    TaskMaterialLink[]
   /**
-   * The gradebook row behind a Canvas task: score, feedback, quiz rules.
+   * The gradebook row behind a Canvas task: its course, Canvas's word on the submission, score, feedback, rubric, quiz rules. Canvas's facts live there, not here.
    */
   courseAssignment CourseAssignment?
 
@@ -714,6 +698,14 @@ model CourseAssignment {
   submissionTypes     String[]  @default([])
   omitFromFinalGrade  Boolean   @default(false)
   htmlUrl             String?
+  /**
+   * Rubric criteria as Canvas returns them (`assignment.rubric`); null when the assignment has none.
+   */
+  rubric              Json?
+  /**
+   * Roughly how much of the course grade it's worth, 0–100: its points against the biggest in its group, times the group's weight. Set on work Erwin tracks as a task.
+   */
+  gradeWeightPercent  Float?
   /**
    * Classic quiz settings: minutes (null = untimed), attempts (-1 = unlimited), and whether it needs Respondus LockDown Browser.
    */

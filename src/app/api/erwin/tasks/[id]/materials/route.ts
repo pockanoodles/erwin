@@ -40,18 +40,16 @@ export async function GET(
         id: true,
         title: true,
         description: true,
-        rubric: true,
         externalUrl: true,
         source: true,
         dueDate: true,
-        pointsPossible: true,
-        gradeWeightPercent: true,
-        submissionStatus: true,
-        courseId: true,
-        courseName: true,
         courseAssignment: {
           select: {
             id: true,
+            rubric: true,
+            pointsPossible: true,
+            gradeWeightPercent: true,
+            course: { select: { canvasId: true, name: true } },
             state: true,
             score: true,
             grade: true,
@@ -96,6 +94,16 @@ export async function GET(
     }
 
     const { materialLinks, description, courseAssignment: ca, ...rest } = task;
+    // What Canvas says about the assignment, from the gradebook row behind it.
+    const assignment = {
+      rubric: ca?.rubric ?? null,
+      pointsPossible: ca?.pointsPossible ?? null,
+      gradeWeightPercent:
+        ca?.gradeWeightPercent == null ? null : Math.round(ca.gradeWeightPercent * 10) / 10,
+      submissionStatus: ca?.state ?? null,
+      courseId: ca?.course.canvasId ?? null,
+      courseName: ca?.course.name ?? null,
+    };
     const materials = materialLinks
       .map(({ reason, material: { localPath, ...m } }) => ({ ...m, reason, cached: Boolean(localPath) }))
       .sort(
@@ -108,7 +116,7 @@ export async function GET(
     // Only Canvas descriptions are HTML; a hand-made task's notes are text
     // and the packet doesn't show them.
     const instructionsHtml =
-      task.source === "CANVAS" ? await cleanCourseHtml(auth.userId, task.courseId, description) : null;
+      task.source === "CANVAS" ? await cleanCourseHtml(auth.userId, assignment.courseId, description) : null;
 
     const grade = ca
       ? {
@@ -135,7 +143,7 @@ export async function GET(
         }
       : null;
 
-    return NextResponse.json({ ...rest, instructionsHtml, materials, grade });
+    return NextResponse.json({ ...rest, ...assignment, instructionsHtml, materials, grade });
   } catch (error) {
     logger.error(
       "Erwin task materials failed",

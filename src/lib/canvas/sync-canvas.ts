@@ -166,7 +166,16 @@ export async function syncCanvasForUser(
   const selfId = liveCourses.map((c) => studentEnrollment(c)?.user_id).find((id) => id != null) ?? null;
   const fallbackZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  // A course that's no longer live leaves with everything it owns.
+  // A course that's no longer live leaves with everything it owns, its
+  // tasks too (subtasks and all: the course is over). They're found through
+  // their gradebook rows, so before the rows go.
+  const { count: purged } = await prisma.task.deleteMany({
+    where: {
+      userId,
+      source: "CANVAS",
+      courseAssignment: { course: { userId, canvasId: { notIn: liveIds } } },
+    },
+  });
   await prisma.course.deleteMany({ where: { userId, canvasId: { notIn: liveIds } } });
   const rows = new Map<number, CourseRow>();
   for (const course of liveCourses) {
@@ -177,7 +186,7 @@ export async function syncCanvasForUser(
     courseCount: liveCourses.length,
     upserted: 0,
     removed: 0,
-    purged: 0,
+    purged,
     assignments: 0,
     announcements: 0,
     conversations: 0,
@@ -213,7 +222,7 @@ export async function syncCanvasForUser(
       gradebooks.set(course.id, gradebook);
       await record(row.id, gradebook.activity);
       stats.assignments += gradebook.rowIds.size;
-      const tasks = await projectCourseTasks(userId, provider.id, course, gradebook, now);
+      const tasks = await projectCourseTasks(userId, provider.id, row.id, gradebook, now);
       stats.upserted += tasks.upserted;
       stats.removed += tasks.removed;
       stats.problems.push(...gradebook.problems);
@@ -225,11 +234,17 @@ export async function syncCanvasForUser(
     }
   }
 
-  // Tasks from courses no longer in the live list.
-  const { count: purged } = await prisma.task.deleteMany({
-    where: { userId, source: "CANVAS", courseId: { notIn: liveIds } },
+  // Work whose assignment left Canvas lost its gradebook row above. It goes
+  // too, unless someone added subtasks: those are their own notes.
+  const { count: orphaned } = await prisma.task.deleteMany({
+    where: {
+      userId,
+      source: "CANVAS",
+      courseAssignment: { is: null },
+      subtasks: { none: {} },
+    },
   });
-  stats.purged = purged;
+  stats.removed += orphaned;
 
   await normalizeCourseworkImpact(userId);
   // File new assignments under School (the vault's `sources: [CANVAS]`) and

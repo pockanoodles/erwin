@@ -90,18 +90,20 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Assignment rows → their Erwin task. Tasks key Canvas assignments by
-    // (courseId, externalTaskId), both Canvas ids.
-    const assignmentTasks = await prisma.task.findMany({
-      where: {
-        userId: auth.userId,
-        source: "CANVAS",
-        courseId: { in: courses.map((c) => c.canvasId) },
+    // Assignment rows → their Erwin task, through the gradebook row that
+    // backs it. Keyed by (course, assignment), both Canvas ids.
+    const assignmentTasks = await prisma.courseAssignment.findMany({
+      where: { courseId: { in: courses.map((c) => c.id) }, taskId: { not: null } },
+      select: {
+        canvasId: true,
+        course: { select: { canvasId: true } },
+        task: { select: { id: true, dueDate: true, status: true } },
       },
-      select: { id: true, courseId: true, externalTaskId: true, dueDate: true, status: true },
     });
     const taskByAssignment = new Map(
-      assignmentTasks.map((t) => [`${t.courseId}:${t.externalTaskId}`, t])
+      assignmentTasks.flatMap((a) =>
+        a.task ? [[`${a.course.canvasId}:${a.canvasId}`, a.task] as const] : []
+      )
     );
 
     type Row = (typeof courses)[number]["materials"][number];

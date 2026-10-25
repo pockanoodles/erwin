@@ -14,6 +14,7 @@ import {
 import type {
   CanvasAssignment,
   CanvasQuiz,
+  CanvasRubricCriterion,
   CanvasRubricMark,
   CanvasScoreStatistics,
   CanvasSubmission,
@@ -122,6 +123,8 @@ export interface PlannedAssignment {
   submissionTypes: string[];
   omitFromFinalGrade: boolean;
   htmlUrl: string | null;
+  /** The criteria, as Canvas sends them; null when there's no rubric. */
+  rubric: CanvasRubricCriterion[] | null;
   groupCanvasId: string | null;
   quizTimeLimit: number | null;
   quizAllowedAttempts: number | null;
@@ -192,6 +195,7 @@ export function planAssignment(
     submissionTypes: a.submission_types ?? [],
     omitFromFinalGrade: Boolean(a.omit_from_final_grade),
     htmlUrl: a.html_url ?? null,
+    rubric: a.rubric?.length ? a.rubric : null,
     groupCanvasId: a.assignment_group_id != null ? String(a.assignment_group_id) : null,
     quizTimeLimit: quiz?.time_limit ?? null,
     quizAllowedAttempts: quiz?.allowed_attempts ?? null,

@@ -52,36 +52,26 @@ async function main() {
     { canvasId: "demo-math2331", code: "MATH 2331", name: "MATH 2331 · Linear Algebra" },
     { canvasId: "demo-engw3302", code: "ENGW 3302", name: "ENGW 3302 · Advanced Writing" },
   ];
+  const courseRows = new Map<string, string>();
   for (const c of courses) {
-    await prisma.course.create({ data: { ...c, termName: "Fall 2026", userId, lastSyncedAt: new Date() } });
+    const row = await prisma.course.create({
+      data: { ...c, termName: "Fall 2026", userId, lastSyncedAt: new Date() },
+      select: { id: true },
+    });
+    courseRows.set(c.canvasId, row.id);
   }
   const [cs, math, engw] = courses;
+  // The demo is a student's week, so Courses is on; a fresh install starts with it off.
+  await prisma.userModule.create({ data: { userId, moduleId: "courses", enabled: true, position: 0 } });
 
-  // ── Coursework, shaped like Canvas sync output ───────────────────────
+  // ── Coursework, shaped like Canvas sync output: a gradebook row per
+  // assignment (Canvas's facts) backing the task Focus ranks ─────────────
   const school = (
     course: (typeof courses)[number],
     title: string,
     due: Date,
     opts: { weight: number; points: number; group: string; minutes: number; status?: string; completedAt?: Date }
-  ) => ({
-    title,
-    status: opts.status ?? "todo",
-    completedAt: opts.completedAt ?? null,
-    dueDate: due,
-    duration: opts.minutes,
-    source: "CANVAS",
-    category: "SCHOOL",
-    courseId: course.canvasId,
-    courseName: course.name,
-    assignmentGroupName: opts.group,
-    pointsPossible: opts.points,
-    gradeWeightPercent: opts.weight,
-    gradeImpactScore: opts.weight / 100,
-    submissionTypes: ["online_upload"],
-    submissionStatus: opts.status === "completed" ? "submitted" : "unsubmitted",
-    urgencyTier: "NONE",
-    userId,
-  });
+  ) => ({ course, title, due, ...opts });
 
   const coursework = [
     school(cs, "Assignment 5: Model-View-Controller refactor", at(2, 23, 59), { weight: 8, points: 100, group: "Homework", minutes: 240 }),
@@ -93,7 +83,54 @@ async function main() {
     school(engw, "Peer review: instruction set", at(1, 17, 0), { weight: 2, points: 10, group: "Peer review", minutes: 40 }),
     school(engw, "Draft: technical description", at(5, 23, 59), { weight: 10, points: 100, group: "Projects", minutes: 180 }),
   ];
-  for (const data of coursework) await prisma.task.create({ data });
+  // The sync scales impact so the biggest open piece of coursework is 1.
+  const biggest = Math.max(...coursework.filter((w) => w.status !== "completed").map((w) => w.weight));
+  const groups = new Map<string, string>();
+  for (const [i, w] of coursework.entries()) {
+    const courseId = courseRows.get(w.course.canvasId)!;
+    const groupKey = `${courseId}:${w.group}`;
+    if (!groups.has(groupKey)) {
+      const group = await prisma.courseAssignmentGroup.create({
+        data: { canvasId: `demo-group-${groups.size + 1}`, name: w.group, position: groups.size, courseId },
+        select: { id: true },
+      });
+      groups.set(groupKey, group.id);
+    }
+    const canvasId = `demo-${i + 1}`;
+    const done = w.status === "completed";
+    const task = await prisma.task.create({
+      data: {
+        title: w.title,
+        status: w.status ?? "todo",
+        completedAt: w.completedAt ?? null,
+        dueDate: w.due,
+        duration: w.minutes,
+        source: "CANVAS",
+        externalTaskId: canvasId,
+        category: "SCHOOL",
+        impact: w.weight / biggest,
+        urgencyTier: "NONE",
+        userId,
+      },
+      select: { id: true },
+    });
+    await prisma.courseAssignment.create({
+      data: {
+        canvasId,
+        name: w.title,
+        dueAt: w.due,
+        pointsPossible: w.points,
+        submissionTypes: ["online_upload"],
+        state: done ? "submitted" : "unsubmitted",
+        submittedAt: done ? (w.completedAt ?? null) : null,
+        gradeWeightPercent: w.weight,
+        lastSyncedAt: new Date(),
+        courseId,
+        groupId: groups.get(groupKey)!,
+        taskId: task.id,
+      },
+    });
+  }
 
   // ── The current two-month cycle ("hex"), exactly as the app provisions it ──
   const current = await ensureCurrentHex(prisma, userId);

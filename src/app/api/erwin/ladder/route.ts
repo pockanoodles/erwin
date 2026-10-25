@@ -10,8 +10,8 @@ import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
-
-import { hiddenTaskSources } from "@/modules/state";
+import { moduleTaskFacts } from "@/modules/hooks";
+import { moduleView } from "@/modules/state";
 
 const LOG_SOURCE = "ErwinLadderAPI";
 
@@ -37,7 +37,8 @@ export async function GET(request: NextRequest) {
 
     const userId = auth.userId;
     const now = newDate();
-    const hidden = await hiddenTaskSources(userId);
+    const modules = await moduleView(userId);
+    const hidden = modules.hidden;
     const settings = await prisma.userSettings.findUnique({
       where: { userId },
       select: { timeZone: true },
@@ -84,7 +85,6 @@ export async function GET(request: NextRequest) {
           id: true,
           title: true,
           completedAt: true,
-          courseName: true,
           goalLinks: { select: { goalId: true } },
         },
       }),
@@ -98,6 +98,18 @@ export async function GET(request: NextRequest) {
         select: { id: true, theme: true, focusStats: true, buildProjected: true, startDate: true },
       }),
     ]);
+
+    // The XP log names a finished task's course: Courses' fact about it.
+    const facts = await moduleTaskFacts(
+      prisma,
+      userId,
+      done.map((task) => ({ id: task.id })),
+      modules.isOn
+    );
+    const courseNameOf = (id: string) => {
+      const name = facts.get(id)?.courseName;
+      return typeof name === "string" ? name : null;
+    };
 
     // What each boss's proof says now: its Canvas gradebook item, or its task.
     const bosses = goals.filter((goal) => goal.isBoss);
@@ -154,7 +166,7 @@ export async function GET(request: NextRequest) {
           id: task.id,
           title: task.title,
           day: dayOf(task.completedAt!),
-          courseName: task.courseName,
+          courseName: courseNameOf(task.id),
           goalIds: task.goalLinks.map((link) => link.goalId),
         })),
         open: open.map((task) => ({
