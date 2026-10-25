@@ -4,7 +4,6 @@ import { RRule } from "rrule";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,6 +12,7 @@ import {
 } from "@/lib/task-sync/task-change-tracker";
 import { normalizeRecurrenceRule } from "@/lib/utils/normalize-recurrence-rules";
 
+import { tasksChanged } from "@/modules/hooks";
 import { hiddenTaskSources, visibleSourceWhere } from "@/modules/state";
 
 import { EnergyLevel, TaskStatus, TimePreference } from "@/types/task";
@@ -220,7 +220,7 @@ export async function POST(request: NextRequest) {
     // No goal picked: file it by the vault's rules now (a pump 2 task under
     // its Lord), instead of waiting for the next projection.
     if (!goalId && task.source) {
-      await applyGoalRules(prisma, userId, { taskIds: [task.id] });
+      await tasksChanged(prisma, userId, [task.id]);
     }
 
     // Track the creation for sync purposes if the task is in a mapped project.

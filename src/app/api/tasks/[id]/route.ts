@@ -5,7 +5,6 @@ import { RRule } from "rrule";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import {
@@ -13,6 +12,8 @@ import {
   TaskChangeTracker,
 } from "@/lib/task-sync/task-change-tracker";
 import { normalizeRecurrenceRule } from "@/lib/utils/normalize-recurrence-rules";
+
+import { tasksChanged } from "@/modules/hooks";
 
 import { TaskStatus } from "@/types/task";
 
@@ -301,7 +302,7 @@ export async function PUT(
       // Back to automatic: the rules decide the links again.
       await prisma.$transaction(async (tx) => {
         await tx.task.update({ where: { id }, data: { goalsPinned: false } });
-        await applyGoalRules(tx, userId, { taskIds: [id] });
+        await tasksChanged(tx, userId, [id]);
       });
     } else if (goalChosen) {
       await prisma.$transaction(async (tx) => {

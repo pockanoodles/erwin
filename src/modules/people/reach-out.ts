@@ -8,9 +8,9 @@
  * which the sync loop runs. Either way the next check-in is planned from it.
  */
 import { newDate } from "@/lib/date-utils";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { type Db as Client, type DbTransaction, prisma } from "@/lib/prisma";
 
+import { tasksChanged } from "@/modules/hooks";
 import { planReachOut } from "@/modules/people/cadence";
 
 type Db = Client | DbTransaction;
@@ -126,7 +126,7 @@ export async function logInteraction(
     return { interaction, nextId };
   });
   if (result?.nextId) {
-    await applyGoalRules(prisma, userId, { taskIds: [result.nextId] });
+    await tasksChanged(prisma, userId, [result.nextId]);
   }
   return result?.interaction ?? null;
 }
@@ -176,7 +176,7 @@ export async function reconcileReachOuts(userId: string): Promise<number> {
     if (nextId) created.push(nextId);
   }
   if (created.length > 0) {
-    await applyGoalRules(prisma, userId, { taskIds: created });
+    await tasksChanged(prisma, userId, created);
   }
   return finished.length;
 }

@@ -39,9 +39,10 @@ import {
 } from "@/lib/canvas/sync-canvas-tasks";
 import { courseLabel, syncErrorText, syncProblem } from "@/lib/canvas/sync-problems";
 import type { CanvasAssignment, CanvasCourse } from "@/lib/canvas/types";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
+
+import { tasksChanged } from "@/modules/hooks";
 
 const LOG_SOURCE = "CanvasSync";
 
@@ -233,7 +234,7 @@ export async function syncCanvasForUser(
   await normalizeGradeImpactScoresForUser(userId);
   // File new assignments under School (the vault's `sources: [CANVAS]`) and
   // refresh bound bosses' dates now, not at the next morning's projection.
-  await applyGoalRules(prisma, userId);
+  await tasksChanged(prisma, userId);
 
   const news = await syncCanvasNews(
     client,

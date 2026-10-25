@@ -10,11 +10,11 @@ import { z } from "zod";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
+import { tasksChanged } from "@/modules/hooks";
 import { nextCheckIn } from "@/modules/people/cadence";
 import { logInteraction, syncReachOutTask } from "@/modules/people/reach-out";
 import type { PersonRow } from "@/modules/people/types";
@@ -133,8 +133,7 @@ export async function createPerson(request: NextRequest) {
       data: { ...parsed.data, userId: auth.userId },
     });
     const taskId = await syncReachOutTask(prisma, auth.userId, person.id);
-    if (taskId)
-      await applyGoalRules(prisma, auth.userId, { taskIds: [taskId] });
+    if (taskId) await tasksChanged(prisma, auth.userId, [taskId]);
     return NextResponse.json({ person: toRow(person) }, { status: 201 });
   } catch (error) {
     return failed("Failed to add person", error);
@@ -164,8 +163,7 @@ export async function updatePerson(request: NextRequest, { params }: Ctx) {
       data: parsed.data,
     });
     const taskId = await syncReachOutTask(prisma, auth.userId, id);
-    if (taskId)
-      await applyGoalRules(prisma, auth.userId, { taskIds: [taskId] });
+    if (taskId) await tasksChanged(prisma, auth.userId, [taskId]);
     return NextResponse.json({ person: toRow(person) });
   } catch (error) {
     return failed("Failed to change person", error);
