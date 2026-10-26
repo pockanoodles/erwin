@@ -1,5 +1,7 @@
 "use client";
 
+import { HiOutlineRefresh } from "react-icons/hi";
+
 import { BarButton, BarSegmented, type BarSegment } from "@/components/navigation/top-bar-parts";
 
 import { formatDistanceToNow } from "@/lib/date-utils";
@@ -55,6 +57,7 @@ export function CoursesTopBarActions() {
         }}
         title="Fetch grades, announcements, inbox, modules, pages and files from Canvas now — it also runs every 15 minutes"
         aria-disabled={syncing || undefined}
+        icon={HiOutlineRefresh}
       >
         {syncing ? "Syncing…" : "Sync Canvas"}
       </BarButton>

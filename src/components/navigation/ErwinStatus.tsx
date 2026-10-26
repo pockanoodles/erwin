@@ -49,15 +49,16 @@ export function ErwinStatus() {
   const danger = countDanger(tasks);
 
   return (
-    // Reserved width: the counts arrive after first paint, and without a floor
-    // here they'd shove the search field sideways as they land.
-    <div className="hidden min-w-[15rem] items-center justify-end gap-x-1.5 truncate font-mono text-xs uppercase tracking-[0.04em] text-muted-foreground tabular lg:flex">
+    // Left of the page's actions and right-aligned, taking the room that's
+    // free: counts that arrive or change never shove a control, and where the
+    // bar is short they give way before a page's own controls do.
+    <div className="hidden w-0 flex-1 items-center justify-end gap-x-1.5 overflow-hidden font-mono text-xs uppercase tracking-[0.04em] text-muted-foreground tabular lg:flex">
       {status === "error" ? (
         <span>Queue unavailable</span>
       ) : status === "ready" ? (
         <Link
           href="/today"
-          className="flex items-center gap-x-1.5 truncate transition-colors duration-150 hover:text-foreground"
+          className="flex flex-none items-center gap-x-1.5 transition-colors duration-150 hover:text-foreground"
           title="Open Today"
         >
           <span>{tasks.length} open</span>
@@ -83,10 +84,13 @@ export function ErwinStatus() {
           ) : null}
         </Link>
       ) : null}
-      {modules.map((m) => {
-        const Status = CLIENT_MODULES[m.id].Status;
-        return Status ? <Status key={m.id} /> : null;
-      })}
+      {/* The modules' counts give way before the core's. */}
+      <span className="flex min-w-0 shrink items-center gap-x-1.5 overflow-hidden">
+        {modules.map((m) => {
+          const Status = CLIENT_MODULES[m.id].Status;
+          return Status ? <Status key={m.id} /> : null;
+        })}
+      </span>
     </div>
   );
 }

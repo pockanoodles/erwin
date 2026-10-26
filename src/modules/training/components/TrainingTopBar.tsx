@@ -1,5 +1,7 @@
 "use client";
 
+import { HiOutlinePlus } from "react-icons/hi";
+
 import {
   BarButton,
   type BarSegment,
@@ -36,6 +38,7 @@ export function TrainingTopBarActions() {
   const view = useTrainingStore((s) => s.view);
   return (
     <BarButton
+      icon={HiOutlinePlus}
       onClick={() => {
         if (view !== "routines") setView("routines");
         select("new");

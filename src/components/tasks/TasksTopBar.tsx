@@ -1,6 +1,7 @@
 "use client";
 
 import { BsKanban, BsListTask } from "react-icons/bs";
+import { HiOutlinePlus } from "react-icons/hi";
 
 import {
   BarButton,
@@ -57,6 +58,7 @@ export function TasksTopBarActions() {
       )}
       <BarButton
         emphasis="loud"
+        icon={HiOutlinePlus}
         data-create-task-button=""
         onClick={() => openCreate(newTaskGoalId)}
       >

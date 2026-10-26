@@ -1,5 +1,7 @@
 "use client";
 
+import { HiOutlineUserAdd } from "react-icons/hi";
+
 import {
   BarButton,
   type BarSegment,
@@ -37,6 +39,7 @@ export function PeopleTopBarActions() {
   const view = usePeopleStore((s) => s.view);
   return (
     <BarButton
+      icon={HiOutlineUserAdd}
       onClick={() => {
         if (view === "archived") setView("all");
         select("new");

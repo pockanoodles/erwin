@@ -1,6 +1,16 @@
 "use client";
 
-import type { ButtonHTMLAttributes, ComponentType, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ComponentType } from "react";
+
+import { HiChevronDown } from "react-icons/hi";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { cn } from "@/lib/utils";
 
@@ -42,23 +52,32 @@ export function BarButton({
   children,
   title,
   emphasis = "quiet",
+  icon: Icon,
   ...rest
 }: {
   onClick: () => void;
-  children: ReactNode;
+  /** The button's words; with an icon, also its name on a phone. */
+  children: string;
   title?: string;
   /** `loud` is for the page's one primary action, e.g. Create Task. */
   emphasis?: "quiet" | "loud";
+  /**
+   * Below desktop width the button shows only this, so a page's actions
+   * leave room in a narrow bar for the page's views.
+   */
+  icon?: ComponentType<{ className?: string }>;
 } & BarPassthrough) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={title}
+      title={title ?? (Icon ? children : undefined)}
+      aria-label={Icon ? children : undefined}
       className={cn(
         CONTROL_HEIGHT,
         LABEL,
-        "flex flex-none items-center px-3 transition-colors duration-150",
+        "flex flex-none items-center transition-colors duration-150",
+        Icon ? "px-2 lg:px-3" : "px-3",
         emphasis === "loud"
           ? "er-plate text-rust-foreground hover:[--plate:var(--er-accent-text)]"
           : "er-brackets text-muted-foreground hover:text-foreground",
@@ -67,7 +86,8 @@ export function BarButton({
       )}
       {...rest}
     >
-      {children}
+      {Icon ? <Icon aria-hidden className="h-4 w-4 lg:hidden" /> : null}
+      <span className={Icon ? "hidden lg:inline" : undefined}>{children}</span>
     </button>
   );
 }
@@ -111,6 +131,11 @@ export interface BarSegment<T extends string> {
   icon?: ComponentType<{ className?: string }>;
 }
 
+/**
+ * A view switcher. Below desktop width it's one menu in the same place,
+ * showing the view you're on: a row of segments doesn't fit a phone's bar,
+ * and a strip that scrolls sideways hides whatever is past its edge.
+ */
 export function BarSegmented<T extends string>({
   segments,
   value,
@@ -123,11 +148,65 @@ export function BarSegmented<T extends string>({
   /** Names the group for screen readers, e.g. "Calendar view". */
   label: string;
 }) {
+  const current = segments.find((s) => s.id === value) ?? segments[0];
+  const CurrentIcon = current?.icon;
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            aria-label={`${label}: ${current?.label ?? ""}`}
+            className={cn(
+              CONTROL_HEIGHT,
+              LABEL,
+              "er-plate er-plate-sm flex flex-none items-center gap-1.5 px-2.5 text-background [--plate:var(--er-ink)] lg:hidden"
+            )}
+          >
+            {CurrentIcon ? <CurrentIcon className="h-3.5 w-3.5" /> : null}
+            {current?.label}
+            <HiChevronDown aria-hidden className="h-3 w-3" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="rounded-none">
+          <DropdownMenuRadioGroup
+            value={value}
+            onValueChange={(id) => onChange(id as T)}
+          >
+            {segments.map(({ id, label: text }) => (
+              <DropdownMenuRadioItem key={id} value={id} className={LABEL}>
+                {text}
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <BarSegmentRow
+        segments={segments}
+        value={value}
+        onChange={onChange}
+        label={label}
+      />
+    </>
+  );
+}
+
+function BarSegmentRow<T extends string>({
+  segments,
+  value,
+  onChange,
+  label,
+}: {
+  segments: ReadonlyArray<BarSegment<T>>;
+  value: T;
+  onChange: (id: T) => void;
+  label: string;
+}) {
   return (
     <div
       role="group"
       aria-label={label}
-      className="flex flex-none items-center gap-1"
+      className="hidden flex-none items-center gap-1 lg:flex"
     >
       {segments.map(({ id, label: text, icon: Icon }) => (
         <button

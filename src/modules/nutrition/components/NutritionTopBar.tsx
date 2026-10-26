@@ -5,6 +5,8 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { HiOutlineAdjustments } from "react-icons/hi";
+
 import {
   BarButton,
   type BarSegment,
@@ -44,6 +46,7 @@ export function NutritionTopBarActions() {
   const view = useNutritionStore((s) => s.view);
   return (
     <BarButton
+      icon={HiOutlineAdjustments}
       onClick={() => {
         if (view !== "day") setView("day");
         select("targets");

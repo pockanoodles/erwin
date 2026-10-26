@@ -65,6 +65,9 @@ export interface ClientContributions {
   Views?: ComponentType;
   /** Top bar, right, on its page: things that change its data. */
   Actions?: ComponentType;
+  /** Its Views carry a heading of their own (Ladder: the cycle), so below
+   *  desktop width the bar drops the page name for room. */
+  headingInViews?: boolean;
   /** Its settings, on its row in /modules. */
   Settings?: ComponentType;
   /** At most one count in the top bar's status strip, on every route. */
@@ -105,6 +108,7 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     command: { icon: HiOutlineFlag, shortcut: "gg" },
     Views: LadderTopBarViews,
     Actions: LadderTopBarActions,
+    headingInViews: true,
     TodayTaskSection: TodayGoalSection,
     useTasksLens: useLadderTasksLens,
   },

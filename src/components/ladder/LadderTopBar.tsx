@@ -1,6 +1,11 @@
 "use client";
 
-import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import { HiOutlineAdjustments } from "react-icons/hi";
+import {
+  IoChevronBack,
+  IoChevronForward,
+  IoLocateOutline,
+} from "react-icons/io5";
 
 import { BarButton, BarIconButton } from "@/components/navigation/top-bar-parts";
 
@@ -28,7 +33,7 @@ export function LadderTopBarViews() {
       <div className="flex flex-none items-center">
         <BarIconButton onClick={() => step(-1)} icon={IoChevronBack} label="Previous hex" title="Previous hex (←)" />
         {/* Fixed width, so the chevrons hold still between "May–Jun" and "Sep–Oct". */}
-        <span className="min-w-[11.5rem] whitespace-nowrap px-1 text-center text-[13px] font-medium tracking-tight text-foreground">
+        <span className="whitespace-nowrap px-1 text-center text-[13px] font-medium tracking-tight text-foreground md:min-w-[11.5rem]">
           {label}
         </span>
         <BarIconButton onClick={() => step(1)} icon={IoChevronForward} label="Next hex" title="Next hex (→)" />
@@ -37,6 +42,7 @@ export function LadderTopBarViews() {
         onClick={() => !onCurrent && showHex(null)}
         title={onCurrent ? "This is the running hex" : "Back to the running hex"}
         aria-disabled={onCurrent || undefined}
+        icon={IoLocateOutline}
       >
         Now
       </BarButton>
@@ -60,6 +66,7 @@ export function LadderTopBarActions() {
             : "Choose the stats this hex pushes"
       }
       aria-disabled={!editable || undefined}
+      icon={HiOutlineAdjustments}
     >
       Edit Build
     </BarButton>

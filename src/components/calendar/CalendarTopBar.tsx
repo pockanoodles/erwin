@@ -1,8 +1,12 @@
 "use client";
 
 import { format } from "date-fns";
-import { HiMenu } from "react-icons/hi";
-import { IoChevronBack, IoChevronForward } from "react-icons/io5";
+import {
+  IoChevronBack,
+  IoChevronForward,
+  IoLayersOutline,
+  IoTodayOutline,
+} from "react-icons/io5";
 
 import {
   BarButton,
@@ -13,6 +17,8 @@ import {
 } from "@/components/navigation/top-bar-parts";
 
 import { addDays, newDate, subDays } from "@/lib/date-utils";
+
+import { useIsMobile } from "@/hooks/use-media-query";
 
 import { useCalendarUIStore, useViewStore } from "@/store/calendar";
 import { useTaskStore } from "@/store/task";
@@ -45,6 +51,13 @@ function formatHeading(date: Date, view: CalendarView): string {
   return format(date, "MMMM yyyy");
 }
 
+/** The heading in a narrow window: "Sep 2026", "Sep 14", "2026". */
+function formatShortHeading(date: Date, view: CalendarView): string {
+  if (view === "multiMonth") return format(date, "yyyy");
+  if (view === "day") return format(date, "MMM d");
+  return format(date, "MMM yyyy");
+}
+
 export function CalendarTopBarViews() {
   const { date, setDate, view, setView } = useViewStore();
   const { isSidebarOpen, setSidebarOpen } = useCalendarUIStore();
@@ -62,14 +75,18 @@ export function CalendarTopBarViews() {
 
   return (
     <>
+      {/* Layers, not a second hamburger: on a phone it sits right beside the
+          app menu's. */}
       <BarIconButton
         onClick={() => setSidebarOpen(!isSidebarOpen)}
-        icon={HiMenu}
+        icon={IoLayersOutline}
         label="Toggle calendar list"
         title="Toggle calendar list (b)"
         pressed={isSidebarOpen}
       />
-      <BarDivider />
+      <span className="hidden md:flex">
+        <BarDivider />
+      </span>
 
       <div className="flex flex-none items-center">
         <BarIconButton
@@ -80,9 +97,12 @@ export function CalendarTopBarViews() {
           data-testid="calendar-prev-week"
         />
         {/* Fixed minimum so the chevrons don't shuffle sideways between
-            "May 2026" and "September 2026" as you step through the year. */}
-        <span className="min-w-[8.5rem] whitespace-nowrap px-1 text-center text-[13px] font-medium tracking-tight text-foreground">
-          {formatHeading(date, view)}
+            "May 2026" and "September 2026" as you step through the year. A
+            narrower window gets the short form, "Sep 2026", so the view
+            switcher keeps its room. */}
+        <span className="whitespace-nowrap px-1 text-center text-[13px] font-medium tracking-tight text-foreground xl:min-w-[8.5rem]">
+          <span className="hidden xl:inline">{formatHeading(date, view)}</span>
+          <span className="xl:hidden">{formatShortHeading(date, view)}</span>
         </span>
         <BarIconButton
           onClick={() => step(1)}
@@ -93,7 +113,11 @@ export function CalendarTopBarViews() {
         />
       </div>
 
-      <BarButton onClick={() => setDate(newDate())} title="Go to today (t)">
+      <BarButton
+        onClick={() => setDate(newDate())}
+        title="Go to today (t)"
+        icon={IoTodayOutline}
+      >
         Today
       </BarButton>
 
@@ -109,5 +133,9 @@ export function CalendarTopBarViews() {
 
 export function CalendarTopBarActions() {
   const scheduleAllTasks = useTaskStore((s) => s.scheduleAllTasks);
+  const isMobile = useIsMobile();
+  // A desk action, as on Tasks: a phone's bar needs the room for the
+  // period and the view. Still reachable from ⌘K.
+  if (isMobile) return null;
   return <BarButton onClick={() => scheduleAllTasks()}>Auto Schedule</BarButton>;
 }

@@ -53,6 +53,11 @@ interface RouteChrome {
   Views?: ComponentType;
   /** Sits right, before the status strip: things that change data. */
   Actions?: ComponentType;
+  /**
+   * Its Views carry a heading of their own (Calendar: the month), so below
+   * desktop width the page name gives its room to them.
+   */
+  headingInViews?: boolean;
 }
 
 const CORE_ROUTES: readonly RouteChrome[] = [
@@ -63,6 +68,7 @@ const CORE_ROUTES: readonly RouteChrome[] = [
     title: "Calendar",
     Views: CalendarTopBarViews,
     Actions: CalendarTopBarActions,
+    headingInViews: true,
   },
   {
     match: (p) => p.startsWith("/tasks"),
@@ -88,6 +94,7 @@ function moduleRoutes(onIds: ReadonlySet<string>): RouteChrome[] {
         title: m.name,
         Views: on ? chrome.Views : undefined,
         Actions: on ? chrome.Actions : undefined,
+        headingInViews: on && chrome.headingInViews,
       },
     ];
   });
@@ -120,7 +127,7 @@ export function AppTopBar() {
     // `relative z-50` so the mobile drawer's scrim (fixed inset-0, z-40) paints
     // *under* the bar instead of dimming it and swallowing taps on the search
     // button. The drawer itself starts at `top-topbar`, so it never overlaps.
-    <header className="app-titlebar er-grain relative z-50 flex h-topbar flex-none items-center gap-2 border-b border-border bg-background pr-3">
+    <header className="app-titlebar er-grain relative z-50 flex h-topbar flex-none items-center gap-2 border-b border-border bg-background pr-2 md:pr-3">
       {/* The one control that never moves. Its slot is the rail's own left
           gutter, so the icon sits at exactly the same x whether the rail is
           open, closed, or mid-animation — which is the whole reason the
@@ -146,31 +153,47 @@ export function AppTopBar() {
         )}
       </button>
 
-      {/* Scrolls rather than wraps: the bar is one 44px line on every route,
-          and Calendar's D/W/M/Y plus prev/next genuinely doesn't fit 393px. */}
-      <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
+      {/* One 44px line on every route. The page's own controls keep their
+          width: the counts on the right give way first (they truncate), and
+          only then does this strip scroll rather than wrap. Below desktop
+          width a page's view switcher is one menu (BarSegmented). */}
+      <div className="flex min-w-0 flex-initial items-center gap-1 overflow-x-auto md:gap-2">
         {/* Michroma caps: the page's name reads like the plate on a piece of
             equipment, the same size on every route. */}
-        <span className="er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground">
+        <span
+          className={cn(
+            "er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground",
+            route?.headingInViews && "hidden lg:inline"
+          )}
+        >
           {route?.title ?? brand.name}
         </span>
 
         {Views ? (
           <>
-            <BarDivider />
+            <span
+              className={cn(
+                "flex flex-none",
+                route?.headingInViews && "hidden lg:flex"
+              )}
+            >
+              <BarDivider />
+            </span>
             <Views />
           </>
         ) : null}
       </div>
 
-      <div className="flex flex-none items-center gap-3 pl-3">
+      <div className="flex flex-1 items-center justify-end gap-3 pl-3">
+        {/* The counts sit before the page's actions and take whatever room
+            is free, so the actions stay put while counts load and change. */}
+        <ErwinStatus />
+
         {Actions ? (
           <div className="flex flex-none items-center gap-2">
             <Actions />
           </div>
         ) : null}
-
-        <ErwinStatus />
 
         {/* Search reads as a field because that's what it behaves like — it
             just hands off to the ⌘K palette, which already searches tasks,
