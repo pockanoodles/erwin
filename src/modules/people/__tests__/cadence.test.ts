@@ -38,22 +38,40 @@ describe("nextCheckIn", () => {
 });
 
 describe("planReachOut", () => {
-  it("hides the task until a few days before it's due", () => {
-    const plan = planReachOut(person(), now);
+  it("is due on the check-in's day, hidden until a few days before", () => {
+    const plan = planReachOut(person(), now, "UTC");
     expect(plan?.title).toBe("Reach out to Sam Lee");
-    expect(plan?.dueDate.getTime()).toBe(now.getTime() + 18 * DAY);
-    expect(plan?.postponedUntil?.getTime()).toBe(now.getTime() + 15 * DAY);
+    expect(plan?.dueDate.toISOString()).toBe("2026-11-12T00:00:00.000Z");
+    expect(plan?.postponedUntil?.toISOString()).toBe(
+      "2026-11-09T00:00:00.000Z"
+    );
+  });
+
+  it("takes the day from their time zone, so an evening talk isn't due a day late", () => {
+    // 21:30 in New York is already the next day in UTC.
+    const evening = person({
+      cadenceDays: 7,
+      lastContactAt: new Date("2026-10-20T01:30:00.000Z"),
+    });
+    expect(
+      planReachOut(evening, now, "America/New_York")?.dueDate.toISOString()
+    ).toBe("2026-10-26T00:00:00.000Z");
+    expect(planReachOut(evening, now, "UTC")?.dueDate.toISOString()).toBe(
+      "2026-10-27T00:00:00.000Z"
+    );
   });
 
   it("shows it now once it's that close, or late", () => {
     const close = planReachOut(
       person({ lastContactAt: new Date(now.getTime() - 26 * DAY) }),
-      now
+      now,
+      "UTC"
     );
     expect(close?.postponedUntil).toBeNull();
     const late = planReachOut(
       person({ lastContactAt: new Date(now.getTime() - 40 * DAY) }),
-      now
+      now,
+      "UTC"
     );
     expect(late?.postponedUntil).toBeNull();
     expect(late!.dueDate.getTime()).toBeLessThan(now.getTime());
@@ -62,13 +80,16 @@ describe("planReachOut", () => {
   it("keeps a short cadence's lead to a quarter of it", () => {
     const weekly = planReachOut(
       person({ cadenceDays: 8, lastContactAt: now }),
-      now
+      now,
+      "UTC"
     );
-    expect(weekly?.postponedUntil?.getTime()).toBe(now.getTime() + 6 * DAY);
+    expect(weekly?.postponedUntil?.toISOString()).toBe(
+      "2026-10-31T00:00:00.000Z"
+    );
   });
 
   it("plans nothing without a cadence", () => {
-    expect(planReachOut(person({ cadenceDays: null }), now)).toBeNull();
+    expect(planReachOut(person({ cadenceDays: null }), now, "UTC")).toBeNull();
   });
 });
 

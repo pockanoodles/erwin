@@ -9,6 +9,7 @@
  */
 import { newDate } from "@/lib/date-utils";
 import { type Db as Client, type DbTransaction, prisma } from "@/lib/prisma";
+import { userTimeZone } from "@/lib/user-time-zone";
 
 import { tasksChanged } from "@/modules/hooks";
 import { planReachOut } from "@/modules/people/cadence";
@@ -44,7 +45,9 @@ export async function syncReachOutTask(
   const open = await db.task.findFirst({
     where: openTaskWhere(userId, personId),
   });
-  const plan = person ? planReachOut(person, now) : null;
+  const plan = person
+    ? planReachOut(person, now, await userTimeZone(db, userId))
+    : null;
 
   if (!plan) {
     if (open) await db.task.delete({ where: { id: open.id } });

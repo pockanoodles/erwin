@@ -3,6 +3,7 @@
  * conversation. Pure, so the server and the page agree and tests need no
  * database.
  */
+import { dayInTimeZone } from "@/lib/date-utils";
 
 const DAY_MS = 86_400_000;
 
@@ -30,22 +31,27 @@ export function nextCheckIn(person: CadencePerson): Date | null {
 export interface ReachOutPlan {
   title: string;
   description: string;
+  /** The day it's due, as task dates are stored: UTC midnight. */
   dueDate: Date;
   /** Hidden until then (Task.postponedUntil), or null to show it now. */
   postponedUntil: Date | null;
 }
 
 /**
- * The reach-out task a person should have right now, or null for none. It
- * stays hidden until a few days before it's due (a quarter of the cadence at
- * most), so a long cadence doesn't sit in every list for weeks.
+ * The reach-out task a person should have right now, or null for none. It's
+ * due on the day the next check-in falls on in their time zone, so an evening
+ * conversation doesn't show the next day's date. It stays hidden until a few
+ * days before (a quarter of the cadence at most), so a long cadence doesn't
+ * sit in every list for weeks.
  */
 export function planReachOut(
   person: CadencePerson,
-  now: Date
+  now: Date,
+  timeZone: string
 ): ReachOutPlan | null {
-  const due = nextCheckIn(person);
-  if (!due || !person.cadenceDays) return null;
+  const next = nextCheckIn(person);
+  if (!next || !person.cadenceDays) return null;
+  const due = dayInTimeZone(next, timeZone);
   const leadDays = Math.min(MAX_LEAD_DAYS, person.cadenceDays / 4);
   const showAt = new Date(due.getTime() - leadDays * DAY_MS);
   const lines = [

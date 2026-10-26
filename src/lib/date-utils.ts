@@ -174,6 +174,18 @@ export function createUTCMidnightDate(localDate: Date | null): Date | null {
 }
 
 /**
+ * The calendar day an instant falls on in a time zone, stored the way task
+ * dates are: UTC midnight of that day. A server can't use
+ * createUTCMidnightDate for this, since its own zone isn't the user's.
+ */
+export function dayInTimeZone(instant: Date, timeZone: string): Date {
+  const [year, month, day] = formatInTimeZone(instant, timeZone, "yyyy-MM-dd")
+    .split("-")
+    .map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+/**
  * Creates a date for an all-day event, handling timezone issues
  * For all-day events, the date should be interpreted as local midnight
  * This prevents issues where all-day events appear on the wrong day due to timezone conversion
