@@ -11,6 +11,10 @@ export const metadata = {
   description: `Sign in to your ${brand.name} account`,
 };
 
+// It reads the visitor's session, so it was never static. Without this, the
+// build tried to prerender it and threw wherever NEXTAUTH_SECRET isn't set.
+export const dynamic = "force-dynamic";
+
 export default async function SignInPage() {
   // Check if user is already signed in
   const authOptions = await getAuthOptions();

@@ -1,4 +1,5 @@
 import NextAuth from "next-auth";
+import type { NextRequest } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth/auth-options";
 
@@ -26,8 +27,16 @@ declare module "next-auth/jwt" {
   }
 }
 
-// Create a NextAuth handler with the auth options
-const handler = NextAuth(await getAuthOptions());
+// The options are built for each request, not once at import. `next build`
+// imports every route to collect its page data, and building them there threw
+// wherever NEXTAUTH_SECRET isn't set, so no Docker image ever built. Built per
+// request, they also pick up Google and Outlook credentials changed in
+// Settings without a restart.
+async function handler(
+  req: NextRequest,
+  ctx: { params: Promise<{ nextauth: string[] }> }
+) {
+  return NextAuth(req, ctx, await getAuthOptions());
+}
 
-// Export the handler for both GET and POST requests
 export { handler as GET, handler as POST };
