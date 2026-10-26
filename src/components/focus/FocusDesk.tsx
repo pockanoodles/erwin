@@ -148,12 +148,11 @@ export function FocusDesk({
               goal ? (
                 <>
                   <p>{goal.title}</p>
-                  <p className="mt-0.5 text-muted-foreground">
-                    {goal.isBoss ? "Boss" : "Lord"}
-                    {goal.targetDate
-                      ? ` · ${format(new Date(goal.targetDate), "MMM yyyy")}`
-                      : ""}
-                  </p>
+                  {goal.targetDate ? (
+                    <p className="mt-0.5 text-muted-foreground">
+                      By {format(new Date(goal.targetDate), "MMM d")}
+                    </p>
+                  ) : null}
                 </>
               ) : null
             )}

@@ -63,7 +63,7 @@ export function TaskRow({
   const deferred = task.postponedUntil
     ? formatDeferLabel(task.postponedUntil)
     : null;
-  // A word from each module about the task (Ladder: its Lord).
+  // A word from each module about the task (Ladder: its goal).
   const labels = lenses.flatMap((lens) => lens.rowLabel?.(task) ?? []);
 
   useEffect(() => {

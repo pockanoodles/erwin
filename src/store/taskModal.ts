@@ -7,7 +7,7 @@ interface TaskModalStore {
   /** The task being edited. `undefined` means the modal is in create mode. */
   editingTask: Task | undefined;
   /**
-   * Pre-links a new task to the Lord whose section it was created in.
+   * Pre-links a new task to the goal whose tab it was created in.
    * `undefined` seeds nothing; `null` explicitly clears any link.
    */
   initialGoalId: string | null | undefined;

@@ -136,8 +136,9 @@ export function parseTaskFromApi(raw: ApiTask): FocusQueueTask {
   };
 }
 
-/** The goal a task most represents climbing toward: a boss outranks a Lord,
- *  then higher importance. Null when the task links to no goal yet. */
+/** The goal a task most represents working toward: a milestone (boss)
+ *  outranks the goal above it, then higher importance. Null when the task
+ *  links to no goal yet. */
 export function primaryLadderGoal(task: FocusQueueTask): LadderGoal | null {
   const goals = task.ladderGoals ?? [];
   if (goals.length === 0) {

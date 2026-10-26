@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
         userId,
         isRecurring: !!recurrenceRule,
         recurrenceRule: standardizedRecurrenceRule,
-        // A goal picked at creation (the Lord tab's pre-link) is a choice, so
+        // A goal picked at creation (a goal tab's pre-link) is a choice, so
         // the goal rules leave the task alone from here on.
         ...(goalId && { goalLinks: { create: [{ goalId }] } }),
         goalsPinned: Boolean(goalId),
@@ -228,8 +228,8 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // No goal picked: file it by the vault's rules now (a pump 2 task under
-    // its Lord), instead of waiting for the next projection.
+    // No goal picked: file it by the goal rules now (a pump 2 task under
+    // the goal that claims it), instead of waiting for the next projection.
     if (!goalId && task.source) {
       await tasksChanged(prisma, userId, [task.id]);
     }

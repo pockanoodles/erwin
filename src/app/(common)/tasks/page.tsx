@@ -34,7 +34,7 @@ export default function TasksPage() {
     createTag,
   } = useTaskStore();
   const { fetchProjects } = useProjectStore();
-  // What the modules add to the page: Ladder's Lord tabs along the bottom.
+  // What the modules add to the page: Ladder's goal tabs along the bottom.
   const lenses = useTasksLenses();
   const { viewMode } = useTaskPageSettings();
   // View switching and Create Task live in the app top bar
@@ -91,7 +91,7 @@ export default function TasksPage() {
   };
 
   const handleInlineEdit = async (task: Task & { goalId?: string | null }) => {
-    // goalLinks is a relation (display-only); the Lord cell edits it through
+    // goalLinks is a relation (display-only); the Goal cell edits it through
     // the API's single-goal `goalId` setter instead.
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, tags, createdAt, updatedAt, project, goalLinks, ...updates } =
@@ -116,7 +116,7 @@ export default function TasksPage() {
 
   return (
     // A module's tabs run along the bottom as a sheet-tab strip at every
-    // width (Ladder: one per Lord).
+    // width (Ladder: one per top goal).
     <div className="flex h-full flex-col">
       <div className="flex flex-1 flex-col overflow-hidden" data-task-page>
         {error && (

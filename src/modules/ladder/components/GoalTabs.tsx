@@ -4,68 +4,68 @@ import { useEffect } from "react";
 
 import { cn } from "@/lib/utils";
 
-import { UNASSIGNED_LORD_ID, useLordStore, type Lord } from "@/store/lord";
+import {
+  NO_GOAL_TAB,
+  type TopGoal,
+  useGoalTabStore,
+} from "@/modules/ladder/goal-tabs";
+
 import { useTaskStore } from "@/store/task";
 
 import { TaskStatus } from "@/types/task";
 
-interface LordEntry {
+interface TabEntry {
   key: string;
-  label: React.ReactNode;
+  label: string;
   selected: boolean;
   onClick: () => void;
   count?: number;
 }
 
 /** Ladder's tabs on the Tasks page (its Tasks lens, modules/ladder/tasks):
- *  one tab per Lord (root goal of the active hex), covering every boss and
- *  task on its path — laid out as a spreadsheet sheet-tab strip along the
- *  bottom of the table. One shape at every width, so the filter never costs
- *  a column of horizontal space. Drawn whenever Ladder is on, so it's what
- *  keeps the Lords fresh for the rest of the page. */
-export function LordTabs() {
-  const { lords, activeLordId, setActiveLordId, fetchLords } = useLordStore();
+ *  one per top goal of the running cycle, covering every task on its path —
+ *  laid out as a spreadsheet sheet-tab strip along the bottom of the table.
+ *  One shape at every width, so the filter never costs a column of
+ *  horizontal space. Drawn whenever Ladder is on, so it's what keeps the
+ *  goals fresh for the rest of the page. */
+export function GoalTabs() {
+  const { topGoals, activeId, setActiveId, load } = useGoalTabStore();
   const { tasks } = useTaskStore();
 
   useEffect(() => {
-    void fetchLords();
-  }, [fetchLords]);
+    void load();
+  }, [load]);
 
   const openTasks = tasks.filter((t) => t.status !== TaskStatus.COMPLETED);
-  const openCountFor = (lord: Lord) => {
-    const goalIds = new Set(lord.goalIds);
+  const openCountFor = (goal: TopGoal) => {
+    const goalIds = new Set(goal.goalIds);
     return openTasks.filter((t) =>
       t.goalLinks?.some((link) => goalIds.has(link.goalId))
     ).length;
   };
-  const unassignedCount = openTasks.filter((t) => !t.goalLinks?.length).length;
+  const noGoalCount = openTasks.filter((t) => !t.goalLinks?.length).length;
 
-  const entries: LordEntry[] = [
+  const entries: TabEntry[] = [
     {
       key: "all",
       label: "All tasks",
-      selected: activeLordId === null,
-      onClick: () => setActiveLordId(null),
+      selected: activeId === null,
+      onClick: () => setActiveId(null),
       count: openTasks.length,
     },
-    ...lords.map((lord) => ({
-      key: lord.id,
-      label: (
-        <>
-          {lord.isBoss ? "⚔ " : ""}
-          {lord.title}
-        </>
-      ),
-      selected: activeLordId === lord.id,
-      onClick: () => setActiveLordId(lord.id),
-      count: openCountFor(lord),
+    ...topGoals.map((goal) => ({
+      key: goal.id,
+      label: goal.title,
+      selected: activeId === goal.id,
+      onClick: () => setActiveId(goal.id),
+      count: openCountFor(goal),
     })),
     {
-      key: UNASSIGNED_LORD_ID,
-      label: "Unassigned",
-      selected: activeLordId === UNASSIGNED_LORD_ID,
-      onClick: () => setActiveLordId(UNASSIGNED_LORD_ID),
-      count: unassignedCount,
+      key: NO_GOAL_TAB,
+      label: "No goal",
+      selected: activeId === NO_GOAL_TAB,
+      onClick: () => setActiveId(NO_GOAL_TAB),
+      count: noGoalCount,
     },
   ];
 
@@ -95,9 +95,9 @@ export function LordTabs() {
           ) : null}
         </button>
       ))}
-      {lords.length === 0 ? (
+      {topGoals.length === 0 ? (
         <span className="flex h-9 flex-none items-center px-3 text-xs text-muted-foreground">
-          No Lords yet — mint them on the map.
+          No goals in this cycle yet. Add them on the Ladder.
         </span>
       ) : null}
     </div>

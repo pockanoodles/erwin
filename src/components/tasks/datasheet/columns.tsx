@@ -38,12 +38,12 @@ import {
  * full contents and write any cell back, which means something has to know —
  * generically, for a column it was not written against — how a cell looks, how
  * it reads as plain text, and how to turn an edit into a task patch. That used
- * to be a `field === "dueDate" ? … : field === "lord" ? …` ladder repeated in
+ * to be a `field === "dueDate" ? … : field === "project" ? …` ladder repeated in
  * the cell renderer and again in the editor, and adding a column meant finding
  * every ladder. Here a column is one object and the grid stays generic.
  *
  * These are the core's columns. A module adds its own through its Tasks lens
- * (components/tasks/lens.ts): Courses the Mat column, Ladder the Lord column.
+ * (components/tasks/lens.ts): Courses the Mat column, Ladder the Goal column.
  */
 
 /** The core's sort keys; a module's column brings its own. */

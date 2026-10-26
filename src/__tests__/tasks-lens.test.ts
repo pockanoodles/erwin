@@ -2,7 +2,6 @@ import type { TaskColumn } from "@/components/tasks/datasheet/columns";
 import {
   type TasksLens,
   applyLensFilters,
-  lensBand,
   withLensColumns,
 } from "@/components/tasks/lens";
 
@@ -29,7 +28,7 @@ describe("withLensColumns", () => {
   it("places each module column after its core column, unknown anchors last", () => {
     const lenses: TasksLens[] = [
       { columns: [column("materials", "dueDate")] },
-      { columns: [column("lord", "duration"), column("stray", "nope")] },
+      { columns: [column("goal", "duration"), column("stray", "nope")] },
     ];
     expect(withLensColumns(CORE, lenses).map((c) => c.id)).toEqual([
       "status",
@@ -37,7 +36,7 @@ describe("withLensColumns", () => {
       "dueDate",
       "materials",
       "duration",
-      "lord",
+      "goal",
       "schedule",
       "stray",
     ]);
@@ -48,24 +47,14 @@ describe("withLensColumns", () => {
   });
 });
 
-describe("applyLensFilters and lensBand", () => {
-  it("narrows by every lens in turn, and gathers every lens's band", () => {
+describe("applyLensFilters", () => {
+  it("narrows by every lens in turn", () => {
     const tasks = [task("a"), task("b"), task("c")];
     const lenses: TasksLens[] = [
       { filter: (ts) => ts.filter((t) => t.id !== "a") },
-      {
-        filter: (ts) => ts.filter((t) => t.id !== "c"),
-        band: (ts) =>
-          ts.map((t) => ({
-            kind: "task",
-            task: t,
-            mark: { glyph: "*", title: t.id },
-          })),
-      },
+      { filter: (ts) => ts.filter((t) => t.id !== "c") },
       {},
     ];
-    const shown = applyLensFilters(lenses, tasks);
-    expect(shown.map((t) => t.id)).toEqual(["b"]);
-    expect(lensBand(lenses, shown, { showDone: false })).toHaveLength(1);
+    expect(applyLensFilters(lenses, tasks).map((t) => t.id)).toEqual(["b"]);
   });
 });

@@ -153,7 +153,7 @@ export function BoardTask({
               </span>
             )}
 
-            {/* What the modules add (Ladder: the Lord chip), editable in
+            {/* What the modules add (Ladder: the goal chip), editable in
                 place. The wrapper swallows pointer events so opening one
                 never starts a card drag. */}
             {lenses.some((lens) => lens.Control) ? (

@@ -18,7 +18,7 @@ export interface AttentionGoal {
   externalId: string | null;
   isBoss: boolean;
   targetDate: Date | null;
-  /** Direct children in the goal DAG — a Lord's bosses live here. */
+  /** Direct children in the goal DAG: a top goal's milestones live here. */
   children: AttentionGoal[];
 }
 
@@ -74,7 +74,7 @@ function goalRefs(goals: AttentionGoal[]): AttentionGoalRef[] {
 
 /**
  * A goal's own target date, or the earliest upcoming one among its direct
- * boss children. Only direct bosses count: a Lord's child *Lords* (bcf-2026
+ * boss children. Only direct bosses count: a goal's child goals (bcf-2026
  * under coop-2027) have their own deadlines, which aren't this task's.
  */
 function horizonFor(goals: AttentionGoal[], now: Date): AttentionHorizon | null {

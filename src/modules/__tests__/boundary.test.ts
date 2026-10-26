@@ -50,7 +50,6 @@ const OWNED: Record<string, string[]> = {
     "src/lib/erwin/xp.ts",
     "src/lib/erwin/xp-report.ts",
     "src/store/ladder.ts",
-    "src/store/lord.ts",
     "src/types/ladder.ts",
     "src/app/(common)/goals/",
     "src/app/api/erwin/goals/",

@@ -48,7 +48,7 @@ interface TaskModalProps {
   tags: Tag[];
   onCreateTag: (name: string, color?: string) => Promise<Tag>;
   initialProjectId?: string | null;
-  /** Pre-links a created task to a goal (e.g. the tasks page's active Lord). */
+  /** Pre-links a created task to a goal (the Tasks page's open goal tab). */
   initialGoalId?: string | null;
 }
 

@@ -16,7 +16,7 @@ import {
 import { Task, TaskStatus } from "@/types/task";
 
 import { useDraggableTask } from "../../dnd/useDragAndDrop";
-import { type BandItem, type RowMark, withLensColumns } from "../lens";
+import { withLensColumns } from "../lens";
 import { useTasksLenses } from "../use-tasks-lenses";
 import { isUpcomingTask } from "../utils/task-list-utils";
 import {
@@ -25,7 +25,6 @@ import {
   type TaskColumn,
   type TaskPatch,
 } from "./columns";
-import { bandSize, markOf, rowKey, type SheetRow } from "./sheet-rows";
 import { useColumnResize } from "./useColumnResize";
 import { ValueBar } from "./ValueBar";
 
@@ -42,12 +41,7 @@ import { ValueBar } from "./ValueBar";
  * Density is deliberate and desktop-only: 26px rows are below the 44px touch
  * target floor, which is the correct trade for a sheet you drive with a
  * pointer and arrow keys. Every other surface in the app keeps the floor.
- *
- * A module can pin rows above the tasks as a frozen band (see sheet-rows):
- * Ladder pins the hex's bosses, a milestone row per boss or the assignment's
- * own row when the boss is one. The gutter shows the module's mark (⚔)
- * instead of a number, and a full-strength rule under the band is Excel's
- * freeze-pane line. Columns come from the core and the modules' lenses.
+ * Columns come from the core and the modules' lenses.
  */
 
 /** Uniform row height. The one property that makes a sheet scannable. */
@@ -65,8 +59,8 @@ const DONE_WIDTH = 32;
 const ACTIONS_WIDTH = 60;
 
 interface TaskSheetProps {
-  /** Already filtered and sorted by TaskList: the modules' band, then tasks. */
-  rows: SheetRow[];
+  /** Already filtered and sorted by TaskList. */
+  tasks: Task[];
   visibleColumns: Set<TaskColumnId>;
   sortBy: SortKey;
   sortDirection: "asc" | "desc";
@@ -88,7 +82,7 @@ interface CellRef {
 }
 
 export function TaskSheet({
-  rows,
+  tasks,
   visibleColumns,
   sortBy,
   sortDirection,
@@ -150,16 +144,10 @@ export function TaskSheet({
 
   // Filtering or sorting can pull the selected cell out from under the
   // selection; clamp rather than clear, so the cursor stays roughly put.
-  const row = Math.min(active.row, Math.max(0, rows.length - 1));
+  const row = Math.min(active.row, Math.max(0, tasks.length - 1));
   const col = Math.min(active.col, Math.max(0, columns.length - 1));
-  const activeRow: SheetRow | null = rows[row] ?? null;
-  const activeTask: Task | null = activeRow?.kind === "task" ? activeRow.task : null;
-  const activeMark = markOf(activeRow);
+  const activeTask: Task | null = tasks[row] ?? null;
   const activeColumn = columns[col] ?? null;
-
-  // Band rows carry their module's mark; tasks are numbered from 1 below them.
-  const band = bandSize(rows);
-  const rowNumberOf = (r: number) => (r < band ? null : r - band + 1);
 
   const move = useCallback(
     (dRow: number, dCol: number) => {
@@ -176,12 +164,12 @@ export function TaskSheet({
           r += 1;
         }
         return {
-          row: Math.max(0, Math.min(rows.length - 1, r)),
+          row: Math.max(0, Math.min(tasks.length - 1, r)),
           col: Math.max(0, Math.min(columns.length - 1, c)),
         };
       });
     },
-    [row, col, columns.length, rows.length]
+    [row, col, columns.length, tasks.length]
   );
 
   // Keep the selection on screen when it's driven from the keyboard.
@@ -235,7 +223,7 @@ export function TaskSheet({
       case "End":
         e.preventDefault();
         setActive({
-          row: e.metaKey || e.ctrlKey ? rows.length - 1 : row,
+          row: e.metaKey || e.ctrlKey ? tasks.length - 1 : row,
           col: columns.length - 1,
         });
         break;
@@ -249,7 +237,7 @@ export function TaskSheet({
     }
   };
 
-  if (rows.length === 0) {
+  if (tasks.length === 0) {
     return (
       <div className="flex h-full min-h-0 flex-col">
         <ValueBar
@@ -269,13 +257,7 @@ export function TaskSheet({
     <div className="flex h-full min-h-0 flex-col">
       <ValueBar
         task={activeTask}
-        rowNumber={activeRow ? rowNumberOf(row) : null}
-        rowLabel={activeMark?.glyph}
-        readonlyText={
-          activeRow?.kind === "item" && activeColumn
-            ? activeRow.item.text(activeColumn.id)
-            : undefined
-        }
+        rowNumber={activeTask ? row + 1 : null}
         column={activeColumn}
         onCommit={onInlineEdit}
         onCommitted={() => {
@@ -414,35 +396,21 @@ export function TaskSheet({
           </thead>
 
           <tbody>
-            {rows.map((sheetRow, r) =>
-              sheetRow.kind === "item" ? (
-                <ItemRow
-                  key={rowKey(sheetRow)}
-                  item={sheetRow.item}
-                  bandEnd={r === band - 1}
-                  isActiveRow={r === row}
-                  activeCol={r === row ? col : -1}
-                  columns={columns}
-                  onSelect={(c) => setActive({ row: r, col: c })}
-                />
-              ) : (
-                <TaskSheetRow
-                  key={rowKey(sheetRow)}
-                  task={sheetRow.task}
-                  mark={sheetRow.mark}
-                  rowNumber={rowNumberOf(r)}
-                  bandEnd={r === band - 1}
-                  isActiveRow={r === row}
-                  activeCol={r === row ? col : -1}
-                  columns={columns}
-                  onSelect={(c) => setActive({ row: r, col: c })}
-                  onOpenValueBar={focusValueBar}
-                  onEdit={onEdit}
-                  onDelete={onDelete}
-                  onStatusChange={onStatusChange}
-                />
-              )
-            )}
+            {tasks.map((task, r) => (
+              <TaskSheetRow
+                key={task.id}
+                task={task}
+                rowNumber={r + 1}
+                isActiveRow={r === row}
+                activeCol={r === row ? col : -1}
+                columns={columns}
+                onSelect={(c) => setActive({ row: r, col: c })}
+                onOpenValueBar={focusValueBar}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onStatusChange={onStatusChange}
+              />
+            ))}
           </tbody>
         </table>
 
@@ -492,14 +460,7 @@ export function TaskSheet({
           style={{ width: PACKET_WIDTH }}
           className="flex-none overflow-y-auto border-l border-border"
         >
-          {activeRow?.kind === "item" ? (
-            activeRow.item.pane()
-          ) : (
-            <>
-              {activeMark?.strip?.()}
-              <TaskReadingPane task={activeTask ?? null} />
-            </>
-          )}
+          <TaskReadingPane task={activeTask} />
         </aside>
       ) : null}
       </div>
@@ -509,9 +470,7 @@ export function TaskSheet({
 
 function TaskSheetRow({
   task,
-  mark,
   rowNumber,
-  bandEnd,
   isActiveRow,
   activeCol,
   columns,
@@ -522,11 +481,7 @@ function TaskSheetRow({
   onStatusChange,
 }: {
   task: Task;
-  /** Set when a module pinned this task into the band (Ladder: a boss's assignment). */
-  mark: RowMark | null;
-  /** Null for a band row, which the gutter marks with its module's glyph. */
-  rowNumber: number | null;
-  bandEnd: boolean;
+  rowNumber: number;
   isActiveRow: boolean;
   activeCol: number;
   columns: TaskColumn[];
@@ -542,15 +497,13 @@ function TaskSheetRow({
 
   const cellBase = cn(
     ROW,
-    "relative max-w-0 truncate border-b border-r px-2 align-middle",
-    bandEnd ? "border-b-border border-r-border/60" : "border-border/60"
+    "relative max-w-0 truncate border-b border-r border-border/60 px-2 align-middle"
   );
 
   return (
     <tr
       className={cn(
         "group",
-        mark && "font-medium",
         isDragging && "opacity-50",
         isUpcoming && "text-muted-foreground",
         isCompleted && "text-muted-foreground line-through decoration-1"
@@ -572,20 +525,15 @@ function TaskSheetRow({
             ? "bg-accent text-accent-foreground"
             : "bg-muted text-muted-foreground"
         )}
-        title={
-          mark
-            ? `${mark.title}. Drag onto the calendar to schedule`
-            : "Drag onto the calendar to schedule"
-        }
+        title="Drag onto the calendar to schedule"
       >
-        {rowNumber ?? mark?.glyph}
+        {rowNumber}
       </td>
 
       <td
         className={cn(
           ROW,
           "border-b border-r border-border/60 text-center align-middle",
-          bandEnd && "border-b-border",
           isActiveRow && "bg-rust/5"
         )}
       >
@@ -634,7 +582,6 @@ function TaskSheetRow({
         className={cn(
           ROW,
           "border-b border-r border-border/60 px-1",
-          bandEnd && "border-b-border",
           isActiveRow && "bg-rust/5"
         )}
       >
@@ -664,74 +611,9 @@ function TaskSheetRow({
         className={cn(
           ROW,
           "border-b border-border/60",
-          bandEnd && "border-b-border",
           isActiveRow ? "bg-rust/5" : "group-hover:bg-muted/40"
         )}
       />
-    </tr>
-  );
-}
-
-/**
- * A row a module pinned that isn't a task (Ladder: a boss with no assignment
- * behind it). Same grid and selection as a task row so arrowing through the
- * band just works, but nothing to tick, drag or delete: the module owns it.
- */
-function ItemRow({
-  item,
-  bandEnd,
-  isActiveRow,
-  activeCol,
-  columns,
-  onSelect,
-}: {
-  item: BandItem;
-  bandEnd: boolean;
-  isActiveRow: boolean;
-  activeCol: number;
-  columns: TaskColumn[];
-  onSelect: (col: number) => void;
-}) {
-  const rule = bandEnd ? "border-b-border" : "border-b-border/60";
-  return (
-    <tr className={cn("group", item.done && "text-muted-foreground line-through decoration-1")}>
-      <td
-        className={cn(
-          ROW,
-          "sticky left-0 z-10 border-b border-r border-border px-2 text-right font-mono text-[11px]",
-          isActiveRow ? "bg-accent text-accent-foreground" : "bg-muted text-foreground"
-        )}
-        title={item.mark.title}
-      >
-        {item.mark.glyph}
-      </td>
-      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
-      {columns.map((c, i) => {
-        const isActive = i === activeCol;
-        return (
-          <td
-            key={c.id}
-            data-active-cell={isActive || undefined}
-            onClick={() => onSelect(i)}
-            title={item.text(c.id) || undefined}
-            className={cn(
-              ROW,
-              "relative max-w-0 truncate border-b border-r border-r-border/60 px-2 align-middle",
-              rule,
-              c.align === "right" && "text-right",
-              isActive
-                ? "z-20 outline outline-2 -outline-offset-2 outline-rust"
-                : "cursor-cell",
-              isActiveRow && !isActive && "bg-rust/5",
-              !isActiveRow && "group-hover:bg-muted/40"
-            )}
-          >
-            {item.cell(c.id)}
-          </td>
-        );
-      })}
-      <td className={cn(ROW, "border-b border-r border-r-border/60", rule, isActiveRow && "bg-rust/5")} />
-      <td className={cn(ROW, "border-b", rule, isActiveRow ? "bg-rust/5" : "group-hover:bg-muted/40")} />
     </tr>
   );
 }

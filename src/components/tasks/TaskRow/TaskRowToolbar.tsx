@@ -195,7 +195,7 @@ function DeferField({
 /**
  * Quick-edit toolbar shown under an expanded TaskRow. Heavy fields (recurrence,
  * tags, description) stay in TaskModal — this is due / defer / priority, and
- * whatever a module adds (Ladder: the Lord picker).
+ * whatever a module adds (Ladder: the goal picker).
  */
 export function TaskRowToolbar({
   task,

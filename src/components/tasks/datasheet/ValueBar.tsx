@@ -33,10 +33,6 @@ interface ValueBarProps {
   task: Task | null;
   /** 1-based, as shown in the row gutter. */
   rowNumber: number | null;
-  /** Replaces "R<n>" for a row a module pinned (Ladder's bosses: "⚔"). */
-  rowLabel?: string;
-  /** A pinned row that isn't a task (an unbound boss): the cell's value, read-only. */
-  readonlyText?: string;
   column: TaskColumn | null;
   onCommit: (patch: TaskPatch) => void;
   /** Called after a successful commit so the grid can advance a row. */
@@ -46,8 +42,6 @@ interface ValueBarProps {
 export function ValueBar({
   task,
   rowNumber,
-  rowLabel,
-  readonlyText,
   column,
   onCommit,
   onCommitted,
@@ -125,9 +119,9 @@ export function ValueBar({
           the gutter, the column is named rather than lettered — "R7 · Due
           date" tells you what you're editing; "D7" makes you count. */}
       <span className="flex h-6 w-40 flex-none items-center gap-1.5 truncate border border-border px-2 font-mono text-[11px] uppercase tracking-wide">
-        {rowNumber != null || rowLabel ? (
+        {rowNumber != null ? (
           <>
-            <span className="text-muted-foreground">{rowLabel ?? `R${rowNumber}`}</span>
+            <span className="text-muted-foreground">{`R${rowNumber}`}</span>
             <span aria-hidden className="text-border">
               |
             </span>
@@ -148,11 +142,7 @@ export function ValueBar({
           expanded && isText ? "items-start" : "items-center"
         )}
       >
-        {readonlyText !== undefined && !task ? (
-          <span className="truncate text-[13px] text-muted-foreground">
-            {readonlyText || "—"}
-          </span>
-        ) : !task || !column ? (
+        {!task || !column ? (
           <span className="text-[13px] text-muted-foreground/50">
             Select a cell
           </span>

@@ -6,7 +6,7 @@ import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 import { EnergyLevel, TaskListMode, TaskStatus, TimePreference } from "@/types/task";
 
 /** The core's columns; a module's column brings its own id (Courses:
- *  "materials", Ladder: "lord"). Ids are what's persisted. */
+ *  "materials", Ladder: "goal"). Ids are what's persisted. */
 export type TaskColumnId =
   | "status"
   | "title"
@@ -28,7 +28,7 @@ export const DEFAULT_VISIBLE_COLUMNS: TaskColumnId[] = [
   "dueDate",
   "materials",
   "duration",
-  "lord",
+  "goal",
   "schedule",
 ];
 
@@ -177,7 +177,7 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       // before a key existed simply leaves its initial value in place.
       // `visibleColumns` is different — a saved list replaces the default
       // wholesale, so a new default column has to be added to it explicitly.
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Partial<TaskListViewSettings>;
         if (version < 1 && state.visibleColumns && !state.visibleColumns.includes("materials")) {
@@ -188,6 +188,17 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
         }
         // "project" was the Lord column's sort key before it was the Lord's.
         if (version < 2 && state.sortBy === "project") state.sortBy = "lord";
+        // The Lord column became the Goal column.
+        if (version < 3) {
+          if (state.sortBy === "lord") state.sortBy = "goal";
+          state.visibleColumns = state.visibleColumns?.map((c) =>
+            c === "lord" ? "goal" : c
+          );
+          if (state.columnWidths && "lord" in state.columnWidths) {
+            const { lord, ...rest } = state.columnWidths;
+            state.columnWidths = { ...rest, goal: lord };
+          }
+        }
         return state as TaskListViewSettings;
       },
     }

@@ -2,14 +2,11 @@
  * What a module adds to the Tasks page: the list, the board and the sheet.
  * Each module that adds anything has a `useTasksLens` hook in the client
  * registry (src/modules/client.tsx), which hands back its lens while it's on
- * and null while it's off. Ladder narrows the page to a Lord and pins its
- * bosses above the sheet; Courses adds the Mat column. The page knows
- * neither: it asks for the lenses (use-tasks-lenses.ts) and uses what they
- * give.
+ * and null while it's off. Ladder adds a goal tab per top goal and the Goal
+ * column; Courses adds the Mat column. The page knows neither: it asks for
+ * the lenses (use-tasks-lenses.ts) and uses what they give.
  */
-import type { ComponentType, ReactNode } from "react";
-
-import type { TaskColumnId } from "@/store/taskListViewSettings";
+import type { ComponentType } from "react";
 
 import type { Task } from "@/types/task";
 
@@ -23,54 +20,19 @@ export interface TaskControlProps {
   variant: "toolbar" | "card";
 }
 
-/** How the sheet marks a row a module pinned, in place of a row number. */
-export interface RowMark {
-  /** The gutter's glyph ("⚔"). */
-  glyph: string;
-  /** The gutter's tooltip ("Boss: Test 2"). */
-  title: string;
-  /** Drawn above the row's pane (Ladder: the boss strip). */
-  strip?: () => ReactNode;
-}
-
-/** Something of a module's own pinned in the sheet (Ladder: an unbound boss). */
-export interface BandItem {
-  key: string;
-  mark: RowMark;
-  /** Struck through like finished work (Ladder: a felled boss). */
-  done: boolean;
-  /** Its cell in a column; null where it has nothing to say. */
-  cell: (column: TaskColumnId) => ReactNode;
-  /** That cell's full text, for the value bar and the tooltip. */
-  text: (column: TaskColumnId) => string;
-  /** The pane beside the sheet while it's selected. */
-  pane: () => ReactNode;
-}
-
-/** A row a module pins above the sheet's tasks. */
-export type BandRow =
-  /** One of the tasks, pulled up into the band (Ladder: a boss's own assignment). */
-  | { kind: "task"; task: Task; mark: RowMark }
-  | { kind: "item"; item: BandItem };
-
 export interface TasksLens {
-  /** Narrows the list and the board (Ladder: to the open Lord's tab). */
+  /** Narrows the list and the board (Ladder: to the open goal tab). */
   filter?: <T extends Task>(tasks: T[]) => T[];
-  /** A strip of tabs along the bottom of the page (Ladder: one per Lord). */
+  /** A strip of tabs along the bottom of the page (Ladder: one per top goal). */
   Tabs?: ComponentType;
-  /** The goal a task made from this view starts linked to (Ladder: the open Lord). */
+  /** The goal a task made from this view starts linked to (Ladder: the open tab's). */
   newTaskGoalId?: string;
   /** Columns the sheet offers, each placed after a core column (`after`). */
   columns?: TaskColumn[];
-  /** A short word on a task's row (Ladder: its Lord). */
+  /** A short word on a task's row (Ladder: its goal). */
   rowLabel?: (task: Task) => string | null;
-  /** A control on a task's row toolbar and board card (Ladder: the Lord picker). */
+  /** A control on a task's row toolbar and board card (Ladder: the goal picker). */
   Control?: ComponentType<TaskControlProps>;
-  /** Rows pinned above the sheet's tasks, from the tasks in view (Ladder: bosses). */
-  band?: (
-    tasks: Task[],
-    view: { search?: string; showDone: boolean }
-  ) => BandRow[];
 }
 
 /** The core columns, with each lens's columns placed after their anchors. */
@@ -97,12 +59,4 @@ export function applyLensFilters<T extends Task>(
     (rest, lens) => (lens.filter ? lens.filter(rest) : rest),
     tasks
   );
-}
-
-export function lensBand(
-  lenses: TasksLens[],
-  tasks: Task[],
-  view: { search?: string; showDone: boolean }
-): BandRow[] {
-  return lenses.flatMap((l) => l.band?.(tasks, view) ?? []);
 }

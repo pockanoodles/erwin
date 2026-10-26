@@ -39,8 +39,7 @@ import { TaskRow } from "./TaskRow";
 import { TaskRowExpansionProvider } from "./TaskRow/TaskRowExpansionContext";
 import { TaskSheet } from "./datasheet/TaskSheet";
 import { TASK_COLUMNS, type TaskPatch } from "./datasheet/columns";
-import { buildSheetRows } from "./datasheet/sheet-rows";
-import { applyLensFilters, lensBand, withLensColumns } from "./lens";
+import { applyLensFilters, withLensColumns } from "./lens";
 import { useTasksLenses } from "./use-tasks-lenses";
 import {
   compareTaskEnergyLevel,
@@ -105,8 +104,8 @@ export function TaskList({
     setPacketOpen,
   } = useTaskListViewSettings();
   const { listStyle, setListStyle } = useTaskPageSettings();
-  // What the modules add here: Ladder narrows to a Lord and pins its bosses,
-  // Courses and Ladder add columns.
+  // What the modules add here: Ladder narrows to a goal tab, and Courses and
+  // Ladder add columns.
   const lenses = useTasksLenses();
   const columns = useMemo(
     () => withLensColumns(TASK_COLUMNS, lenses),
@@ -243,21 +242,6 @@ export function TaskList({
       }
     });
   }, [modeFilteredTasks, sortBy, sortDirection, columns]);
-
-  // The sheet's rows: what the modules pin (Ladder: its bosses) on top of
-  // the sorted tasks. The band follows search, and shows finished items only
-  // when completed work shows.
-  const sheetRows = useMemo(
-    () =>
-      buildSheetRows(
-        sortedTasks,
-        lensBand(lenses, sortedTasks, {
-          search,
-          showDone: !status?.length || status.includes(TaskStatus.COMPLETED),
-        })
-      ),
-    [sortedTasks, lenses, search, status]
-  );
 
   const groupedTasks = useMemo(
     () => groupTasksForListMode(sortedTasks, listMode),
@@ -539,7 +523,7 @@ export function TaskList({
         )
       ) : (
         <TaskSheet
-          rows={sheetRows}
+          tasks={sortedTasks}
           visibleColumns={visible}
           sortBy={sortBy}
           sortDirection={sortDirection}

@@ -307,7 +307,7 @@ export async function PUT(
     // goal rules stop refiling it. Multi-link callers use /api/erwin/task-links.
     // The task modal echoes the goal it showed on every save, so a goalId the
     // task already has is not a choice — unless the caller also asks to pin
-    // (the Lord column choosing the Lord the rules already gave it).
+    // (the Goal column choosing the goal the rules already gave it).
     const goalChosen =
       goalId !== undefined &&
       ((goalsPinned === true && !task.goalsPinned) ||
@@ -359,7 +359,7 @@ export async function PUT(
     }
 
     // The store swaps this in for its copy, so it carries the links as they
-    // stand after the goal write — without them every edit blanked the Lord.
+    // stand after the goal write — without them every edit blanked the goal.
     const goalLinksNow = await prisma.taskGoalLink.findMany({
       where: { taskId: id },
       select: { goalId: true },

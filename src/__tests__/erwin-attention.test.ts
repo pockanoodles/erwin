@@ -63,7 +63,7 @@ describe("computeAttention", () => {
     expect(undatedGoalTasks.map((u) => u.id)).toEqual(["a"]);
   });
 
-  it("takes the horizon from a direct boss, not a child Lord's boss", () => {
+  it("takes the horizon from a direct boss, not a child goal's boss", () => {
     const { undatedGoalTasks } = computeAttention(
       [{ id: "a", title: "Tracker", dueDate: null, goals: [coop] }],
       NOW

@@ -24,20 +24,20 @@ const task = (id: string, source: string | null, goalIds: string[] = [], extra =
 });
 
 describe("planLinks", () => {
-  it("files a Canvas task under the Lord whose sources claim it", () => {
+  it("files a Canvas task under the goal whose sources claim it", () => {
     expect(planLinks(goals, new Map(), [task("hw", "CANVAS")])).toEqual({
       create: [{ taskId: "hw", goalId: "school" }],
       stale: [],
     });
   });
 
-  it("files a vault task under the Lord its venture source names", () => {
+  it("files a vault task under the goal its venture source names", () => {
     expect(planLinks(goals, new Map(), [task("apply", "venture:coop-2027")]).create).toEqual([
       { taskId: "apply", goalId: "coop" },
     ]);
   });
 
-  it("adds the bound boss beside the Lord, and leaves correct links alone", () => {
+  it("adds the bound boss beside its goal, and leaves correct links alone", () => {
     const plan = planLinks(goals, new Map([["final", ["pitch"]]]), [task("final", "CANVAS", ["school"])]);
     expect(plan).toEqual({ create: [{ taskId: "final", goalId: "pitch" }], stale: [] });
   });

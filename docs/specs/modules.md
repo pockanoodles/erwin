@@ -66,7 +66,7 @@ Turning a module off deletes nothing. While it's off:
 - `Task.closedAt`, set when the source closed a task without it being done (Canvas: missed, or the course ended);
 - `rankSignals`: a `lift` from 0 to 1 for tasks the module vouches for (Ladder: the importance of a task's most important active goal), and `stakes` with a `stakesGroup` for the boost given to large work due far out (Courses: the share of the grade, within a course).
 
-**The Tasks page.** `useTasksLens` is a hook that returns the module's lens while it's on and null while it's off (`src/components/tasks/lens.ts`). A lens can narrow the list, add tabs along the bottom, add sheet columns placed after a core column with their own sort, put a word on each task's row, add a control to a row's toolbar and a board card, pin rows above the sheet, and say which goal a new task starts with. Ladder's lens carries all of its goal UI on that page; Courses' carries the Mat column.
+**The Tasks page.** `useTasksLens` is a hook that returns the module's lens while it's on and null while it's off (`src/components/tasks/lens.ts`). A lens can narrow the list, add tabs along the bottom, add sheet columns placed after a core column with their own sort, put a word on each task's row, add a control to a row's toolbar and a board card, and say which goal a new task starts with. Ladder's lens carries all of its goal UI on that page (a tab per top goal, the Goal column and picker); Courses' carries the Mat column.
 
 ## The boundary
 

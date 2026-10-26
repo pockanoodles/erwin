@@ -39,7 +39,7 @@ export function BoardView({
     listMode,
   } = useTaskListViewSettings();
 
-  // First, scope to what the modules narrow to (Ladder: the open Lord's path)
+  // First, scope to what the modules narrow to (Ladder: the open goal tab)
   const scopedTasks = useMemo(
     () => applyLensFilters(lenses, tasks),
     [lenses, tasks]

@@ -32,9 +32,9 @@ interface ProjectedGoal {
   isBoss?: boolean;
   targetDate?: string | null;
   sortOrder?: number;
-  /** externalId of the parent (a Lord) this goal (a boss) links under, if any. */
+  /** externalId of the parent (a top goal) this goal (a milestone) links under, if any. */
   parentExternalId?: string | null;
-  /** Lord: task sources it claims (the vault's `sources:`). */
+  /** A top goal's task sources (the vault's `sources:`). */
   taskSources?: string[];
   /** Boss: the Canvas assignment it is (the vault's `canvas: <id>`). */
   canvasAssignmentId?: string | null;
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // File tasks under the goals just projected (Lord sources, boss
+      // File tasks under the goals just projected (their sources, boss
       // bindings). Bound bosses take their Canvas task's date and status here,
       // after the upsert wrote the vault's, so Canvas wins.
       const rules = await applyGoalRules(tx, userId);

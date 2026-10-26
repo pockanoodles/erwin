@@ -19,18 +19,16 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import { useLordStore } from "@/store/lord";
+import { topGoalOf, useGoalTabStore } from "@/modules/ladder/goal-tabs";
 
 /**
- * Ladder's control on a task (its Tasks lens): which Lord the task serves.
- * In an expanded row's toolbar it's a dropdown button; on a board card it's
- * a quiet chip that opens a select. Picking one pins the task to it.
+ * Ladder's control on a task (its Tasks lens): which goal the task works
+ * toward. In an expanded row's toolbar it's a dropdown button; on a board
+ * card it's a quiet chip that opens a select. Picking one pins the task to it.
  */
-export function LordPicker({ task, onPatch, variant }: TaskControlProps) {
-  const lords = useLordStore((s) => s.lords);
-  const taskLord = lords.find((lord) =>
-    task.goalLinks?.some((link) => lord.goalIds.includes(link.goalId))
-  );
+export function GoalPicker({ task, onPatch, variant }: TaskControlProps) {
+  const topGoals = useGoalTabStore((s) => s.topGoals);
+  const current = topGoalOf(task, topGoals);
   const choose = (goalId: string | null) => onPatch({ ...task, goalId });
 
   if (variant === "toolbar") {
@@ -38,23 +36,23 @@ export function LordPicker({ task, onPatch, variant }: TaskControlProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <ToolbarButton
-            active={Boolean(taskLord)}
-            aria-label="Lord"
-            title="Assign Lord"
+            active={Boolean(current)}
+            aria-label="Goal"
+            title="Link to a goal"
           >
             <HiOutlineFlag className="h-4 w-4" />
             <span className="hidden max-w-36 truncate sm:inline">
-              {taskLord ? taskLord.title : "Lord"}
+              {current ? current.title : "Goal"}
             </span>
           </ToolbarButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="rounded-none">
           <DropdownMenuItem onSelect={() => choose(null)}>
-            Unassigned
+            No goal
           </DropdownMenuItem>
-          {lords.map((lord) => (
-            <DropdownMenuItem key={lord.id} onSelect={() => choose(lord.id)}>
-              {lord.title}
+          {topGoals.map((goal) => (
+            <DropdownMenuItem key={goal.id} onSelect={() => choose(goal.id)}>
+              {goal.title}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
@@ -64,32 +62,32 @@ export function LordPicker({ task, onPatch, variant }: TaskControlProps) {
 
   return (
     <Select
-      value={taskLord?.id || "none"}
+      value={current?.id || "none"}
       onValueChange={(value) => choose(value === "none" ? null : value)}
     >
       <SelectTrigger
         className={cn(
           "h-auto gap-1 border-none bg-transparent p-0 text-xs shadow-none transition-colors duration-150 focus:ring-0",
-          taskLord
+          current
             ? "text-muted-foreground hover:text-foreground"
             : "text-muted-foreground/50 hover:text-foreground"
         )}
-        title="Assign Lord"
+        title="Link to a goal"
       >
         <span className="flex items-center gap-1">
           <HiFlag className="h-3 w-3 flex-none" />
-          {taskLord
-            ? taskLord.title
+          {current
+            ? current.title
             : task.goalLinks?.length
-              ? "Other hex"
-              : "No lord"}
+              ? "Other cycle"
+              : "No goal"}
         </span>
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="none">Unassigned</SelectItem>
-        {lords.map((lord) => (
-          <SelectItem key={lord.id} value={lord.id}>
-            {lord.title}
+        <SelectItem value="none">No goal</SelectItem>
+        {topGoals.map((goal) => (
+          <SelectItem key={goal.id} value={goal.id}>
+            {goal.title}
           </SelectItem>
         ))}
       </SelectContent>

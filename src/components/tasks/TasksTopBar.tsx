@@ -40,7 +40,7 @@ export function TasksTopBarViews() {
 
 export function TasksTopBarActions() {
   const scheduleAllTasks = useTaskStore((s) => s.scheduleAllTasks);
-  // Creating from a module's view links the task there (Ladder: the open Lord).
+  // Creating from a module's view links the task there (Ladder: the open goal tab).
   const newTaskGoalId = useTasksLenses().find(
     (lens) => lens.newTaskGoalId
   )?.newTaskGoalId;
