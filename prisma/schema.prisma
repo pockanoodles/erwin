@@ -103,6 +103,7 @@ model User {
   courses              Course[]
   modules              UserModule[]
   people               Person[]
+  routines             Routine[]
 }
 
 model VerificationToken {
@@ -955,6 +956,85 @@ model Interaction {
   createdAt DateTime @default(now())
 
   @@index([personId, at])
+}
+
+/**
+ * Training module: a workout someone repeats ("Push day", "Long run"). A cadence turns into one task (source TRAINING, externalTaskId = this id), due a cadence after the last session.
+ */
+model Routine {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  /**
+   * How to do it, or what it's for.
+   */
+  notes       String?
+  /**
+   * Days between sessions; 7/3 is three times a week. Null means no schedule and no task.
+   */
+  cadenceDays Float?
+  /**
+   * How long a session takes, in minutes: its task's duration.
+   */
+  minutes     Int       @default(60)
+  /**
+   * The exercises in order, as planned: [{ name, sets, reps }]. A session starts from these, with last time's weights.
+   */
+  plan        Json      @default("[]")
+  /**
+   * The latest session (Workout.at), kept here for sorting and for the next one.
+   */
+  lastDoneAt  DateTime?
+  archived    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  workouts    Workout[]
+
+  @@index([userId, archived])
+}
+
+/**
+ * One session of a routine, as it went. A session whose task was ticked off outside the Training page starts with nothing entered.
+ */
+model Workout {
+  id        String         @id @default(cuid())
+  routineId String
+  routine   Routine        @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  at        DateTime
+  /**
+   * The unit its weights were entered in: "kg" or "lb".
+   */
+  unit      String         @default("kg")
+  note      String?
+  /**
+   * Its task was ticked off outside the Training page, and nothing has been entered for it yet.
+   */
+  ticked    Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  entries   WorkoutEntry[]
+
+  @@index([routineId, at])
+}
+
+/**
+ * One line of a session: an exercise, sets × reps at a weight. An exercise can take several lines (two sets of 8, then one of 6).
+ */
+model WorkoutEntry {
+  id        String  @id @default(cuid())
+  workoutId String
+  workout   Workout @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  position  Int
+  exercise  String
+  sets      Int     @default(1)
+  reps      Int?
+  /**
+   * In the session's unit. Null for bodyweight.
+   */
+  weight    Float?
+
+  @@index([workoutId, position])
 }
 
 model Tag {

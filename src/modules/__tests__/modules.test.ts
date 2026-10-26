@@ -25,6 +25,7 @@ describe("resolveModuleStates", () => {
     expect(states).toEqual([
       { id: "ladder", on: false, position: 0 },
       { id: "people", on: false, position: 2 },
+      { id: "training", on: false, position: 3 },
       { id: "courses", on: true, position: 5 },
     ]);
   });
@@ -41,7 +42,12 @@ describe("resolveModuleStates", () => {
       { moduleId: "ladder", enabled: true, position: 0 },
       { moduleId: "courses", enabled: true, position: 0 },
     ]);
-    expect(states.map((s) => s.id)).toEqual(["courses", "ladder", "people"]);
+    expect(states.map((s) => s.id)).toEqual([
+      "courses",
+      "ladder",
+      "people",
+      "training",
+    ]);
   });
 });
 
@@ -50,12 +56,14 @@ describe("hiddenSourcesOf", () => {
     expect(hiddenSourcesOf(resolveModuleStates([]))).toEqual([
       "CANVAS",
       "PEOPLE",
+      "TRAINING",
     ]);
     expect(
       hiddenSourcesOf(
         resolveModuleStates([
           { moduleId: "courses", enabled: true, position: 0 },
           { moduleId: "people", enabled: true, position: 1 },
+          { moduleId: "training", enabled: true, position: 2 },
         ])
       )
     ).toEqual([]);

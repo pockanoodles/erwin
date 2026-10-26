@@ -9,47 +9,53 @@ import type { FactsRequest } from "@/modules/server";
 import type { ModuleId } from "@/modules/types";
 
 // Stand-in contributions, so these tests pin the merging, not the modules.
+// Any module not named here contributes nothing.
 jest.mock("@/modules/server", () => ({
-  SERVER_MODULES: {
-    courses: {
-      taskFacts: jest.fn(
-        async (_db: unknown, _user: string, tasks: FactsRequest[]) =>
-          new Map(
-            tasks.map((t) => [
-              t.id,
-              { courseName: "MKTG", projected: Boolean(t.danger) },
+  SERVER_MODULES: new Proxy(
+    {
+      courses: {
+        taskFacts: jest.fn(
+          async (_db: unknown, _user: string, tasks: FactsRequest[]) =>
+            new Map(
+              tasks.map((t) => [
+                t.id,
+                { courseName: "MKTG", projected: Boolean(t.danger) },
+              ])
+            )
+        ),
+        claimKeys: jest.fn(
+          async (_db: unknown, _user: string, ids: string[]) =>
+            new Map(ids.map((id) => [id, [`course:${id}`]]))
+        ),
+        rankSignals: jest.fn(
+          async () => new Map([["a", { stakes: 100, stakesGroup: "c1" }]])
+        ),
+      },
+      ladder: {
+        taskFacts: jest.fn(
+          async () => new Map([["a", { ladderGoals: ["g"] }]])
+        ),
+        rankSignals: jest.fn(
+          async () =>
+            new Map([
+              ["a", { lift: 0.4 }],
+              ["b", { lift: 0.9 }],
             ])
-          )
-      ),
-      claimKeys: jest.fn(
-        async (_db: unknown, _user: string, ids: string[]) =>
-          new Map(ids.map((id) => [id, [`course:${id}`]]))
-      ),
-      rankSignals: jest.fn(
-        async () => new Map([["a", { stakes: 100, stakesGroup: "c1" }]])
-      ),
-    },
-    ladder: {
-      taskFacts: jest.fn(async () => new Map([["a", { ladderGoals: ["g"] }]])),
-      rankSignals: jest.fn(
-        async () =>
-          new Map([
-            ["a", { lift: 0.4 }],
-            ["b", { lift: 0.9 }],
-          ])
-      ),
-      claimKeys: jest.fn(async () => new Map([["a", ["venture:x"]]])),
-    },
-    people: {
-      rankSignals: jest.fn(
-        async () =>
-          new Map([
-            ["a", { lift: 0.7 }],
-            ["b", { lift: 0.2 }],
-          ])
-      ),
-    },
-  },
+        ),
+        claimKeys: jest.fn(async () => new Map([["a", ["venture:x"]]])),
+      },
+      people: {
+        rankSignals: jest.fn(
+          async () =>
+            new Map([
+              ["a", { lift: 0.7 }],
+              ["b", { lift: 0.2 }],
+            ])
+        ),
+      },
+    } as Record<string, unknown>,
+    { get: (named, id: string) => named[id] ?? {} }
+  ),
 }));
 
 const db = {} as Db;

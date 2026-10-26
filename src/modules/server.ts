@@ -17,6 +17,11 @@ import { syncCanvasIfDue } from "@/modules/courses/server";
 import { goalRankSignals, goalTaskFacts } from "@/modules/ladder/facts";
 import { linkChangedTasksToGoals } from "@/modules/ladder/server";
 import { reconcileReachOuts } from "@/modules/people/reach-out";
+import {
+  routineClaimKeys,
+  routineClaimOptions,
+} from "@/modules/training/facts";
+import { reconcileWorkouts } from "@/modules/training/workout";
 import type { ClaimOption, ModuleId, ProofItem } from "@/modules/types";
 
 export interface ModuleJob {
@@ -96,5 +101,10 @@ export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
   },
   people: {
     jobs: [{ id: "people.reconcile", run: reconcileReachOuts }],
+  },
+  training: {
+    jobs: [{ id: "training.reconcile", run: reconcileWorkouts }],
+    claimKeys: routineClaimKeys,
+    claimOptions: routineClaimOptions,
   },
 };

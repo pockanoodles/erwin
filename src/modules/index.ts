@@ -1,6 +1,7 @@
 import courses from "@/modules/courses/manifest";
 import ladder from "@/modules/ladder/manifest";
 import people from "@/modules/people/manifest";
+import training from "@/modules/training/manifest";
 import type {
   ClaimOption,
   ModuleId,
@@ -13,7 +14,12 @@ import type {
  * the server and middleware can all import it. A module someone has never
  * touched takes its place in the rail from this order.
  */
-export const MODULES: readonly ModuleManifest[] = [courses, ladder, people];
+export const MODULES: readonly ModuleManifest[] = [
+  courses,
+  ladder,
+  people,
+  training,
+];
 
 export function isModuleId(id: string): id is ModuleId {
   return MODULES.some((m) => m.id === id);

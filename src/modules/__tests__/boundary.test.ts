@@ -64,6 +64,11 @@ const OWNED: Record<string, string[]> = {
     "src/app/(common)/people/",
     "src/app/api/erwin/people/",
   ],
+  training: [
+    "src/modules/training/",
+    "src/app/(common)/training/",
+    "src/app/api/erwin/training/",
+  ],
 };
 
 const REGISTRIES = new Set([

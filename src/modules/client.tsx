@@ -8,6 +8,7 @@ import {
   HiOutlineFlag,
   HiOutlineUserGroup,
 } from "react-icons/hi";
+import { IoBarbellOutline } from "react-icons/io5";
 
 import { ConnectCanvasOffer } from "@/components/courses/ConnectCanvasOffer";
 import { CourseActivityStatus } from "@/components/courses/CourseActivityStatus";
@@ -37,6 +38,14 @@ import {
   PeopleTopBarActions,
   PeopleTopBarViews,
 } from "@/modules/people/components/PeopleTopBar";
+import {
+  TrainingTopBarActions,
+  TrainingTopBarViews,
+} from "@/modules/training/components/TrainingTopBar";
+import {
+  WorkoutTaskBody,
+  WorkoutTaskPane,
+} from "@/modules/training/components/WorkoutSlots";
 import type { ModuleId, ModuleManifest } from "@/modules/types";
 
 /**
@@ -98,6 +107,13 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     command: { icon: HiOutlineUserGroup, shortcut: "gp" },
     Views: PeopleTopBarViews,
     Actions: PeopleTopBarActions,
+  },
+  training: {
+    command: { icon: IoBarbellOutline, shortcut: "gw" },
+    Views: TrainingTopBarViews,
+    Actions: TrainingTopBarActions,
+    TaskBody: WorkoutTaskBody,
+    TaskPane: WorkoutTaskPane,
   },
 };
 
