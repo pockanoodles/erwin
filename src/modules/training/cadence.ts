@@ -3,11 +3,18 @@
  * last session, and how the page says it. Pure, so the server and the page
  * agree and tests need no database.
  */
-import { dayInTimeZone } from "@/lib/date-utils";
+import {
+  dayIn,
+  daysBetween,
+  endOfDayIn,
+  localDay,
+  shiftDay,
+  startOfDayIn,
+} from "@/lib/date-utils";
 
 const DAY_MS = 86_400_000;
 
-/** How far ahead of its day a workout task shows up, at most. */
+/** How many days ahead of its day a workout task shows up, at most. */
 const MAX_LEAD_DAYS = 2;
 
 /** The choices the page offers, in days between sessions, most often first. */
@@ -53,7 +60,7 @@ export function nextSession(routine: CadenceRoutine): Date | null {
 export interface WorkoutPlan {
   title: string;
   description: string;
-  /** The day it's due, as task dates are stored: UTC midnight. */
+  /** The end of the day it's due, in the person's time zone. */
   dueDate: Date;
   /** Hidden until then (Task.postponedUntil), or null to show it now. */
   postponedUntil: Date | null;
@@ -62,10 +69,12 @@ export interface WorkoutPlan {
 
 /**
  * The workout task a routine should have right now, or null for none. It's
- * due on the day the next session falls on in the person's time zone, and
- * stays hidden until shortly before (a quarter of the cadence, two days at
- * most), so it isn't in every list the moment the last one is done. `lines`
- * are what to do, as the description lists them.
+ * due by the end of the day the next session falls on in the person's time
+ * zone, like a deadline at 11:59 PM, so it isn't late before the day is out.
+ * It shows from the start of that day, or a day or two before for a long
+ * cadence (a quarter of it, two days at most), so it isn't in every list the
+ * moment the last one is done. `lines` are what to do, as the description
+ * lists them.
  */
 export function planWorkout(
   routine: CadenceRoutine,
@@ -75,37 +84,22 @@ export function planWorkout(
 ): WorkoutPlan | null {
   const next = nextSession(routine);
   if (!next || !routine.cadenceDays) return null;
-  const due = dayInTimeZone(next, timeZone);
-  const leadDays = Math.min(MAX_LEAD_DAYS, routine.cadenceDays / 4);
-  const showAt = new Date(due.getTime() - leadDays * DAY_MS);
+  const day = dayIn(next, timeZone);
+  const leadDays = Math.floor(Math.min(MAX_LEAD_DAYS, routine.cadenceDays / 4));
+  const showAt = startOfDayIn(shiftDay(day, -leadDays), timeZone);
   const head = [
     `${cadenceLabel(routine.cadenceDays)}.`,
     routine.lastDoneAt
-      ? `Last done ${dayInTimeZone(routine.lastDoneAt, timeZone).toISOString().slice(0, 10)}.`
+      ? `Last done ${dayIn(routine.lastDoneAt, timeZone)}.`
       : "Not done yet.",
   ].join(" ");
   return {
     title: routine.name,
     description: [head, ...lines].join("\n"),
-    dueDate: due,
+    dueDate: endOfDayIn(day, timeZone),
     postponedUntil: showAt > now ? showAt : null,
     duration: routine.minutes,
   };
-}
-
-/** "2026-10-25": a calendar day in the browser's own zone. */
-export function localDay(at: Date): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
-}
-
-/** Whole calendar days from one day ("2026-10-25") to another. */
-export function daysBetween(from: string, to: string): number {
-  const utc = (day: string) => {
-    const [y, m, d] = day.split("-").map(Number);
-    return Date.UTC(y, m - 1, d);
-  };
-  return Math.round((utc(to) - utc(from)) / DAY_MS);
 }
 
 /** "today", "tomorrow", "in 3 days", "2 days overdue", for a day it's due. */

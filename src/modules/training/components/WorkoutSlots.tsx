@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 
+import { localDay } from "@/lib/date-utils";
 import type { FocusQueueTask } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
 
-import { cadenceLabel, lastLabel, localDay } from "@/modules/training/cadence";
+import { cadenceLabel, lastLabel } from "@/modules/training/cadence";
 import { entryText, prefillEntries } from "@/modules/training/sets";
 import type { RoutineRow, WorkoutRow } from "@/modules/training/types";
 

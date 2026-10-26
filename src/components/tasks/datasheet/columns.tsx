@@ -8,7 +8,7 @@ import {
   createUTCMidnightDate,
   format,
   newDate,
-  newDateFromYMD,
+  taskDay,
 } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
@@ -100,12 +100,12 @@ export interface TaskColumn {
 /** An empty cell. */
 export const EMPTY = <span className="text-muted-foreground/40">—</span>;
 
-/** `<input type="date">` speaks yyyy-MM-dd, and task dates are UTC midnight. */
+/** `<input type="date">` speaks yyyy-MM-dd: the day the stored date names. */
 function toDateInput(value: Date | string | null | undefined): string {
   if (!value) return "";
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toISOString().slice(0, 10);
+  return format(taskDay(d), "yyyy-MM-dd");
 }
 
 function fromDateInput(raw: string): Date | null {
@@ -130,22 +130,19 @@ export function dateLabel(value: Date | string | null | undefined): string {
 export function dateText(value: Date | string | null | undefined): string {
   if (!value) return "";
   const d = newDate(value);
-  const local = newDateFromYMD(
-    d.getUTCFullYear(),
-    d.getUTCMonth(),
-    d.getUTCDate()
-  );
+  const day = format(taskDay(d), "EEEE, MMMM d, yyyy");
   const midnightUTC =
     d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0;
   // A UTC-midnight date carries no time — printing one would show the
   // timezone offset as if the user had chosen it.
-  return midnightUTC
-    ? format(local, "EEEE, MMMM d, yyyy")
-    : `${format(local, "EEEE, MMMM d, yyyy")} · ${format(d, "p")}`;
+  return midnightUTC ? day : `${day} · ${format(d, "p")}`;
 }
 
 /** A coloured enum chip, the one place the sheet is allowed any fill. */
-function chip(value: string | null | undefined, colors: Record<string, string>) {
+function chip(
+  value: string | null | undefined,
+  colors: Record<string, string>
+) {
   if (!value) return EMPTY;
   return (
     <span className={cn("px-1.5 py-px text-[11px]", colors[value])}>

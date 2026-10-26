@@ -3,11 +3,11 @@
  * conversation. Pure, so the server and the page agree and tests need no
  * database.
  */
-import { dayInTimeZone } from "@/lib/date-utils";
+import { dayIn, endOfDayIn, shiftDay, startOfDayIn } from "@/lib/date-utils";
 
 const DAY_MS = 86_400_000;
 
-/** How far ahead of the due date a reach-out task shows up. */
+/** How many days ahead of its day a reach-out task shows up, at most. */
 const MAX_LEAD_DAYS = 3;
 
 export interface CadencePerson {
@@ -31,7 +31,7 @@ export function nextCheckIn(person: CadencePerson): Date | null {
 export interface ReachOutPlan {
   title: string;
   description: string;
-  /** The day it's due, as task dates are stored: UTC midnight. */
+  /** The end of the day it's due, in their time zone. */
   dueDate: Date;
   /** Hidden until then (Task.postponedUntil), or null to show it now. */
   postponedUntil: Date | null;
@@ -39,10 +39,11 @@ export interface ReachOutPlan {
 
 /**
  * The reach-out task a person should have right now, or null for none. It's
- * due on the day the next check-in falls on in their time zone, so an evening
- * conversation doesn't show the next day's date. It stays hidden until a few
- * days before (a quarter of the cadence at most), so a long cadence doesn't
- * sit in every list for weeks.
+ * due by the end of the day the next check-in falls on in their time zone,
+ * like a deadline at 11:59 PM, so it reads as that day everywhere and isn't
+ * late before the day is out. It stays hidden until the start of a day a few
+ * days before (a quarter of the cadence, three days at most), so a long
+ * cadence doesn't sit in every list for weeks.
  */
 export function planReachOut(
   person: CadencePerson,
@@ -51,20 +52,20 @@ export function planReachOut(
 ): ReachOutPlan | null {
   const next = nextCheckIn(person);
   if (!next || !person.cadenceDays) return null;
-  const due = dayInTimeZone(next, timeZone);
-  const leadDays = Math.min(MAX_LEAD_DAYS, person.cadenceDays / 4);
-  const showAt = new Date(due.getTime() - leadDays * DAY_MS);
+  const day = dayIn(next, timeZone);
+  const leadDays = Math.floor(Math.min(MAX_LEAD_DAYS, person.cadenceDays / 4));
+  const showAt = startOfDayIn(shiftDay(day, -leadDays), timeZone);
   const lines = [
     person.org,
     `Every ${cadenceLabel(person.cadenceDays)}.`,
     person.lastContactAt
-      ? `Last talked ${person.lastContactAt.toISOString().slice(0, 10)}.`
+      ? `Last talked ${dayIn(person.lastContactAt, timeZone)}.`
       : "No conversation logged yet.",
   ].filter(Boolean);
   return {
     title: `Reach out to ${person.name}`,
     description: lines.join(" "),
-    dueDate: due,
+    dueDate: endOfDayIn(day, timeZone),
     postponedUntil: showAt > now ? showAt : null,
   };
 }

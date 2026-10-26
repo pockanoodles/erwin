@@ -1,7 +1,8 @@
+import { daysBetween } from "@/lib/date-utils";
+
 import {
   CADENCE_CHOICES,
   cadenceLabel,
-  daysBetween,
   lastLabel,
   nextLabel,
   nextSession,
@@ -66,13 +67,26 @@ describe("cadence", () => {
 });
 
 describe("planWorkout", () => {
-  it("is due on the session's day where they live, shown shortly before", () => {
+  it("is due by the end of the session's day where they live, shown from its start", () => {
     // 22:00 UTC on the 27th is still the 27th in New York, the 28th in Tokyo.
     const ny = planWorkout(routine(), [], now, "America/New_York");
-    expect(ny?.dueDate.toISOString()).toBe("2026-10-27T00:00:00.000Z");
-    expect(ny?.postponedUntil?.toISOString()).toBe("2026-10-26T06:00:00.000Z");
+    expect(ny?.dueDate.toISOString()).toBe("2026-10-28T03:59:59.999Z");
+    expect(ny?.postponedUntil?.toISOString()).toBe("2026-10-27T04:00:00.000Z");
     const tokyo = planWorkout(routine(), [], now, "Asia/Tokyo");
-    expect(tokyo?.dueDate.toISOString()).toBe("2026-10-28T00:00:00.000Z");
+    expect(tokyo?.dueDate.toISOString()).toBe("2026-10-28T14:59:59.999Z");
+  });
+
+  it("shows a long cadence's session a day or two ahead", () => {
+    const weekly = planWorkout(
+      routine({ cadenceDays: 7, lastDoneAt: now }),
+      [],
+      now,
+      "UTC"
+    );
+    expect(weekly?.dueDate.toISOString()).toBe("2026-11-01T23:59:59.999Z");
+    expect(weekly?.postponedUntil?.toISOString()).toBe(
+      "2026-10-31T00:00:00.000Z"
+    );
   });
 
   it("says the cadence, the last session and what to do", () => {

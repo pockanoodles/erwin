@@ -9,6 +9,7 @@ import {
   newDate,
   newDateFromYMD,
   startOfDay,
+  taskDay,
 } from "@/lib/date-utils";
 
 import {
@@ -420,19 +421,15 @@ export const compareTaskEnergyLevel = (
  * A task date as a column-width label: "Today", "Tomorrow", "Friday",
  * "Mar 10", "Overdue: Aug 31".
  *
- * Task dates are stored at UTC midnight, so reading them in local time lands
- * on 8:00 PM the day before (or noon, depending on the zone) and printing the
- * clock shows that artifact as if it were data. Take the UTC calendar date and
- * rebuild it locally. There were three copies of this — two correct ones
- * pasted into cell components and this exported one, which had drifted into
- * printing the phantom time; the copies now import this.
+ * A date picked without a time is stored at UTC midnight, so reading it in
+ * local time lands on 8:00 PM the day before (or noon, depending on the zone).
+ * A deadline with a time (Canvas's 11:59 PM, a module's end of day) is a real
+ * moment, and its UTC date can be the next day. `taskDay` reads each the
+ * right way. There were three copies of this — two pasted into cell
+ * components and this exported one; the copies now import this.
  */
 export const formatContextualDate = (date: Date) => {
-  const localDate = newDateFromYMD(
-    date.getUTCFullYear(),
-    date.getUTCMonth(),
-    date.getUTCDate()
-  );
+  const localDate = taskDay(date);
   const now = newDate();
   now.setHours(0, 0, 0, 0);
 

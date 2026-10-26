@@ -16,15 +16,10 @@ import {
 } from "@/components/sheet/sheet";
 import { Button } from "@/components/ui/button";
 
+import { daysBetween, localDay } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-import {
-  cadenceLabel,
-  daysBetween,
-  lastLabel,
-  localDay,
-  nextLabel,
-} from "@/modules/training/cadence";
+import { cadenceLabel, lastLabel, nextLabel } from "@/modules/training/cadence";
 import {
   PaneSection,
   RoutinePane,

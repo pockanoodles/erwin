@@ -174,15 +174,66 @@ export function createUTCMidnightDate(localDate: Date | null): Date | null {
 }
 
 /**
- * The calendar day an instant falls on in a time zone, stored the way task
- * dates are: UTC midnight of that day. A server can't use
- * createUTCMidnightDate for this, since its own zone isn't the user's.
+ * "2026-10-25": the calendar day an instant falls on in a time zone. A
+ * server works in the user's zone this way, since its own isn't theirs.
  */
-export function dayInTimeZone(instant: Date, timeZone: string): Date {
-  const [year, month, day] = formatInTimeZone(instant, timeZone, "yyyy-MM-dd")
-    .split("-")
-    .map(Number);
-  return new Date(Date.UTC(year, month - 1, day));
+export function dayIn(instant: Date, timeZone: string): string {
+  return formatInTimeZone(instant, timeZone, "yyyy-MM-dd");
+}
+
+/** A day moved by whole days: "2026-10-31" + 1 is "2026-11-01". */
+export function shiftDay(day: string, by: number): string {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + by)).toISOString().slice(0, 10);
+}
+
+/** The first moment of a calendar day in a time zone. */
+export function startOfDayIn(day: string, timeZone: string): Date {
+  return fromZonedTime(`${day}T00:00:00`, timeZone);
+}
+
+/**
+ * The last moment of a calendar day in a time zone: when something due that
+ * day is due by, the way a Canvas deadline at 11:59 PM is.
+ */
+export function endOfDayIn(day: string, timeZone: string): Date {
+  return new Date(startOfDayIn(shiftDay(day, 1), timeZone).getTime() - 1);
+}
+
+/**
+ * The calendar day a stored task date names, as a local date for display.
+ * A date picked without a time is stored at UTC midnight and names that
+ * date; anything else is a moment (a deadline at 11:59 PM) and falls on its
+ * local day.
+ */
+export function taskDay(date: Date): Date {
+  const dateOnly =
+    date.getUTCHours() === 0 &&
+    date.getUTCMinutes() === 0 &&
+    date.getUTCSeconds() === 0 &&
+    date.getUTCMilliseconds() === 0;
+  return dateOnly
+    ? newDateFromYMD(
+        date.getUTCFullYear(),
+        date.getUTCMonth(),
+        date.getUTCDate()
+      )
+    : newDateFromYMD(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** "2026-10-25": the calendar day a moment falls on in this machine's own zone. */
+export function localDay(at: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`;
+}
+
+/** Whole calendar days from one day ("2026-10-25") to another. */
+export function daysBetween(from: string, to: string): number {
+  const utc = (day: string) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((utc(to) - utc(from)) / 86_400_000);
 }
 
 /**

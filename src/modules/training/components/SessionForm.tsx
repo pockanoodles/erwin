@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+import { localDay } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 
-import { localDay } from "@/modules/training/cadence";
 import {
   type Entry,
   UNITS,

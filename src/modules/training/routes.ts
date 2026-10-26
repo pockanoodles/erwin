@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
-import { dayInTimeZone, newDate } from "@/lib/date-utils";
+import { dayIn, newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 import { userTimeZone } from "@/lib/user-time-zone";
@@ -118,9 +118,7 @@ function toRoutineRow(r: RoutineRecord, timeZone: string): RoutineRow {
     lastDoneAt: r.lastDoneAt?.toISOString() ?? null,
     archived: r.archived,
     createdAt: r.createdAt.toISOString(),
-    nextDue: next
-      ? dayInTimeZone(next, timeZone).toISOString().slice(0, 10)
-      : null,
+    nextDue: next ? dayIn(next, timeZone) : null,
     sessions: r._count.workouts,
   };
 }

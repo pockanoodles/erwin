@@ -38,10 +38,10 @@ describe("nextCheckIn", () => {
 });
 
 describe("planReachOut", () => {
-  it("is due on the check-in's day, hidden until a few days before", () => {
+  it("is due by the end of the check-in's day, shown from a few days before", () => {
     const plan = planReachOut(person(), now, "UTC");
     expect(plan?.title).toBe("Reach out to Sam Lee");
-    expect(plan?.dueDate.toISOString()).toBe("2026-11-12T00:00:00.000Z");
+    expect(plan?.dueDate.toISOString()).toBe("2026-11-12T23:59:59.999Z");
     expect(plan?.postponedUntil?.toISOString()).toBe(
       "2026-11-09T00:00:00.000Z"
     );
@@ -55,9 +55,9 @@ describe("planReachOut", () => {
     });
     expect(
       planReachOut(evening, now, "America/New_York")?.dueDate.toISOString()
-    ).toBe("2026-10-26T00:00:00.000Z");
+    ).toBe("2026-10-27T03:59:59.999Z");
     expect(planReachOut(evening, now, "UTC")?.dueDate.toISOString()).toBe(
-      "2026-10-27T00:00:00.000Z"
+      "2026-10-27T23:59:59.999Z"
     );
   });
 

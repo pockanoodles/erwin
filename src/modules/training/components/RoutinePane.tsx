@@ -9,11 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
+import { localDay } from "@/lib/date-utils";
+
 import {
   CADENCE_CHOICES,
   cadenceLabel,
   lastLabel,
-  localDay,
   nextLabel,
   sameCadence,
 } from "@/modules/training/cadence";
