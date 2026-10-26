@@ -5,10 +5,16 @@
 
 import type { Db } from "@/lib/prisma";
 
+import { sourceClaims } from "@/modules";
 import { moduleClaimOptions, moduleProofItems } from "@/modules/hooks";
+import type { ClaimOption } from "@/modules/types";
 
-/** Task sources a goal can claim whole. */
-export const CLAIMABLE_SOURCES = ["CANVAS", "GOOGLE", "OUTLOOK", "PEOPLE"] as const;
+/** Task sources a goal can claim whole: the calendars' task lists, then each one a module offers. */
+export const SOURCE_CLAIMS: readonly ClaimOption[] = [
+  { key: "GOOGLE", label: "Google Tasks", title: "Every task from Google Tasks" },
+  { key: "OUTLOOK", label: "Outlook tasks", title: "Every task from Outlook" },
+  ...sourceClaims(),
+];
 
 type Checked<T> = { ok: true; value: T } | { ok: false; error: string };
 
@@ -24,10 +30,8 @@ export async function checkClaims(db: Db, userId: string, raw: unknown): Promise
   }
   const claims = [...new Set(raw as string[])];
   const projectIds = claims.flatMap((c) => (c.startsWith("project:") ? [c.slice(8)] : []));
-  const offered = new Set((await moduleClaimOptions(db, userId)).map((o) => o.key));
-  const loose = claims.filter(
-    (c) => !c.startsWith("project:") && !(CLAIMABLE_SOURCES as readonly string[]).includes(c) && !offered.has(c)
-  );
+  const offered = new Set([...SOURCE_CLAIMS, ...(await moduleClaimOptions(db, userId))].map((o) => o.key));
+  const loose = claims.filter((c) => !c.startsWith("project:") && !offered.has(c));
   if (loose.length) return { ok: false, error: `unknown claim ${loose[0]}` };
   const projects = projectIds.length ? await db.project.count({ where: { id: { in: projectIds }, userId } }) : 0;
   if (projects !== projectIds.length) {

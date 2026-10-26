@@ -19,6 +19,7 @@ const courses: ModuleManifest = {
   },
   sources: ["CANVAS"],
   linkLabels: { CANVAS: "Open in Canvas" },
+  claimLabels: { CANVAS: "All Canvas work" },
   adds: [
     "Canvas assignments in Today, Focus and Tasks, ranked by their share of your grade",
     "The Courses page, with files, grades, news and activity",

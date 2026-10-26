@@ -30,7 +30,8 @@ export interface GoalFormValues {
 
 /** GET /api/erwin/goals/sources: what a goal can claim and a boss can name as proof. */
 export interface GoalSources {
-  sources: string[];
+  /** Whole task sources that have work in them ("All Canvas work"). */
+  sources: ClaimOption[];
   /** What the modules offer to claim (Courses: each course). */
   claimOptions: ClaimOption[];
   projects: { id: string; name: string }[];
@@ -58,13 +59,6 @@ interface GoalFormProps {
   onSubmit: (values: GoalFormValues, parentGoalId: string | null) => Promise<void>;
   onCancel: () => void;
 }
-
-const SOURCE_NAMES: Record<string, string> = {
-  CANVAS: "All Canvas work",
-  GOOGLE: "Google Tasks",
-  OUTLOOK: "Outlook tasks",
-  PEOPLE: "All reach-outs (People)",
-};
 
 /** "SCHM2301" from Canvas's "SCHM2301.10244.202710". */
 const shortCode = (code: string | null, name: string) => code?.split(".")[0] || name;
@@ -247,12 +241,7 @@ export function GoalForm({
             sources.sources.length + sources.claimOptions.length + sources.projects.length > 0 ? (
               <>
                 <div className="flex flex-wrap gap-1">
-                  {sources.sources.map((source) => (
-                    <Chip key={source} on={claims.includes(source)} onClick={() => setClaims((c) => toggle(c, source))}>
-                      {SOURCE_NAMES[source] ?? source}
-                    </Chip>
-                  ))}
-                  {sources.claimOptions.map((option) => (
+                  {[...sources.sources, ...sources.claimOptions].map((option) => (
                     <Chip
                       key={option.key}
                       title={option.title}

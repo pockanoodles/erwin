@@ -1,7 +1,12 @@
 import courses from "@/modules/courses/manifest";
 import ladder from "@/modules/ladder/manifest";
 import people from "@/modules/people/manifest";
-import type { ModuleId, ModuleManifest, ModuleState } from "@/modules/types";
+import type {
+  ClaimOption,
+  ModuleId,
+  ModuleManifest,
+  ModuleState,
+} from "@/modules/types";
 
 /**
  * Every module this build ships, in catalog order. Plain data, so the rail,
@@ -35,6 +40,17 @@ export function moduleForSource(
 ): ModuleManifest | undefined {
   if (!source) return undefined;
   return MODULES.find((m) => m.sources.includes(source));
+}
+
+/** The whole sources modules let a goal claim ("All Canvas work"), in catalog order. */
+export function sourceClaims(): ClaimOption[] {
+  return MODULES.flatMap((m) =>
+    Object.entries(m.claimLabels ?? {}).map(([key, label]) => ({
+      key,
+      label,
+      title: `Every task ${m.name} adds`,
+    }))
+  );
 }
 
 interface ModuleRow {

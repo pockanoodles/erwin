@@ -35,6 +35,11 @@ export interface ModuleManifest {
   sources: string[];
   /** What a task's link says, per source it owns ("Open in Canvas"). */
   linkLabels?: Record<string, string>;
+  /**
+   * What the goal form calls claiming every task of a source it owns ("All
+   * Canvas work"). A source without one can't be claimed whole.
+   */
+  claimLabels?: Record<string, string>;
   /** What it adds to the core, one short line each. */
   adds: string[];
   /** What it stores, plainly. */

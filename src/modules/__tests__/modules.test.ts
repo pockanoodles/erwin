@@ -6,6 +6,7 @@ import {
   moduleForSource,
   nextPosition,
   resolveModuleStates,
+  sourceClaims,
 } from "@/modules";
 
 describe("resolveModuleStates", () => {
@@ -88,5 +89,17 @@ describe("lookups", () => {
         { id: "ladder", on: true, position: 3 },
       ])
     ).toBe(4);
+  });
+});
+
+describe("sourceClaims", () => {
+  it("offers goals each whole source a module labels, and only those", () => {
+    const claims = sourceClaims();
+    expect(claims.map((c) => c.key)).toEqual(
+      MODULES.flatMap((m) => Object.keys(m.claimLabels ?? {}))
+    );
+    expect(claims.find((c) => c.key === "CANVAS")?.label).toBe(
+      "All Canvas work"
+    );
   });
 });

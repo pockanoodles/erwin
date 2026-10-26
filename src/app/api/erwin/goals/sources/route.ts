@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { formatInTimeZone } from "@/lib/date-utils";
-import { CLAIMABLE_SOURCES } from "@/lib/erwin/goal-input";
+import { SOURCE_CLAIMS } from "@/lib/erwin/goal-input";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const present = new Set(bySource.map((row) => row.source));
 
     return NextResponse.json({
-      sources: CLAIMABLE_SOURCES.filter((source) => present.has(source)),
+      sources: SOURCE_CLAIMS.filter((claim) => present.has(claim.key)),
       claimOptions,
       projects,
       items: items.map((item) => ({

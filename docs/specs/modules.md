@@ -15,6 +15,7 @@ A module is split three ways so the browser bundle never pulls in server code.
 | `page` | Its one entry in the rail: a path and the words ⌘K finds it by. |
 | `sources` | The `Task.source` values it owns. While it's off, those tasks leave every list. |
 | `linkLabels` | What a task's link says, per source ("Open in Canvas"). |
+| `claimLabels` | What the goal form calls claiming every task of a source ("All Canvas work"). A source without one can't be claimed whole. |
 | `adds`, `keeps`, `egress` | What the catalog tells a person: what it adds, what it stores, and everything it sends out of Erwin. |
 
 **The browser side** (`CLIENT_MODULES` in `src/modules/client.tsx`) holds its components. Each is optional and draws only while the module is on.
