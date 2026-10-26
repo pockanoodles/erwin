@@ -12,6 +12,17 @@ jest.mock("@/lib/auth", () => {
 });
 
 describe("Google OAuth scopes in Auth Options", () => {
+  const saved = { ...process.env };
+
+  // getAuthOptions refuses to build options without a signing key.
+  beforeAll(() => {
+    process.env.NEXTAUTH_SECRET = "test-secret";
+  });
+
+  afterAll(() => {
+    process.env = saved;
+  });
+
   it("includes tasks scope in NextAuth GoogleProvider config", async () => {
     const options = await getAuthOptions();
 
