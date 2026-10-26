@@ -140,13 +140,14 @@ export async function logInteraction(
  * by the sync loop for everyone with People on; cheap when there's nothing.
  */
 export async function reconcileReachOuts(userId: string): Promise<number> {
+  const unlogged = {
+    userId,
+    source: PEOPLE_SOURCE,
+    status: "completed",
+    OR: [{ syncStatus: null }, { syncStatus: { not: LOGGED } }],
+  };
   const finished = await prisma.task.findMany({
-    where: {
-      userId,
-      source: PEOPLE_SOURCE,
-      status: "completed",
-      OR: [{ syncStatus: null }, { syncStatus: { not: LOGGED } }],
-    },
+    where: unlogged,
     select: { id: true, externalTaskId: true, completedAt: true },
   });
 
@@ -155,10 +156,13 @@ export async function reconcileReachOuts(userId: string): Promise<number> {
   for (const task of finished) {
     const at = task.completedAt ?? now;
     const nextId = await prisma.$transaction(async (tx) => {
-      await tx.task.update({
-        where: { id: task.id },
+      // Claim the task first: of two passes that saw it at once, only one
+      // gets to log it.
+      const claimed = await tx.task.updateMany({
+        where: { ...unlogged, id: task.id },
         data: { syncStatus: LOGGED },
       });
+      if (claimed.count === 0) return null;
       const person = task.externalTaskId
         ? await tx.person.findFirst({
             where: { id: task.externalTaskId, userId },
