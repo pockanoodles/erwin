@@ -13,10 +13,12 @@
  * already has tasks in it.
  */
 
+import { localDay } from "../../src/lib/date-utils";
 import { ensureDesktopUser } from "../../src/lib/desktop/bootstrap";
 import { applyGoalRules } from "../../src/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "../../src/lib/erwin/hex";
 import { prisma } from "../../src/lib/prisma";
+import { syncWorkoutTask } from "../../src/modules/training/workout";
 
 const url = process.env.DATABASE_URL ?? "";
 // `fluid_calendar` is the database name installs made before the rename keep, and
@@ -191,7 +193,6 @@ async function main() {
     { title: "Add the robotics project to my résumé", minutes: 60, priority: "medium", due: at(2, 20, 0), goal: coop.id },
     { title: "Apply: software engineering co-op, Boston", minutes: 45, priority: "high", due: at(4, 23, 59), goal: coop.id },
     { title: "Office hours: ask about the MVC grading rubric", minutes: 30, priority: "medium", due: at(1, 15, 0), goal: grades.id },
-    { title: "Long run, 8 km", minutes: 50, priority: "low", due: at(3, 8, 0), goal: run.id },
     { title: "Renew library books", minutes: 10, priority: "low", due: at(2, 18, 0), goal: null },
     { title: "Book a dentist appointment", minutes: 10, priority: "none", due: null, goal: null },
   ];
@@ -211,6 +212,88 @@ async function main() {
       },
     });
     if (p.goal) await prisma.taskGoalLink.create({ data: { taskId: task.id, goalId: p.goal } });
+  }
+
+  // ── Training: the gym before class, and runs. Sessions as the Training
+  // page logs them, then each routine's workout planned the way the app
+  // plans it; the running goal claims the runs ──────────────────────────
+  await prisma.userModule.create({ data: { userId, moduleId: "training", enabled: true, position: 3 } });
+  const lift = (exercise: string, sets: number, reps: number, weight: number | null) => ({ exercise, sets, reps, weight });
+  const routines = [
+    {
+      name: "Push day",
+      cadenceDays: 3,
+      minutes: 60,
+      plan: [{ name: "Bench press", sets: 3, reps: 8 }, { name: "Overhead press", sets: 3, reps: 10 }, { name: "Dips", sets: 3, reps: 12 }],
+      sessions: [
+        { at: at(-6, 7, 45), note: null, entries: [lift("Bench press", 3, 8, 125), lift("Overhead press", 3, 10, 70), lift("Dips", 3, 10, null)] },
+        { at: at(-3, 7, 50), note: "Bench moved fast. Up 5 next time.", entries: [lift("Bench press", 3, 8, 130), lift("Overhead press", 3, 10, 75), lift("Dips", 3, 12, null)] },
+      ],
+    },
+    {
+      name: "Pull day",
+      cadenceDays: 3,
+      minutes: 60,
+      plan: [{ name: "Pull-ups", sets: 4, reps: 6 }, { name: "Barbell row", sets: 3, reps: 8 }, { name: "Curls", sets: 3, reps: 12 }],
+      sessions: [
+        { at: at(-5, 7, 40), note: null, entries: [lift("Pull-ups", 4, 5, null), lift("Barbell row", 3, 8, 115), lift("Curls", 3, 12, 25)] },
+        { at: at(-2, 7, 45), note: null, entries: [lift("Pull-ups", 4, 6, null), lift("Barbell row", 3, 8, 120), lift("Curls", 3, 12, 25)] },
+      ],
+    },
+    {
+      name: "Long run",
+      cadenceDays: 7 / 3,
+      minutes: 50,
+      plan: [],
+      sessions: [
+        { at: at(-4, 18, 30), note: "8 km in 46 min", entries: [] },
+        { at: at(-1, 18, 15), note: "6 km easy", entries: [] },
+      ],
+    },
+  ];
+  for (const r of routines) {
+    const routine = await prisma.routine.create({
+      data: { name: r.name, cadenceDays: r.cadenceDays, minutes: r.minutes, plan: r.plan, lastDoneAt: r.sessions.at(-1)!.at, createdAt: at(-14, 12), userId },
+    });
+    for (const s of r.sessions) {
+      await prisma.workout.create({
+        data: { routineId: routine.id, at: s.at, unit: "lb", note: s.note, entries: { create: s.entries.map((e, position) => ({ ...e, position })) } },
+      });
+    }
+    await syncWorkoutTask(prisma, userId, routine.id);
+    if (r.name === "Long run") {
+      await prisma.goal.update({ where: { id: run.id }, data: { taskSources: [`routine:${routine.id}`] } });
+    }
+  }
+
+  // ── Nutrition: targets, the usual foods, and three days of eating ─────
+  await prisma.userModule.create({ data: { userId, moduleId: "nutrition", enabled: true, position: 4 } });
+  await prisma.nutritionTarget.create({ data: { userId, calories: 2400, protein: 150, carbs: 280, fat: 75 } });
+  const foods = [
+    { name: "Overnight oats", serving: "1 jar", calories: 380, protein: 18, carbs: 55, fat: 10 },
+    { name: "Greek yogurt", serving: "1 cup", calories: 150, protein: 20, carbs: 8, fat: 4 },
+    { name: "Protein shake", serving: "1 scoop", calories: 120, protein: 24, carbs: 3, fat: 1.5 },
+    { name: "Chicken burrito bowl", serving: "1 bowl", calories: 720, protein: 48, carbs: 70, fat: 24 },
+    { name: "Salmon and rice", serving: "1 plate", calories: 640, protein: 40, carbs: 62, fat: 22 },
+    { name: "Banana", serving: "1 medium", calories: 105, protein: 1.3, carbs: 27, fat: 0.4 },
+    { name: "Peanut butter toast", serving: "2 slices", calories: 350, protein: 13, carbs: 34, fat: 18 },
+  ];
+  const foodRows = new Map<string, { id: string } & (typeof foods)[number]>();
+  for (const f of foods) {
+    foodRows.set(f.name, { ...f, id: (await prisma.food.create({ data: { ...f, userId }, select: { id: true } })).id });
+  }
+  const meals: [number, number, string, number][] = [
+    [-2, 8, "Overnight oats", 1], [-2, 12, "Chicken burrito bowl", 1], [-2, 16, "Protein shake", 1], [-2, 19, "Salmon and rice", 1], [-2, 21, "Greek yogurt", 1],
+    [-1, 8, "Peanut butter toast", 1], [-1, 10, "Banana", 1], [-1, 13, "Chicken burrito bowl", 1], [-1, 17, "Protein shake", 1], [-1, 20, "Salmon and rice", 1.5],
+    [0, 8, "Overnight oats", 1], [0, 10, "Protein shake", 1], [0, 12, "Chicken burrito bowl", 1],
+  ];
+  for (const [offset, hour, name, servings] of meals) {
+    const { id, ...food } = foodRows.get(name)!;
+    const eatenAt = at(offset, hour);
+    await prisma.foodEntry.create({
+      data: { ...food, foodId: id, servings, at: eatenAt, day: new Date(`${localDay(eatenAt)}T00:00:00.000Z`), userId },
+    });
+    await prisma.food.update({ where: { id }, data: { lastUsedAt: eatenAt } });
   }
 
   // ── Calendars: classes and a life ────────────────────────────────────
@@ -251,7 +334,9 @@ async function main() {
   // any change, so the demo opens with its goals already climbing.
   await applyGoalRules(prisma, userId);
 
-  console.log(`seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, 2 calendars for ${user.email}`);
+  console.log(
+    `seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, ${routines.length} routines, ${meals.length} meals, 2 calendars for ${user.email}`
+  );
 }
 
 main()
