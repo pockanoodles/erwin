@@ -258,9 +258,8 @@ model Task {
 
   // Erwin: what Focus ranks by. The module that owns a task can set these;
   // a task made by hand leaves them empty.
+
   /**
-   * /**
-   * /**
    * Can't be done after this (Canvas: when the assignment locks).
    */
   lockAt         DateTime?
