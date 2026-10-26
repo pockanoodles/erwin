@@ -4,7 +4,7 @@ Erwin is a personal calendar and task assistant. It runs either as a desktop app
 
 This document answers three questions in plain language: what leaves this machine, where it goes, and why. It is written to be read by someone who does not work on the code. It is kept by hand, so a change to how Erwin talks to the outside world should change this file in the same commit.
 
-Last verified against the code on **2026-10-25**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Last verified against the code on **2026-10-26**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
 
 ---
 
@@ -18,6 +18,8 @@ Last verified against the code on **2026-10-25**. For the privacy policy that si
 | **A CalDAV server you choose** (Fastmail, iCloud, Nextcloud) | Event titles, descriptions, locations and times, plus your CalDAV username and password | Yes | Two-way calendar sync |
 | **Resend** (`api.resend.com`, self-hosted servers only) | Your email address and a one-time reset link | It sends one email | Password reset |
 | **GitHub Releases** (desktop downloads from GitHub only) | A request for the newest release, which carries the app's version, your platform and your IP address | No | Update check |
+
+The Ladder, People, Training and Nutrition modules send nothing out of Erwin, so your goals, the people you keep in touch with, your workouts and what you eat stay in the database.
 
 Erwin has no analytics, no crash reporting, no telemetry and no AI service. This is a fact about the code, because Erwin ships no analytics library and no language-model client, so nothing you type is sent to a model. The "assistant" behavior (the daily briefing, the focus queue and task ranking) is ordinary arithmetic that runs on your own machine.
 
