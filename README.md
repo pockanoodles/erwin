@@ -73,8 +73,10 @@ The core is Today, Focus, Calendar and Tasks. The rest of Erwin comes as modules
 | **Courses** | Canvas sync, the Courses page (activity, grades, news and a library of course materials), and course details on Canvas tasks |
 | **Ladder** | Goals, the two-month cycle and XP. Goals file the work they claim and lift it in the ranking, and the Tasks page gets a tab per goal |
 | **People** | The people you keep in touch with. Give someone a cadence and a reach-out task appears when it's time |
+| **Training** | The workouts you repeat. Give a routine a schedule and its session shows up as a task when it's due; logging it keeps the sets, reps and weights, and the next session starts from them |
+| **Nutrition** | What you eat against daily targets for calories, protein, carbs and fat, with saved foods to log in a tap and the protein left today in the top bar |
 
-Ladder starts on, and Courses and People start off (Courses comes on by itself for an install that already had Canvas connected). Turning a module off hides its page and its tasks from every list and from the scheduler, stops its background work and leaves everything it stored in place, so turning it back on picks up where it left off. Only Courses talks to an outside service, which is Canvas ([DATAFLOW.md](DATAFLOW.md)).
+Ladder starts on, and the rest start off (Courses comes on by itself for an install that already had Canvas connected). Turning a module off hides its page and its tasks from every list and from the scheduler, stops its background work and leaves everything it stored in place, so turning it back on picks up where it left off. Only Courses talks to an outside service, which is Canvas ([DATAFLOW.md](DATAFLOW.md)).
 
 A module reaches the core only through the registries in `src/modules/`, and `src/modules/__tests__/boundary.test.ts` fails on any import that goes around them. [docs/specs/modules.md](docs/specs/modules.md) describes how a module plugs in.
 
