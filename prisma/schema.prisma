@@ -104,6 +104,9 @@ model User {
   modules              UserModule[]
   people               Person[]
   routines             Routine[]
+  nutritionTarget      NutritionTarget?
+  foods                Food[]
+  foodEntries          FoodEntry[]
 }
 
 model VerificationToken {
@@ -1035,6 +1038,88 @@ model WorkoutEntry {
   weight    Float?
 
   @@index([workoutId, position])
+}
+
+/**
+ * Nutrition module: what someone aims to eat in a day. One row per person; a target left empty isn't tracked.
+ */
+model NutritionTarget {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * kcal a day.
+   */
+  calories  Int?
+  /**
+   * Grams a day, like carbs and fat.
+   */
+  protein   Int?
+  carbs     Int?
+  fat       Int?
+  updatedAt DateTime @updatedAt
+}
+
+/**
+ * A food saved for quick re-adds, with what one serving holds.
+ */
+model Food {
+  id         String      @id @default(cuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  /**
+   * What one serving is: "1 cup", "100 g", "1 bar".
+   */
+  serving    String?
+  calories   Float
+  protein    Float       @default(0)
+  carbs      Float       @default(0)
+  fat        Float       @default(0)
+  /**
+   * When it was last eaten, so the usual ones come first.
+   */
+  lastUsedAt DateTime?
+  archived   Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  entries    FoodEntry[]
+
+  @@index([userId, archived])
+}
+
+/**
+ * Something eaten, counted toward one day. Its numbers per serving are copied in when it's logged, so changing a saved food later doesn't rewrite what was eaten.
+ */
+model FoodEntry {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /**
+   * The day it counts toward, in the person's own time zone.
+   */
+  day       DateTime @db.Date
+  /**
+   * When it was logged, to keep a day's entries in order.
+   */
+  at        DateTime @default(now())
+  foodId    String?
+  food      Food?    @relation(fields: [foodId], references: [id], onDelete: SetNull)
+  name      String
+  serving   String?
+  /**
+   * How many servings: 1.5 for one and a half.
+   */
+  servings  Float    @default(1)
+  /**
+   * Per serving, like protein, carbs and fat.
+   */
+  calories  Float
+  protein   Float    @default(0)
+  carbs     Float    @default(0)
+  fat       Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId, day])
 }
 
 model Tag {

@@ -107,4 +107,6 @@ export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
     claimKeys: routineClaimKeys,
     claimOptions: routineClaimOptions,
   },
+  // Nutrition keeps to its own page and the top bar: nothing on the server's side.
+  nutrition: {},
 };

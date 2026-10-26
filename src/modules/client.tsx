@@ -8,7 +8,7 @@ import {
   HiOutlineFlag,
   HiOutlineUserGroup,
 } from "react-icons/hi";
-import { IoBarbellOutline } from "react-icons/io5";
+import { IoBarbellOutline, IoNutritionOutline } from "react-icons/io5";
 
 import { ConnectCanvasOffer } from "@/components/courses/ConnectCanvasOffer";
 import { CourseActivityStatus } from "@/components/courses/CourseActivityStatus";
@@ -34,6 +34,11 @@ import { moduleForSource } from "@/modules";
 import { useCoursesTasksLens } from "@/modules/courses/tasks";
 import { TodayGoalSection } from "@/modules/ladder/components/TodayGoalSection";
 import { useLadderTasksLens } from "@/modules/ladder/tasks";
+import {
+  NutritionStatus,
+  NutritionTopBarActions,
+  NutritionTopBarViews,
+} from "@/modules/nutrition/components/NutritionTopBar";
 import {
   PeopleTopBarActions,
   PeopleTopBarViews,
@@ -114,6 +119,12 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     Actions: TrainingTopBarActions,
     TaskBody: WorkoutTaskBody,
     TaskPane: WorkoutTaskPane,
+  },
+  nutrition: {
+    command: { icon: IoNutritionOutline, shortcut: "gn" },
+    Views: NutritionTopBarViews,
+    Actions: NutritionTopBarActions,
+    Status: NutritionStatus,
   },
 };
 

@@ -26,6 +26,7 @@ describe("resolveModuleStates", () => {
       { id: "ladder", on: false, position: 0 },
       { id: "people", on: false, position: 2 },
       { id: "training", on: false, position: 3 },
+      { id: "nutrition", on: false, position: 4 },
       { id: "courses", on: true, position: 5 },
     ]);
   });
@@ -47,6 +48,7 @@ describe("resolveModuleStates", () => {
       "ladder",
       "people",
       "training",
+      "nutrition",
     ]);
   });
 });
