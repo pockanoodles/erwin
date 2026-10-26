@@ -1,19 +1,37 @@
+// `next dev` and `next start` both default to `.next`, so a dev session
+// silently overwrites the production build a running `next start` server is
+// serving — and that server keeps answering from memory, so nothing looks
+// wrong until it restarts weeks later on whatever the last dev run happened
+// to leave behind. Give dev its own directory; the two never touch.
+//
+// The desktop build (`npm run build:desktop`) gets a third directory for the
+// same reason: it must never replace the build a running server is using.
+const distDir =
+  process.env.ERWIN_DIST_DIR ||
+  (process.env.NODE_ENV === "development" ? ".next-dev" : ".next");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Disable all development indicators
   devIndicators: false,
 
-  // `next dev` and `next start` both default to `.next`, so a dev session
-  // silently overwrites the production build a running `next start` server is
-  // serving — and that server keeps answering from memory, so nothing looks
-  // wrong until it restarts weeks later on whatever the last dev run happened
-  // to leave behind. Give dev its own directory; the two never touch.
-  //
-  // The desktop build (`npm run build:desktop`) gets a third directory for the
-  // same reason: it must never replace the build a running server is using.
-  distDir:
-    process.env.ERWIN_DIST_DIR ||
-    (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
+  distDir,
+
+  // Each run checks types against its own directory's generated route types
+  // and no other's. A build clears only its own directory, so a route deleted
+  // since another directory was last built leaves a type file there that
+  // imports a page that no longer exists. Reading every directory's types
+  // failed the 2026-10-26 deploy on `.next-desktop`'s copy of the removed
+  // /progress page.
+  typescript: {
+    tsconfigPath:
+      {
+        ".next": "tsconfig.build.json",
+        ".next-desktop": "tsconfig.desktop.json",
+        ".next-dev": "tsconfig.dev.json",
+        ".next-local": "tsconfig.dev.json",
+      }[distDir] ?? "tsconfig.json",
+  },
 
   // Standalone output is only needed for the minimal Docker image. Native
   // `next start` (the daily-driver run path) needs a full build, and using

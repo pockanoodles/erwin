@@ -1,0 +1,18 @@
+// `npm run build:desktop` (`.next-desktop`): tsconfig.json plus this build's
+// own route types.
+{
+  "extends": "./tsconfig.json",
+  // Without one, Next logs on every run that it can't add its plugin to a
+  // config that extends another. The plugin comes from tsconfig.json.
+  "compilerOptions": {},
+  "include": [
+    "next-env.d.ts",
+    "tailwind.config.ts",
+    "playwright.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    ".next-desktop/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}

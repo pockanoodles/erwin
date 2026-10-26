@@ -23,20 +23,18 @@
     }
   },
   // Enumerated rather than `**/*.ts`, which swept every build directory
-  // (`.next` is 1.2 GB) into the program alongside the source. `exclude` can't
-  // fix that: it also filters the `.next/types` entries below, which are
-  // Next's generated route types and have to stay.
+  // (`.next` is 1.2 GB) into the program alongside the source. No build
+  // directory's generated route types either: the editor and
+  // `npm run type-check` read this file, and each `next` run reads its own
+  // tsconfig.<run>.json, which repeats this list and adds only that run's
+  // types (see next.config.js). Keep the four lists in step.
   "include": [
     "next-env.d.ts",
     "tailwind.config.ts",
     "playwright.config.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    "tests/**/*.ts",
-    ".next/types/**/*.ts",
-    ".next-dev/types/**/*.ts",
-    ".next-desktop/types/**/*.ts",
-    ".next-local/types/**/*.ts"
+    "tests/**/*.ts"
   ],
   "exclude": ["node_modules"]
 }

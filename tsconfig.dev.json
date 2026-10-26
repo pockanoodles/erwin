@@ -1,0 +1,20 @@
+// `npm run dev` (`.next-dev`) and `npm run dev:local` (`.next-local`). Dev
+// never type-checks, so both directories can share a file: it exists so Next
+// doesn't rewrite tsconfig.json to add their route types.
+{
+  "extends": "./tsconfig.json",
+  // Without one, Next logs on every run that it can't add its plugin to a
+  // config that extends another. The plugin comes from tsconfig.json.
+  "compilerOptions": {},
+  "include": [
+    "next-env.d.ts",
+    "tailwind.config.ts",
+    "playwright.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    ".next-dev/types/**/*.ts",
+    ".next-local/types/**/*.ts"
+  ],
+  "exclude": ["node_modules"]
+}
