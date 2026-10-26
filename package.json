@@ -22,7 +22,6 @@
     "prisma:studio": "prisma studio",
     "clean": "rm -rf .next node_modules",
     "db:up": "docker compose up db -d",
-    "redis:up": "docker compose up redis -d",
     "build:worker": "tsc -p tsconfig.worker.json",
     "start:worker": "node dist/worker/worker.js",
     "prepare": "husky"
