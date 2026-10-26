@@ -11,10 +11,10 @@ PackageName: Erwin
 PackageUrl: https://kaitosoeno.com/erwin
 License: MIT
 LicenseUrl: https://github.com/pockanoodles/erwin/blob/v{{VERSION}}/LICENSE
-ShortDescription: A field-watch-plain secretary for your calendar, courses and goals.
+ShortDescription: A field-watch-plain secretary for your calendar, your tasks and whatever else you track.
 Description: >-
-  Erwin reads your calendar, your Canvas courses and your goals, then tells you the one thing
-  to do next. Local-first: your data stays in a database on your own machine.
+  Erwin reads your calendar, your tasks and the modules you turn on, then tells you the one
+  thing to do next. Local-first: your data stays in a database on your own machine.
 Moniker: erwin
 Tags:
   - calendar

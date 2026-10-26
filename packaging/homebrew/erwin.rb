@@ -8,7 +8,7 @@ cask "erwin" do
   url "https://github.com/pockanoodles/erwin/releases/download/v#{version}/Erwin-#{version}-mac-#{arch}.dmg",
       verified: "github.com/pockanoodles/erwin/"
   name "Erwin"
-  desc "Planner that reads your calendar, courses and goals and names the next task"
+  desc "Planner that reads your calendar and tasks and names the next one to start"
   homepage "https://kaitosoeno.com/erwin"
 
   livecheck do

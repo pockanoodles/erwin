@@ -3,8 +3,9 @@
 <h1 align="center">Erwin</h1>
 
 <p align="center">
-Erwin reads your calendar, your Canvas courses and your goals, ranks everything you have
-to do with a score you can read, and shows you the one thing to start next.
+Erwin reads your calendar and your tasks, ranks everything you have to do with a score you
+can read, and shows you the one thing to start next. Modules add the rest when you turn them
+on, from your Canvas courses and goals to your workouts and meals.
 </p>
 
 <p align="center">
@@ -20,14 +21,12 @@ to do with a score you can read, and shows you the one thing to start next.
 
 ## What it does
 
-A student's week is spread across a calendar, a learning management system and a pile of personal goals, and no one of them knows how the others compare. Erwin pulls them into one local database and ranks every task on one scale, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
+Your week is spread across calendars, task lists and whatever else you keep track of, and none of them knows how the others compare. Erwin pulls them into one local database and ranks every task on one scale, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
 
-- **It ranks by what is at stake.** Due dates, Canvas grade weights and goal importance feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`), so the order never changes for a reason you cannot read.
-- **It shows one thing at a time.** Focus mode puts the next task, its course materials and its deadline on one screen, with done, skip and later on the D, S and L keys.
-- **It holds your week.** Google, Outlook and CalDAV calendars sit beside your classes, and tasks drag into the open time or schedule themselves.
-- **It mirrors your courses.** Canvas assignments arrive with their grade weights, your grades and feedback land in a gradebook, announcements and Inbox messages are kept, and course pages and files are stored locally so a task's materials open from the task.
-- **It tells you what changed.** Every sync records what's new in Canvas (an announcement, a file, a moved due date, a posted grade, work gone missing) in one Activity feed, with an unseen count in the top bar on every page.
-- **It plans in two-month cycles.** Goals belong to a cycle with a dated deliverable, and tasks linked to a goal rank higher.
+- **It ranks by what is at stake.** Due dates, what each task is worth and how much its goal matters feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`). The order never changes for a reason you cannot read.
+- **It shows one thing at a time.** Focus mode puts the next task, what you need for it and its deadline on one screen, with done, skip and later on the D, S and L keys.
+- **It holds your week.** Google, Outlook and CalDAV calendars sit together in one view, and tasks drag into the open time or schedule themselves.
+- **You choose what else it holds.** [Modules](#modules) add your Canvas courses, goals in two-month cycles, the people you keep in touch with, your workouts and what you eat. Turning one off hides it everywhere and deletes nothing.
 
 ## How it fits together
 
@@ -103,7 +102,7 @@ flowchart LR
 | Input | How it is computed |
 |---|---|
 | **Impact (0.35)** | The larger of the task's own impact and the importance of the goal it serves (0 to 100, divided by 100), then divided by the largest value in the current pool so coursework and goal-driven tasks compete on one 0 to 1 scale. A task's own impact is set by the module it comes from: for a Canvas assignment it is the assignment's share of the final course grade, its group's weight split across the group's points (or its points over the course's when the course doesn't weight groups), and work that doesn't count toward the grade has none. It falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
-| **Deadline pressure (0.45)** | A sigmoid of the hours left, `1 / (1 + e^(0.15 × (hours - 48)))`, which is 0.5 at 48 hours out, rises toward 1 as the due date nears, and stays at 1 once a task is overdue. A task with no due date scores 0. |
+| **Deadline pressure (0.45)** | A sigmoid of the hours left, `1 / (1 + e^(0.15 × (hours - 48)))`, which is 0.5 at 48 hours out, rises toward 1 as the due date nears, and stays at 1 once a task is overdue. A task with no due date scores 0. A due date picked without a time counts until the end of that day in your time zone (`src/lib/erwin/due.ts`), so a task due Wednesday is not overdue on Tuesday evening. |
 | **Effort fit (0.20)** | How well the task's estimate (30 minutes when none is set) matches the open slot (240 minutes when no slot is known), as `1 - abs(estimate - slot) / max(estimate, slot)`. |
 | **Visibility boost (+0.15)** | Added to a task due in more than 7 days whose stakes sit above the 80th percentile of its group's open work, so a large far-off assignment is not invisible until it is urgent. For Canvas the stakes are an assignment's share of the grade and the group is its course. |
 | **Skip penalty (up to -0.20)** | 0.05 for each time you skipped the task (capped at 0.20), halving every 48 hours since the last skip, so repeated avoidance costs a task its lead and one skip is forgotten by the weekend. |
@@ -141,7 +140,7 @@ Linking a task to a goal gives it an impact signal beside its grade impact, whic
 
 The Ladder page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled deliverable earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. The XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/erwin/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A new cycle starts with the Build of the one before. A tool that keeps your goals somewhere else can send the Build along with them (`POST /api/erwin/goals/project`), and the page then shows it read-only. `GET /api/erwin/xp` gives the same XP over any span of days.
 
-A goal gets its work in two ways: it can claim where the work comes from (all of Canvas, one course, or a project), and every task from there files under it on its own, finished ones included; or you link tasks to it from Tasks. A boss is a dated milestone on a goal, and it can name its proof: a Canvas gradebook item or another task. The proof settles it. Handing the work in, a grade or an excusal fells the boss, the item's due date replaces the boss's, and an in-class exam with nothing to hand in falls when its grade is posted. A boss with no proof is marked done by hand. A goal you set aside files nothing new but keeps the XP its finished work earned (`src/lib/erwin/goal-rules.ts`, `src/lib/erwin/boss-proof.ts`).
+A goal gets its work in two ways. It can claim where the work comes from (all of Canvas, one course, one Training routine or a project), and every task from there files under it on its own, finished ones included. You can also link a task to it by hand in the Goal column on the Tasks page. A boss is a dated milestone on a goal, and it can name its proof: a Canvas gradebook item or another task. The proof settles it. Handing the work in, a grade or an excusal fells the boss, the item's due date replaces the boss's, and an in-class exam with nothing to hand in falls when its grade is posted. A boss with no proof is marked done by hand. A goal you set aside files nothing new but keeps the XP its finished work earned (`src/lib/erwin/goal-rules.ts`, `src/lib/erwin/boss-proof.ts`).
 
 ## A sync, step by step
 

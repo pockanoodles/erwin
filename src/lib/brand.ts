@@ -13,7 +13,7 @@ export const brand = {
   /** Lowercase, safe in filenames and storage keys. */
   slug: "erwin",
   description:
-    "Your calendar, your courses and your goals, and the one thing to do next.",
+    "Your calendar, your tasks and the modules you choose, and the one thing to do next.",
   siteUrl: "https://kaitosoeno.com/erwin",
   repoUrl: "https://github.com/pockanoodles/erwin",
   issuesUrl: "https://github.com/pockanoodles/erwin/issues",

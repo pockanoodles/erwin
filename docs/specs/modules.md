@@ -23,7 +23,8 @@ A module is split three ways so the browser bundle never pulls in server code.
 | Slot | Where it shows |
 |---|---|
 | `command` | Its "Go to" entry in ⌘K. |
-| `Views`, `Actions` | The top bar, on its own page. |
+| `Views`, `Actions` | The top bar, on its own page. Below desktop width a view switcher is one menu and an action with an icon shows only the icon. |
+| `headingInViews` | Set when `Views` carries a heading of its own (Ladder: the cycle), so a narrow bar drops the page name for room. |
 | `Settings` | Its row in `/modules`. |
 | `Status` | One count in the top bar's status strip, on every page. |
 | `FirstRun` | What Today offers before there's anything to rank. |

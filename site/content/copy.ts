@@ -40,13 +40,13 @@ const en: Dict = {
   meta: {
     title: "Erwin: the one thing to do next",
     description:
-      "Erwin reads your calendar, your Canvas courses and your goals, then tells you the one thing to do next. It is free, open source and keeps your data on your machine.",
+      "Erwin ranks everything on your calendar and task list, then tells you the one thing to do next. It is free, open source and keeps your data on your machine.",
   },
   nav: { how: "How it works", app: "The app", data: "Your data", install: "Download", github: "GitHub", label: "Erwin" },
   hero: {
     label: "Open source · MIT",
     statement: "What should I do right now?",
-    sub: "Erwin reads your calendar, your Canvas courses and your goals, then names the one thing to do next.",
+    sub: "Erwin reads your calendar, your tasks and the modules you turn on, then names the one thing to do next.",
     cta: { mac: "Download for macOS", windows: "Download for Windows", linux: "Download for Linux", other: "Download Erwin" },
     more: "or see every way to install",
     dial: { caption: "Example day", now: "Now", next: "Next", free: "Free until" },
@@ -57,15 +57,15 @@ const en: Dict = {
     steps: [
       {
         title: "It reads what you already use.",
-        body: "It connects to Google, Outlook and CalDAV calendars, to Canvas with each assignment's grade weight, and to the goals you set for the next two months.",
+        body: "It connects to Google, Outlook and CalDAV calendars, and modules add the rest, such as your Canvas courses, your goals and your workouts.",
       },
       {
         title: "It ranks by what is at stake.",
-        body: "Due dates, grade weight and goal importance go into a fixed formula you can read, so the order never changes for a reason you cannot see.",
+        body: "Due dates, what each task is worth and how much its goal matters go into one formula you can read. The order never changes for a reason you cannot see.",
       },
       {
         title: "It shows you one thing.",
-        body: "Focus mode puts the next task, its course materials and its deadline on one screen, with done, skip and later one key away.",
+        body: "Focus mode puts the next task, what you need for it and its deadline on one screen, with done, skip and later one key away.",
       },
     ],
   },
@@ -126,13 +126,13 @@ const ja: Dict = {
   meta: {
     title: "Erwin｜次にやるべきことを、ひとつだけ",
     description:
-      "Erwin はカレンダー、Canvas の課題、目標を読み取り、次にやるべきことをひとつだけ示します。無料のオープンソースで、データはあなたのマシンに残ります。",
+      "Erwin はカレンダーとタスクを順位づけし、次にやるべきことをひとつだけ示します。無料のオープンソースで、データはあなたのマシンに残ります。",
   },
   nav: { how: "しくみ", app: "アプリ", data: "データ", install: "ダウンロード", github: "GitHub", label: "Erwin" },
   hero: {
     label: "オープンソース · MIT",
     statement: "今、何をやるべきか。",
-    sub: "Erwin はカレンダー、Canvas の課題、目標を読み取り、次にやるべきことをひとつだけ示します。",
+    sub: "Erwin はカレンダーとタスク、オンにしたモジュールを読み取り、次にやるべきことをひとつだけ示します。",
     cta: { mac: "macOS 版をダウンロード", windows: "Windows 版をダウンロード", linux: "Linux 版をダウンロード", other: "Erwin をダウンロード" },
     more: "インストール方法をすべて見る",
     dial: { caption: "1 日の例", now: "今", next: "次", free: "空き時間" },
@@ -143,15 +143,15 @@ const ja: Dict = {
     steps: [
       {
         title: "いつものツールを読み取ります。",
-        body: "Google・Outlook・CalDAV のカレンダー、成績の配分つきの Canvas の課題、そしてこれからの 2 か月の目標を読み込みます。",
+        body: "Google・Outlook・CalDAV のカレンダーにつながり、Canvas の授業や目標、トレーニングなどはモジュールで加えられます。",
       },
       {
         title: "かかっているものの大きさで並べます。",
-        body: "締め切り、成績への影響、目標の重要度を、誰でも読める固定の式で計算するので、見えない理由で順番が変わることはありません。",
+        body: "締め切り、タスクごとの重み、目標の重要度を、誰でも読める式で計算します。見えない理由で順番が変わることはありません。",
       },
       {
         title: "ひとつだけ見せます。",
-        body: "フォーカスモードでは、次のタスクと授業資料と締め切りが 1 画面に並び、完了・スキップ・あとでがキーひとつで選べます。",
+        body: "フォーカスモードでは、次のタスクとそれに必要なもの、締め切りが 1 画面に並び、完了・スキップ・あとでがキーひとつで選べます。",
       },
     ],
   },

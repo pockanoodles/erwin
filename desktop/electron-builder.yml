@@ -88,11 +88,11 @@ appx:
 linux:
   executableName: erwin
   category: Office
-  synopsis: Your calendar, courses and goals, and the one thing to do next
+  synopsis: Your calendar, your tasks and the one thing to do next
   description: >-
-    Erwin reads your calendar, your Canvas courses and your goals, then tells
-    you the one thing to do next. Local-first: your data stays in a database on
-    your own machine.
+    Erwin reads your calendar, your tasks and the modules you turn on, then
+    tells you the one thing to do next. Local-first: your data stays in a
+    database on your own machine.
   maintainer: Kaito Soeno <contact@kaitosoeno.com>
   vendor: Kaito Soeno
   desktop:
@@ -114,6 +114,6 @@ linux:
 snap:
   grade: stable
   confinement: strict
-  summary: Your calendar, courses and goals, and the one thing to do next
+  summary: Your calendar, your tasks and the one thing to do next
   # network-bind: the app's own server listens on 127.0.0.1.
   plugs: [default, network-bind]

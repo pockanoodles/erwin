@@ -2,7 +2,7 @@
   "name": "erwin-desktop",
   "productName": "Erwin",
   "version": "1.0.0",
-  "description": "Erwin reads your calendar, your courses and your goals, then tells you the one thing to do next.",
+  "description": "Erwin reads your calendar, your tasks and the modules you turn on, then tells you the one thing to do next.",
   "homepage": "https://kaitosoeno.com/erwin",
   "repository": "github:pockanoodles/erwin",
   "license": "MIT",

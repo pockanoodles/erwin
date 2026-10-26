@@ -1,5 +1,5 @@
 pkgbase = erwin-bin
-	pkgdesc = A field-watch-plain secretary for your calendar, courses and goals
+	pkgdesc = A field-watch-plain secretary for your calendar, your tasks and whatever else you track
 	pkgver = {{VERSION}}
 	pkgrel = 1
 	url = https://kaitosoeno.com/erwin

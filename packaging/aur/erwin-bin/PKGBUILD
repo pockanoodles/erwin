@@ -8,7 +8,7 @@ pkgname=erwin-bin
 _pkgname=erwin
 pkgver={{VERSION}}
 pkgrel=1
-pkgdesc='A field-watch-plain secretary for your calendar, courses and goals'
+pkgdesc='A field-watch-plain secretary for your calendar, your tasks and whatever else you track'
 arch=('x86_64' 'aarch64')
 url='https://kaitosoeno.com/erwin'
 license=('MIT')
@@ -49,7 +49,7 @@ package() {
 Type=Application
 Name=Erwin
 GenericName=Planner
-Comment=Reads your calendar, your Canvas courses and your goals, then tells you the one thing to do next
+Comment=Reads your calendar, your tasks and the modules you turn on, then tells you the one thing to do next
 Exec=/usr/bin/${_pkgname}
 Icon=${_pkgname}
 Terminal=false
