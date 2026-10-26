@@ -3,9 +3,8 @@
  * about a task. What a module knows about it (Courses: the grade) arrives as
  * task facts instead.
  */
-
-import { humanCountdown } from "@/lib/erwin/human-countdown";
 import type { FocusQueueTaskRow } from "@/lib/erwin/focus-queue-core";
+import { humanCountdown } from "@/lib/erwin/human-countdown";
 
 export interface ErwinQueueAugmentation {
   countdownHuman: string | null;
@@ -49,13 +48,15 @@ function formatLastSkippedAgo(
   return `${Math.floor(h / 24)}d ago`;
 }
 
+/** `task.dueDate` is the moment it's due by (TaskForRanking's), not the stored date. */
 export function enrichFocusTaskDisplay(
   task: Pick<FocusQueueTaskRow, "dueDate" | "lastSkippedAt" | "duration">,
-  now: Date
+  now: Date,
+  timeZone: string
 ): ErwinQueueAugmentation {
   const due = task.dueDate ? new Date(task.dueDate) : null;
   return {
-    countdownHuman: due ? humanCountdown(due, now) : null,
+    countdownHuman: due ? humanCountdown(due, now, timeZone) : null,
     lastSkippedAgo: formatLastSkippedAgo(task.lastSkippedAt, now),
     effortEstimate: formatEffortMinutes(task.duration),
   };

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { isToday } from "@/lib/date-utils";
+import { isDueToday } from "@/lib/erwin/due";
 import { parseTaskFromApi, type FocusQueueTask } from "@/lib/erwin/parse-task";
 
 /**
@@ -68,7 +68,7 @@ export const useErwinStatusStore = create<ErwinStatusStore>((set, get) => ({
 }));
 
 export function countDueToday(tasks: FocusQueueTask[]): number {
-  return tasks.filter((t) => t.dueDate && isToday(t.dueDate)).length;
+  return tasks.filter(isDueToday).length;
 }
 
 export function countDanger(tasks: FocusQueueTask[]): number {

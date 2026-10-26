@@ -10,7 +10,6 @@ import { humanCountdown } from "@/lib/erwin/human-countdown";
 import { isDangerResolved } from "@/lib/erwin/rank-stage1";
 import { formatInTimeZone, newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { prisma } from "@/lib/prisma";
 
 const LOG_SOURCE = "ErwinFocusBriefingAPI";
 
@@ -29,12 +28,10 @@ export async function GET(request: NextRequest) {
     const userId = auth.userId;
     const now = newDate();
 
-    const userSettings = await prisma.userSettings.findUnique({
-      where: { userId },
-    });
-    const timeZone = userSettings?.timeZone ?? "UTC";
-
+    // Due dates in the core are the moments tasks are due by (lib/erwin/due.ts),
+    // read in the person's zone.
     const core = await buildFocusQueueCore(userId);
+    const timeZone = core.timeZone;
 
     const tasksDueToday = core.filtered.filter((t) => {
       if (!t.dueDate) {
@@ -64,13 +61,13 @@ export async function GET(request: NextRequest) {
       if (!row) {
         return [];
       }
-      const due = row.dueDate ? new Date(row.dueDate) : now;
+      const due = dm.dueDate ? new Date(dm.dueDate) : now;
       return [
         {
           id: row.id,
           title: row.title,
           dueAt: due.toISOString(),
-          countdownHuman: humanCountdown(due, now),
+          countdownHuman: humanCountdown(due, now, timeZone),
           skipCount: row.skipCount,
           ...core.facts.get(row.id),
         },
@@ -83,14 +80,14 @@ export async function GET(request: NextRequest) {
       if (!row || !m) {
         return [];
       }
-      const due = row.dueDate ? new Date(row.dueDate) : null;
+      const due = t.dueDate ? new Date(t.dueDate) : null;
       return [
         {
           id: row.id,
           title: row.title,
           category: row.category ?? "PERSONAL",
           dueAt: due?.toISOString() ?? null,
-          countdownHuman: due ? humanCountdown(due, now) : null,
+          countdownHuman: due ? humanCountdown(due, now, timeZone) : null,
           estimatedDuration: row.duration ?? 30,
           urgencyTier: m.urgencyTier,
           baseScore: m.baseScore,

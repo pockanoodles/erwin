@@ -23,7 +23,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { newDate } from "@/lib/date-utils";
+import { format, newDate, taskDay } from "@/lib/date-utils";
 import { RecurrenceConverterFactory } from "@/lib/task-sync/recurrence/recurrence-converter-factory";
 import { cn } from "@/lib/utils";
 
@@ -194,15 +194,15 @@ export function TaskModal({
       setDescription(task.description || "");
       setStatus(task.status);
       // Handle date string from API
+      // The day each stored date names: a deadline with a time (11:59 PM)
+      // is on its own local day, not UTC's.
       if (task.dueDate) {
-        const date = newDate(task.dueDate);
-        setDueDate(date.toISOString().split("T")[0]);
+        setDueDate(format(taskDay(newDate(task.dueDate)), "yyyy-MM-dd"));
       } else {
         setDueDate("");
       }
       if (task.startDate) {
-        const date = newDate(task.startDate);
-        setStartDate(date.toISOString().split("T")[0]);
+        setStartDate(format(taskDay(newDate(task.startDate)), "yyyy-MM-dd"));
       } else {
         setStartDate("");
       }

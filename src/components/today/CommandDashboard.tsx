@@ -7,7 +7,7 @@ import Link from "next/link";
 import { FirstRun } from "@/components/today/FirstRun";
 import { Button } from "@/components/ui/button";
 
-import { isToday } from "@/lib/date-utils";
+import { isDueToday } from "@/lib/erwin/due";
 import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
 
@@ -42,7 +42,7 @@ function tierBadge(
   if (task.erwin?.danger || tier === "DANGER") {
     return { label: "DANGER", className: "text-destructive" };
   }
-  if (tier === "HIGH" && task.dueDate && isToday(task.dueDate)) {
+  if (tier === "HIGH" && isDueToday(task)) {
     return { label: "DUE TODAY", className: "text-warning" };
   }
   return null;

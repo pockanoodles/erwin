@@ -11,6 +11,7 @@ import {
   filterTasksByAvailabilityCapacity,
 } from "@/lib/erwin/availability";
 import { computeFocusBriefing } from "@/lib/erwin/briefing";
+import { dueBy } from "@/lib/erwin/due";
 import { openWorkWhere } from "@/lib/erwin/open-work";
 import {
   type RankSignals,
@@ -21,16 +22,23 @@ import {
   stage1MetaForTasks,
 } from "@/lib/erwin/rank-stage1";
 import { prisma } from "@/lib/prisma";
+import { userTimeZone } from "@/lib/user-time-zone";
 
 import { moduleRankSignals, moduleTaskFacts } from "@/modules/hooks";
 import type { TaskFacts } from "@/modules/server";
 import { moduleView } from "@/modules/state";
 
+/**
+ * A task as the ranking reads it. Its due date is the moment it's due by
+ * (lib/erwin/due.ts), so a date picked without a time counts until the end
+ * of that day in `timeZone`.
+ */
 export function toTaskForRanking(
   r: {
     id: string;
     title: string;
     status: string;
+    source: string | null;
     dueDate: Date | null;
     unlockAt: Date | null;
     lockAt: Date | null;
@@ -44,13 +52,14 @@ export function toTaskForRanking(
     postponedUntil?: Date | null;
     parentTaskId?: string | null;
   },
+  timeZone: string,
   signals: RankSignals = {}
 ): TaskForRanking {
   return {
     id: r.id,
     title: r.title,
     status: r.status,
-    dueDate: r.dueDate,
+    dueDate: r.dueDate && dueBy(r.dueDate, r.source, timeZone),
     unlockAt: r.unlockAt,
     lockAt: r.lockAt,
     duration: r.duration,
@@ -89,6 +98,8 @@ export interface FocusQueueCoreResult {
   meta: ReturnType<typeof stage1MetaForTasks>;
   availability: Awaited<ReturnType<typeof computeErwinAvailabilitySummary>>;
   slotMinutesForRank: number | null;
+  /** The person's zone, which the due dates above were read in. */
+  timeZone: string;
 }
 
 /**
@@ -98,7 +109,10 @@ export async function buildFocusQueueCore(
   userId: string
 ): Promise<FocusQueueCoreResult> {
   const now = newDate();
-  const modules = await moduleView(userId);
+  const [modules, timeZone] = await Promise.all([
+    moduleView(userId),
+    userTimeZone(prisma, userId),
+  ]);
 
   const rows = await prisma.task.findMany({
     where: openWorkWhere(userId, now, modules.hidden),
@@ -114,7 +128,9 @@ export async function buildFocusQueueCore(
 
   const ids = rows.map((r) => r.id);
   const signals = await moduleRankSignals(prisma, userId, ids, modules.isOn);
-  const minimal = rows.map((r) => toTaskForRanking(r, signals.get(r.id)));
+  const minimal = rows.map((r) =>
+    toTaskForRanking(r, timeZone, signals.get(r.id))
+  );
   const filtered = filterTasksForRanking(minimal, now);
 
   const availability = await computeErwinAvailabilitySummary(userId, now);
@@ -154,16 +170,19 @@ export async function buildFocusQueueCore(
     meta,
     availability,
     slotMinutesForRank,
+    timeZone,
   };
 }
 
 export function computeBriefingStripFromCore(
-  filtered: TaskForRanking[],
-  slotAware: TaskForRanking[],
-  availability: FocusQueueCoreResult["availability"],
+  core: Pick<
+    FocusQueueCoreResult,
+    "filtered" | "slotAware" | "availability" | "timeZone"
+  >,
   now: Date = newDate()
 ) {
-  const briefingBase = computeFocusBriefing(filtered, now);
+  const { filtered, slotAware, availability, timeZone } = core;
+  const briefingBase = computeFocusBriefing(filtered, now, timeZone);
   return {
     ...briefingBase,
     pendingCount: slotAware.length,

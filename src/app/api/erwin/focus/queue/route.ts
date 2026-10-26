@@ -44,18 +44,18 @@ export async function GET(request: NextRequest) {
             danger,
             urgencyTier: m?.urgencyTier ?? "NONE",
             baseScore: m?.baseScore ?? 0,
-            ...enrichFocusTaskDisplay(row, now),
+            // Counted down to the moment it's due by, not the stored date.
+            ...enrichFocusTaskDisplay(
+              { ...row, dueDate: t.dueDate },
+              now,
+              core.timeZone
+            ),
           },
         },
       ];
     });
 
-    const briefing = computeBriefingStripFromCore(
-      core.filtered,
-      core.slotAware,
-      core.availability,
-      now
-    );
+    const briefing = computeBriefingStripFromCore(core, now);
 
     return NextResponse.json({ ranked, briefing });
   } catch (error) {

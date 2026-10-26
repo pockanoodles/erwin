@@ -1,14 +1,12 @@
 /**
  * Daily briefing stats and DANGER detection (Stage 1, spec §5.2.2).
  */
-
-import { startOfDay } from "@/lib/date-utils";
-
+import { dayIn, endOfDayIn, shiftDay, startOfDayIn } from "@/lib/date-utils";
 import type { TaskForRanking } from "@/lib/erwin/rank-stage1";
 import { isDangerResolved } from "@/lib/erwin/rank-stage1";
 
 export interface FocusBriefing {
-  /** ISO date label for the briefing (UTC calendar day) */
+  /** Today in the person's zone, "2026-10-28". */
   dateLabel: string;
   dueTodayCount: number;
   dueThisWeekCount: number;
@@ -20,38 +18,33 @@ export interface FocusBriefing {
   slotNarrative?: string | null;
 }
 
-function isSameUtcDay(a: Date, b: Date): boolean {
-  return (
-    a.getUTCFullYear() === b.getUTCFullYear() &&
-    a.getUTCMonth() === b.getUTCMonth() &&
-    a.getUTCDate() === b.getUTCDate()
-  );
-}
-
 /**
  * Computes briefing numbers from already-filtered candidate tasks (non-completed, etc.).
  */
 export function computeFocusBriefing(
   candidates: TaskForRanking[],
-  now: Date
+  now: Date,
+  timeZone: string
 ): FocusBriefing {
+  // Due dates here are already the moments tasks are due by (toTaskForRanking).
+  const today = dayIn(now, timeZone);
   const dueTodayCount = candidates.filter(
-    (t) => t.dueDate && isSameUtcDay(new Date(t.dueDate), now)
+    (t) => t.dueDate && dayIn(new Date(t.dueDate), timeZone) === today
   ).length;
 
-  const horizon = new Date(startOfDay(now));
-  horizon.setUTCDate(horizon.getUTCDate() + 7);
+  const weekStart = startOfDayIn(today, timeZone);
+  const weekEnd = endOfDayIn(shiftDay(today, 7), timeZone);
   const dueThisWeekCount = candidates.filter(
     (t) =>
       t.dueDate &&
-      new Date(t.dueDate) >= startOfDay(now) &&
-      new Date(t.dueDate) <= horizon
+      new Date(t.dueDate) >= weekStart &&
+      new Date(t.dueDate) <= weekEnd
   ).length;
 
   const dangerCount = candidates.filter((t) => isDangerResolved(t, now)).length;
 
   return {
-    dateLabel: now.toISOString().slice(0, 10),
+    dateLabel: today,
     dueTodayCount,
     dueThisWeekCount,
     dangerCount,
