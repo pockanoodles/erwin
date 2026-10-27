@@ -4,15 +4,14 @@ import { useMemo } from "react";
 
 import { DndContext, DragEndEvent } from "@dnd-kit/core";
 
-import { useTaskListViewSettings } from "@/store/taskListViewSettings";
-
 import { Task, TaskStatus } from "@/types/task";
 
-import { TaskListModeSwitch } from "../TaskListModeSwitch";
-import { applyLensFilters } from "../lens";
-import { useTasksLenses } from "../use-tasks-lenses";
-import { isDeferredTask, taskMatchesListMode } from "../utils/task-list-utils";
+import { TaskListToolbar } from "../TaskListToolbar";
+import { useVisibleTasks } from "../filters/use-visible-tasks";
 import { Column } from "./Column";
+
+/** The board's columns are the statuses, so its filters leave Status to them. */
+const BOARD_OMITS = ["status"] as const;
 
 interface BoardViewProps {
   tasks: Task[];
@@ -29,80 +28,9 @@ export function BoardView({
   onStatusChange,
   onInlineEdit,
 }: BoardViewProps) {
-  const lenses = useTasksLenses();
-  const {
-    energyLevel,
-    timePreference,
-    tagIds,
-    search,
-    showDeferred,
-    listMode,
-  } = useTaskListViewSettings();
-
-  // First, scope to what the modules narrow to (Ladder: the open goal tab)
-  const scopedTasks = useMemo(
-    () => applyLensFilters(lenses, tasks),
-    [lenses, tasks]
-  );
-
-  // Then apply other filters
-  const filteredTasks = useMemo(() => {
-    return scopedTasks.filter((task) => {
-      if (task.parentTaskId) {
-        return false;
-      }
-      if (isDeferredTask(task) && !showDeferred && !search) {
-        return false;
-      }
-      // Energy level filter
-      if (
-        energyLevel?.length &&
-        (!task.energyLevel || !energyLevel.includes(task.energyLevel))
-      ) {
-        return false;
-      }
-
-      // Time preference filter
-      if (
-        timePreference?.length &&
-        (!task.preferredTime || !timePreference.includes(task.preferredTime))
-      ) {
-        return false;
-      }
-
-      // Tags filter
-      if (tagIds?.length) {
-        const taskTagIds = task.tags.map((t) => t.id);
-        if (!tagIds.some((id) => taskTagIds.includes(id))) {
-          return false;
-        }
-      }
-
-      // Search
-      if (search) {
-        const searchLower = search.toLowerCase();
-        const matchesSearch =
-          task.title.toLowerCase().includes(searchLower) ||
-          task.description?.toLowerCase().includes(searchLower) ||
-          task.tags.some((tag) => tag.name.toLowerCase().includes(searchLower));
-        if (!matchesSearch) return false;
-      }
-
-      if (!taskMatchesListMode(task, listMode)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [
-    scopedTasks,
-    energyLevel,
-    timePreference,
-    tagIds,
-    search,
-    showDeferred,
-    listMode,
-  ]);
+  // The list's pipeline: lenses, filters, search and list mode.
+  const view = useVisibleTasks(tasks, BOARD_OMITS);
+  const filteredTasks = view.visible;
 
   // Group tasks by status
   const columns = useMemo(() => {
@@ -131,9 +59,7 @@ export function BoardView({
 
   return (
     <div className="flex h-full flex-col bg-background">
-      <div className="flex flex-none flex-wrap items-center gap-2 border-b border-border px-2 py-1.5">
-        <TaskListModeSwitch />
-      </div>
+      <TaskListToolbar view={view} surface="board" />
       <div className="flex flex-1 gap-6 overflow-auto p-6">
         <DndContext onDragEnd={handleDragEnd}>
           {Object.values(TaskStatus).map((status) => (

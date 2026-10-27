@@ -1,11 +1,13 @@
 import {
+  parentMatchesListFilters,
+  taskMatchesListFilters,
+} from "@/components/tasks/filters/match";
+import {
   groupTasksByParent,
   groupTasksForListMode,
   isDeferredTask,
   isUpcomingTask,
-  parentMatchesListFilters,
   parseTaskListMode,
-  taskMatchesListFilters,
   taskMatchesListMode,
 } from "@/components/tasks/utils/task-list-utils";
 
@@ -61,7 +63,7 @@ describe("isUpcomingTask", () => {
   });
 });
 
-describe("taskMatchesListFilters - hide upcoming tasks", () => {
+describe('taskMatchesListFilters - Start is not "Starts later"', () => {
   const tomorrow = addDays(startOfDay(newDate()), 1);
   const laterToday = (() => {
     const d = addDays(startOfDay(newDate()), 1);
@@ -69,36 +71,32 @@ describe("taskMatchesListFilters - hide upcoming tasks", () => {
     return d;
   })();
 
-  it("hides a future-day task when hideUpcomingTasks is on", () => {
+  const hideLater = {
+    conditions: { startDate: { values: ["later"], exclude: true } },
+  };
+
+  it("hides a future-day task", () => {
     expect(
-      taskMatchesListFilters(makeTask({ startDate: tomorrow }), {
-        hideUpcomingTasks: true,
-      })
+      taskMatchesListFilters(makeTask({ startDate: tomorrow }), hideLater)
     ).toBe(false);
   });
 
-  it("keeps a later-today task when hideUpcomingTasks is on", () => {
+  it("keeps a later-today task", () => {
     expect(
-      taskMatchesListFilters(makeTask({ startDate: laterToday }), {
-        hideUpcomingTasks: true,
-      })
+      taskMatchesListFilters(makeTask({ startDate: laterToday }), hideLater)
     ).toBe(true);
   });
 
-  it("keeps a task with no startDate when hideUpcomingTasks is on", () => {
+  it("keeps a task with no startDate", () => {
     expect(
-      taskMatchesListFilters(makeTask({ startDate: null }), {
-        hideUpcomingTasks: true,
-      })
+      taskMatchesListFilters(makeTask({ startDate: null }), hideLater)
     ).toBe(true);
   });
 
-  it("keeps a future-day task when hideUpcomingTasks is off", () => {
-    expect(
-      taskMatchesListFilters(makeTask({ startDate: tomorrow }), {
-        hideUpcomingTasks: false,
-      })
-    ).toBe(true);
+  it("keeps a future-day task with no Start condition", () => {
+    expect(taskMatchesListFilters(makeTask({ startDate: tomorrow }), {})).toBe(
+      true
+    );
   });
 });
 
@@ -149,12 +147,13 @@ describe("taskMatchesListFilters - deferred", () => {
 describe("taskMatchesListFilters - other predicates are preserved", () => {
   it("filters by status", () => {
     const task = makeTask({ status: TaskStatus.COMPLETED });
-    expect(taskMatchesListFilters(task, { status: [TaskStatus.TODO] })).toBe(
-      false
+    const status = (values: string[]) => ({
+      conditions: { status: { values } },
+    });
+    expect(taskMatchesListFilters(task, status([TaskStatus.TODO]))).toBe(false);
+    expect(taskMatchesListFilters(task, status([TaskStatus.COMPLETED]))).toBe(
+      true
     );
-    expect(
-      taskMatchesListFilters(task, { status: [TaskStatus.COMPLETED] })
-    ).toBe(true);
   });
 
   it("filters by search across title", () => {
@@ -239,9 +238,9 @@ describe("taskMatchesListMode", () => {
     new Date(Date.UTC(year, month - 1, day));
 
   it("All keeps every task", () => {
-    expect(
-      taskMatchesListMode(makeTask({ dueDate: null }), "all", now)
-    ).toBe(true);
+    expect(taskMatchesListMode(makeTask({ dueDate: null }), "all", now)).toBe(
+      true
+    );
     expect(
       taskMatchesListMode(
         makeTask({ dueDate: utcDay(2026, 9, 21) }),
@@ -273,8 +272,20 @@ describe("taskMatchesListMode", () => {
         now
       )
     ).toBe(false);
+    expect(taskMatchesListMode(makeTask({ dueDate: null }), "today", now)).toBe(
+      false
+    );
+  });
+
+  it("Today keeps a deadline late tonight, as the Due column reads it", () => {
+    // Canvas's 11:59 PM is a real moment. West of UTC it's tomorrow's UTC
+    // date, which the old UTC-day reading put in Upcoming.
+    const tonight = new Date(2026, 8, 21, 23, 59);
     expect(
-      taskMatchesListMode(makeTask({ dueDate: null }), "today", now)
+      taskMatchesListMode(makeTask({ dueDate: tonight }), "today", now)
+    ).toBe(true);
+    expect(
+      taskMatchesListMode(makeTask({ dueDate: tonight }), "upcoming", now)
     ).toBe(false);
   });
 

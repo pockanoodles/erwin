@@ -3,7 +3,8 @@
 /**
  * Courses on the Tasks page (its Tasks lens, components/tasks/lens.ts): the
  * sheet's Mat column, read off the `materialCount` fact Courses adds to its
- * tasks. It leaves the sheet while Courses is off.
+ * tasks, and the Course and Submission filters (task-filters.ts). They leave
+ * the page while Courses is off.
  */
 import { useMemo } from "react";
 
@@ -11,6 +12,11 @@ import { EMPTY, type TaskColumn } from "@/components/tasks/datasheet/columns";
 import type { TasksLens } from "@/components/tasks/lens";
 
 import { cn } from "@/lib/utils";
+
+import {
+  COURSE_FILTER,
+  SUBMISSION_FILTER,
+} from "@/modules/courses/task-filters";
 
 import { useModuleOn } from "@/store/modules";
 
@@ -57,7 +63,13 @@ export const MATERIALS_COLUMN: TaskColumn = {
 export function useCoursesTasksLens(): TasksLens | null {
   const on = useModuleOn("courses");
   return useMemo(
-    () => (on === true ? { columns: [MATERIALS_COLUMN] } : null),
+    () =>
+      on === true
+        ? {
+            columns: [MATERIALS_COLUMN],
+            filters: [COURSE_FILTER, SUBMISSION_FILTER],
+          }
+        : null,
     [on]
   );
 }

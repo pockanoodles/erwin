@@ -3,7 +3,7 @@ import { persist } from "zustand/middleware";
 
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 
-import { EnergyLevel, TaskListMode, TaskStatus, TimePreference } from "@/types/task";
+import { TaskListMode, TaskStatus } from "@/types/task";
 
 /** The core's columns; a module's column brings its own id (Courses:
  *  "materials", Ladder: "goal"). Ids are what's persisted. */
@@ -32,6 +32,25 @@ export const DEFAULT_VISIBLE_COLUMNS: TaskColumnId[] = [
   "schedule",
 ];
 
+/**
+ * One field's filter: the values picked, and whether a task has to carry one
+ * of them ("is") or none of them ("is not"). A condition with no values picked
+ * narrows nothing; it's kept only to remember an "is not" picked first.
+ */
+export interface FilterCondition {
+  values: string[];
+  exclude?: boolean;
+}
+
+/** Keyed by filter field id (components/tasks/filters/fields.ts), modules'
+ *  included. A condition on a field whose module is off is kept and ignored. */
+export type TaskFilterConditions = Record<string, FilterCondition>;
+
+/** Open work: what the page shows until you pick otherwise. */
+export const DEFAULT_CONDITIONS: TaskFilterConditions = {
+  status: { values: [TaskStatus.TODO, TaskStatus.IN_PROGRESS] },
+};
+
 interface TaskListViewSettings {
   // Sort settings: a core key, or a module column's own.
   sortBy:
@@ -48,12 +67,10 @@ interface TaskListViewSettings {
   sortDirection: "asc" | "desc";
 
   // Filter settings
-  status?: TaskStatus[];
-  energyLevel?: EnergyLevel[];
-  timePreference?: TimePreference[];
-  tagIds?: string[];
+  conditions: TaskFilterConditions;
   search?: string;
-  hideUpcomingTasks?: boolean;
+  /** Deferral isn't a condition: deferred tasks stay hidden until this is
+   *  on, and a search shows them anyway. */
   showDeferred?: boolean;
   /**
    * Inventory query: All / Today / Upcoming / Someday. Not Focus. Default
@@ -78,20 +95,13 @@ interface TaskListViewSettings {
   // Actions
   setSortBy: (sortBy: TaskListViewSettings["sortBy"]) => void;
   setSortDirection: (direction: TaskListViewSettings["sortDirection"]) => void;
-  setFilters: (
-    filters: Partial<
-      Omit<
-        TaskListViewSettings,
-        | "setSortBy"
-        | "setSortDirection"
-        | "setFilters"
-        | "resetFilters"
-        | "toggleColumn"
-        | "setListMode"
-        | "listMode"
-      >
-    >
-  ) => void;
+  /** Null, or no values without "is not", drops the field's condition. */
+  setCondition: (field: string, condition: FilterCondition | null) => void;
+  setSearch: (search: string) => void;
+  setShowDeferred: (show: boolean) => void;
+  /** No conditions: every task the list mode and the tabs let through. */
+  clearConditions: () => void;
+  /** Back to the defaults: open work, deferred hidden. Search is left alone. */
   resetFilters: () => void;
   setListMode: (mode: TaskListMode) => void;
   toggleColumn: (column: TaskColumnId) => void;
@@ -106,7 +116,68 @@ interface TaskListViewSettings {
 export const MIN_COLUMN_WIDTH = 56;
 export const MAX_COLUMN_WIDTH = 900;
 
-const DEFAULT_STATUS_FILTERS = [TaskStatus.TODO, TaskStatus.IN_PROGRESS];
+type PersistedSettings = Partial<TaskListViewSettings> & {
+  // The filter settings before conditions (version 3 and earlier).
+  status?: string[];
+  energyLevel?: string[];
+  timePreference?: string[];
+  tagIds?: string[];
+  hideUpcomingTasks?: boolean;
+};
+
+/** Bring a saved blob up to this version. Exported for its tests. */
+export function migrateTaskListViewSettings(
+  persisted: unknown,
+  version: number
+): TaskListViewSettings {
+  const state = persisted as PersistedSettings;
+  if (
+    version < 1 &&
+    state.visibleColumns &&
+    !state.visibleColumns.includes("materials")
+  ) {
+    const at = state.visibleColumns.indexOf("dueDate");
+    const next = [...state.visibleColumns];
+    next.splice(at === -1 ? next.length : at + 1, 0, "materials");
+    state.visibleColumns = next;
+  }
+  // "project" was the Lord column's sort key before it was the Lord's.
+  if (version < 2 && state.sortBy === "project") state.sortBy = "lord";
+  // The Lord column became the Goal column.
+  if (version < 3) {
+    if (state.sortBy === "lord") state.sortBy = "goal";
+    state.visibleColumns = state.visibleColumns?.map((c) =>
+      c === "lord" ? "goal" : c
+    );
+    if (state.columnWidths && "lord" in state.columnWidths) {
+      const { lord, ...rest } = state.columnWidths;
+      state.columnWidths = { ...rest, goal: lord };
+    }
+  }
+  // One filter per field became conditions. A cleared filter was saved as
+  // no key at all (JSON drops undefined), so a missing `status` means "any
+  // status", not the default.
+  if (version < 4) {
+    const conditions: TaskFilterConditions = {};
+    const carry = (field: string, values: string[] | undefined) => {
+      if (values?.length) conditions[field] = { values };
+    };
+    carry("status", state.status);
+    carry("energyLevel", state.energyLevel);
+    carry("preferredTime", state.timePreference);
+    carry("tags", state.tagIds);
+    if (state.hideUpcomingTasks) {
+      conditions.startDate = { values: ["later"], exclude: true };
+    }
+    delete state.status;
+    delete state.energyLevel;
+    delete state.timePreference;
+    delete state.tagIds;
+    delete state.hideUpcomingTasks;
+    state.conditions = conditions;
+  }
+  return state as TaskListViewSettings;
+}
 
 export const useTaskListViewSettings = create<TaskListViewSettings>()(
   persist(
@@ -116,12 +187,8 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       sortDirection: "desc",
 
       // Initial filter settings
-      status: DEFAULT_STATUS_FILTERS,
-      energyLevel: undefined,
-      timePreference: undefined,
-      tagIds: undefined,
+      conditions: DEFAULT_CONDITIONS,
       search: undefined,
-      hideUpcomingTasks: false,
       showDeferred: false,
       listMode: "all",
 
@@ -132,17 +199,23 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       // Actions
       setSortBy: (sortBy) => set({ sortBy }),
       setSortDirection: (sortDirection) => set({ sortDirection }),
-      setFilters: (filters) => set(filters),
-      resetFilters: () =>
-        set({
-          status: DEFAULT_STATUS_FILTERS,
-          energyLevel: undefined,
-          timePreference: undefined,
-          tagIds: undefined,
-          search: undefined,
-          hideUpcomingTasks: false,
-          showDeferred: false,
+      setCondition: (field, condition) =>
+        set((state) => {
+          const next = { ...state.conditions };
+          if (!condition || (!condition.values.length && !condition.exclude)) {
+            delete next[field];
+          } else {
+            next[field] = condition.exclude
+              ? { values: condition.values, exclude: true }
+              : { values: condition.values };
+          }
+          return { conditions: next };
         }),
+      setSearch: (search) => set({ search: search || undefined }),
+      setShowDeferred: (showDeferred) => set({ showDeferred }),
+      clearConditions: () => set({ conditions: {} }),
+      resetFilters: () =>
+        set({ conditions: DEFAULT_CONDITIONS, showDeferred: false }),
       setListMode: (listMode) => set({ listMode }),
       toggleColumn: (column) =>
         set((state) => ({
@@ -177,30 +250,8 @@ export const useTaskListViewSettings = create<TaskListViewSettings>()(
       // before a key existed simply leaves its initial value in place.
       // `visibleColumns` is different — a saved list replaces the default
       // wholesale, so a new default column has to be added to it explicitly.
-      version: 3,
-      migrate: (persisted, version) => {
-        const state = persisted as Partial<TaskListViewSettings>;
-        if (version < 1 && state.visibleColumns && !state.visibleColumns.includes("materials")) {
-          const at = state.visibleColumns.indexOf("dueDate");
-          const next = [...state.visibleColumns];
-          next.splice(at === -1 ? next.length : at + 1, 0, "materials");
-          state.visibleColumns = next;
-        }
-        // "project" was the Lord column's sort key before it was the Lord's.
-        if (version < 2 && state.sortBy === "project") state.sortBy = "lord";
-        // The Lord column became the Goal column.
-        if (version < 3) {
-          if (state.sortBy === "lord") state.sortBy = "goal";
-          state.visibleColumns = state.visibleColumns?.map((c) =>
-            c === "lord" ? "goal" : c
-          );
-          if (state.columnWidths && "lord" in state.columnWidths) {
-            const { lord, ...rest } = state.columnWidths;
-            state.columnWidths = { ...rest, goal: lord };
-          }
-        }
-        return state as TaskListViewSettings;
-      },
+      version: 4,
+      migrate: migrateTaskListViewSettings,
     }
   )
 );
