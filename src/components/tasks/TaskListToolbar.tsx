@@ -34,6 +34,13 @@ import { useTasksLenses } from "./use-tasks-lenses";
 const CONTROL =
   "flex h-7 flex-none items-center gap-1.5 border border-border px-2 font-mono text-xs uppercase tracking-wide transition-colors duration-150";
 
+/** A control's word. Below xl the strip is too narrow for the mode
+ *  segments, Filter, the count, a usable search box and both these words
+ *  (measured with the rail open: the search box ran over the count at
+ *  768–870px and 1024–1090px), so Columns and Packet keep only their icons
+ *  there and name themselves on hover. */
+const WORD = "hidden xl:inline";
+
 /** Unavailable here, not gone: it keeps its place and reads as such. */
 const UNAVAILABLE =
   "aria-disabled:cursor-default aria-disabled:opacity-40 aria-disabled:hover:text-muted-foreground";
@@ -45,9 +52,10 @@ const UNAVAILABLE =
  *
  * It's one line with the same controls in the same places in Rows, Sheet and
  * Board. A control that doesn't apply to the view you're on stays where it
- * is and reads as unavailable, so switching views never moves anything; the
- * search box gives up width before anything wraps. What keeps it to one line
- * is the Filter button: every filter lives in its menu.
+ * is and reads as unavailable, so switching views never moves anything.
+ * When it's narrow the search box gives up width and Columns and Packet drop
+ * their words; nothing wraps. What keeps it to one line is the Filter
+ * button: every filter lives in its menu.
  */
 export function TaskListToolbar({
   view,
@@ -129,13 +137,15 @@ export function TaskListToolbar({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    aria-label="Columns"
+                    title="Columns"
                     className={cn(
                       CONTROL,
                       "text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <HiOutlineViewBoards className="h-3.5 w-3.5" />
-                    Columns
+                    <span className={WORD}>Columns</span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
@@ -157,11 +167,12 @@ export function TaskListToolbar({
               <button
                 type="button"
                 aria-disabled
+                aria-label="Columns"
                 title="Columns belong to the sheet"
                 className={cn(CONTROL, "text-muted-foreground", UNAVAILABLE)}
               >
                 <HiOutlineViewBoards className="h-3.5 w-3.5" />
-                Columns
+                <span className={WORD}>Columns</span>
               </button>
             )}
 
@@ -170,6 +181,7 @@ export function TaskListToolbar({
               aria-pressed={onSheet && packetOpen}
               aria-disabled={!onSheet || undefined}
               onClick={() => onSheet && setPacketOpen(!packetOpen)}
+              aria-label="Packet"
               title={
                 onSheet
                   ? "Show the selected Canvas task's instructions, rubric and materials"
@@ -184,7 +196,7 @@ export function TaskListToolbar({
               )}
             >
               <HiOutlineDocumentText className="h-3.5 w-3.5" />
-              Packet
+              <span className={WORD}>Packet</span>
             </button>
           </>
         )}
