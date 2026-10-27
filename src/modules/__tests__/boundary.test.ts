@@ -28,6 +28,7 @@ const OWNED: Record<string, string[]> = {
     "src/types/gradebook.ts",
     "src/app/(common)/courses/",
     "src/app/api/erwin/canvas/",
+    "src/app/api/erwin/corrections/",
     "src/app/api/erwin/courses/",
     "src/app/api/erwin/grades/",
     "src/app/api/erwin/materials/",

@@ -35,6 +35,15 @@ export interface ScoreStatistics {
   upper_q?: number;
 }
 
+/** A correction sync laid over Canvas for this assignment: Canvas said `canvas`, Erwin uses `value`. */
+export interface AppliedCorrection {
+  id: string;
+  field: string;
+  canvas: string | null;
+  value: string | null;
+  reason: string;
+}
+
 export interface GradebookAssignment {
   id: string;
   canvasId: string;
@@ -71,6 +80,8 @@ export interface GradebookAssignment {
     lockdownBrowser: boolean;
   } | null;
   task: { id: string; status: string } | null;
+  /** Where Erwin overrides Canvas for this assignment; null when Canvas stands. */
+  corrections: AppliedCorrection[] | null;
   /** An unseen grade, feedback or missing notice points here. */
   unseen: boolean;
 }

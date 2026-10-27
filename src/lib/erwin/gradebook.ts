@@ -3,6 +3,7 @@
  * own totals, Erwin's estimate beside them, group subtotals after drop rules,
  * and every assignment with its submission, feedback and quiz rules.
  */
+import { storedCorrections } from "@/lib/canvas/corrections";
 import { storedComments } from "@/lib/canvas/gradebook-plan";
 import {
   type LetterScheme,
@@ -21,6 +22,7 @@ import type {
 import type { RubricCriterion } from "@/types/course-materials";
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
+const orNull = <T>(list: T[]) => (list.length > 0 ? list : null);
 
 export async function loadGradebooks(
   userId: string,
@@ -136,6 +138,7 @@ export async function loadGradebooks(
               }
             : null,
         task: a.task ? { id: a.task.id, status: a.task.status } : null,
+        corrections: orNull(storedCorrections(a.corrections)),
         unseen: a.activity.length > 0,
       })),
     };

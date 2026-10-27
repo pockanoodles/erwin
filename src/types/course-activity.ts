@@ -11,7 +11,8 @@ export type ActivityKind =
   | "GRADE_POSTED"
   | "GRADE_CHANGED"
   | "FEEDBACK"
-  | "MISSING";
+  | "MISSING"
+  | "CORRECTION_RETIRED";
 
 export interface ActivityItem {
   id: string;

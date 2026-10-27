@@ -7,6 +7,9 @@
  *  - `submissionStatus`, Canvas's word on the submission: unsubmitted |
  *    missing | missed | submitted | pending_review | graded | excused. Ops
  *    reads it to tell a hand-ticked completion from one Canvas confirmed;
+ *  - `corrections`, where Erwin overrides Canvas for it (a teammate handed
+ *    it in, Connect closes at noon), each with what Canvas said; null when
+ *    Canvas stands. `submissionStatus` already has them applied;
  *  - `gradeWeightPercent`: roughly how much of the course grade it's worth;
  *  - `gradeProjection`, for work Focus judged DANGER: the course grade now
  *    and if this is missed;
@@ -19,6 +22,7 @@
  */
 import { courseTab } from "@/components/courses/course-tab";
 
+import { storedCorrections } from "@/lib/canvas/corrections";
 import { projectMissedGrades } from "@/lib/erwin/load-grade-projections";
 import type { RankSignals } from "@/lib/erwin/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
@@ -40,6 +44,7 @@ export async function courseTaskFacts(
       canvasId: true,
       courseId: true,
       state: true,
+      corrections: true,
       gradeWeightPercent: true,
       course: { select: { canvasId: true, code: true, name: true } },
     },
@@ -74,11 +79,13 @@ export async function courseTaskFacts(
     if (!r.taskId) continue;
     const weight = r.gradeWeightPercent;
     const p = projections.get(r.taskId);
+    const corrected = storedCorrections(r.corrections);
     facts.set(r.taskId, {
       courseId: r.course.canvasId,
       courseName: r.course.name,
       courseLabel: courseTab(r.course),
       submissionStatus: r.state,
+      corrections: corrected.length > 0 ? corrected : null,
       gradeWeightPercent: weight == null ? null : oneDecimal(weight),
       gradeProjection: p
         ? {

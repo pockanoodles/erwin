@@ -26,15 +26,17 @@ import type {
  * has passed: a simulation round, an in-class quiz) · submitted ·
  * pending_review (handed in, a grader still has to read it) · graded · excused
  */
-export type SubmissionState =
-  | "unsubmitted"
-  | "missing"
-  | "missed"
-  | "ended"
-  | "submitted"
-  | "pending_review"
-  | "graded"
-  | "excused";
+export const SUBMISSION_STATES = [
+  "unsubmitted",
+  "missing",
+  "missed",
+  "ended",
+  "submitted",
+  "pending_review",
+  "graded",
+  "excused",
+] as const;
+export type SubmissionState = (typeof SUBMISSION_STATES)[number];
 
 /** Handing in or being excused completes the task. */
 export const DONE_STATES: ReadonlySet<string> = new Set([

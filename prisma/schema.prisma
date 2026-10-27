@@ -545,6 +545,7 @@ model Course {
   announcements    CourseAnnouncement[]
   conversations    CourseConversation[]
   activity         CourseActivity[]
+  corrections      CanvasCorrection[]
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -742,6 +743,10 @@ model CourseAssignment {
    * Rubric marks keyed by criterion id: { points, rating_id, comments }.
    */
   rubricAssessment Json?
+  /**
+   * The corrections the last sync applied, [{ id, field, canvas, value, reason }]: `canvas` is what Canvas said, the column holds `value`. Null when Canvas stands.
+   */
+  corrections      Json?
 
   lastSyncedAt DateTime
   courseId     String
@@ -803,6 +808,51 @@ model CourseConversation {
 }
 
 /**
+ * Erwin: where Canvas is wrong about an assignment, and what's true instead —
+ * a teammate handed in the group copy, Connect closes at noon. Canvas stays the
+ * source of truth; sync applies these on top (`lib/canvas/corrections.ts`).
+ * Either one assignment (`assignmentCanvasId`) or a course rule matched by
+ * `nameMatch` and/or `submissionType`.
+ */
+model CanvasCorrection {
+  id                 String    @id @default(cuid())
+  courseId           String
+  course             Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  assignmentCanvasId String?
+  /**
+   * Case-insensitive regex over the assignment name, for a course rule.
+   */
+  nameMatch          String?
+  /**
+   * A Canvas submission type the assignment must have, for a course rule: "external_tool".
+   */
+  submissionType     String?
+  /**
+   * enum: state | dueAt | lockAt
+   */
+  field              String
+  /**
+   * enum: set (value is a submission state or an ISO date) | setTime (value is "HH:mm" in the course's zone; the day stays Canvas's)
+   */
+  op                 String
+  value              String
+  reason             String
+  /**
+   * What Canvas said when this was made, for one assignment. Canvas changing it retires the correction.
+   */
+  canvasValue        String?
+  retiredAt          DateTime?
+  /**
+   * Why it stopped applying: "Canvas now says graded".
+   */
+  retiredNote        String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([courseId])
+}
+
+/**
  * Erwin: something that changed in a course since the last sync — a new
  * announcement, file, grade or due date. The UI marks it seen; ops pushes it
  * to the hub. Never written for what already existed at a course's first sync.
@@ -810,7 +860,7 @@ model CourseConversation {
 model CourseActivity {
   id             String              @id @default(cuid())
   /**
-   * enum: ANNOUNCEMENT | MESSAGE | MATERIAL_NEW | MATERIAL_UPDATED | SYLLABUS_CHANGED | ASSIGNMENT_NEW | DUE_CHANGED | GRADE_POSTED | GRADE_CHANGED | FEEDBACK | MISSING
+   * enum: ANNOUNCEMENT | MESSAGE | MATERIAL_NEW | MATERIAL_UPDATED | SYLLABUS_CHANGED | ASSIGNMENT_NEW | DUE_CHANGED | GRADE_POSTED | GRADE_CHANGED | FEEDBACK | MISSING | CORRECTION_RETIRED
    */
   kind           String
   /**

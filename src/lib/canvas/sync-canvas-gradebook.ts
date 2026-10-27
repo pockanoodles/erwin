@@ -2,13 +2,20 @@
  * Canvas gradebook mirror for one course: assignment groups, every assignment
  * with this student's submission (score, comments, rubric marks), and quiz
  * settings. Canvas is the source of truth — groups and assignments it no
- * longer returns are pruned. Hands back the merged assignments so the task
+ * longer returns are pruned — with Kaito's corrections laid over it
+ * (`corrections.ts`). Hands back the merged assignments so the task
  * projection and the materials mirror reuse them instead of asking again.
  */
 import { Prisma } from "@prisma/client";
 
 import type { ActivityDraft } from "@/lib/canvas/activity-plan";
 import { type CanvasClient, isHiddenFromStudents } from "@/lib/canvas/canvas-client";
+import {
+  type Retirement,
+  activityBaseline,
+  applyCorrections,
+  storedCorrections,
+} from "@/lib/canvas/corrections";
 import {
   type PlannedAssignment,
   assignmentActivity,
@@ -126,21 +133,51 @@ export async function syncCourseGradebook(
 
   const previous = await prisma.courseAssignment.findMany({
     where: { courseId: courseRowId },
-    select: { canvasId: true, dueAt: true, state: true, score: true, grade: true, comments: true },
+    select: {
+      canvasId: true,
+      dueAt: true,
+      state: true,
+      score: true,
+      grade: true,
+      comments: true,
+      corrections: true,
+    },
   });
   const previousById = new Map(
-    previous.map((p) => [p.canvasId, { ...p, comments: storedComments(p.comments) }])
+    previous.map((p) => [
+      p.canvasId,
+      { ...p, comments: storedComments(p.comments), corrections: storedCorrections(p.corrections) },
+    ])
   );
+  const corrections = await prisma.canvasCorrection.findMany({
+    where: { courseId: courseRowId, retiredAt: null },
+  });
+  const retirements: Retirement[] = [];
 
   const planned = new Map<string, PlannedAssignment>();
   const rowIds = new Map<string, string>();
   const activity: ActivityDraft[] = [];
   for (const a of assignments) {
-    const plan = planAssignment(a, quizFor.get(a.id), options.selfId, now);
+    const corrected = applyCorrections(
+      planAssignment(a, quizFor.get(a.id), options.selfId, now),
+      corrections,
+      options.timeZone
+    );
+    const { plan, applied, retired } = corrected;
+    const prev = previousById.get(plan.canvasId);
     planned.set(plan.canvasId, plan);
+    retirements.push(...retired);
     activity.push(
+      ...retired.map((r) => ({
+        kind: "CORRECTION_RETIRED" as const,
+        title: plan.name,
+        detail: `${r.note}, so your correction no longer applies`,
+        dedupeKey: `correction:${r.id}`,
+        occurredAt: now,
+        target: { assignment: plan.canvasId },
+      })),
       ...assignmentActivity(
-        previousById.get(plan.canvasId),
+        activityBaseline(prev, prev?.corrections ?? [], corrected),
         plan,
         { actionable: isActionable(a), timeZone: options.timeZone, courseGrade: options.courseGrade },
         now
@@ -165,6 +202,7 @@ export async function syncCourseGradebook(
       groupId: groupCanvasId ? (groupRowIds.get(groupCanvasId) ?? null) : null,
       scoreStatistics: json(scoreStatistics),
       rubric: json(rubric),
+      corrections: applied.length > 0 ? json(applied) : Prisma.DbNull,
       lastSyncedAt: now,
     };
     // What the extras supply. A failed read would blank it, so an update
@@ -181,6 +219,13 @@ export async function syncCourseGradebook(
       select: { id: true },
     });
     rowIds.set(canvasId, row.id);
+  }
+
+  for (const r of retirements) {
+    await prisma.canvasCorrection.update({
+      where: { id: r.id },
+      data: { retiredAt: now, retiredNote: r.note },
+    });
   }
 
   await prisma.courseAssignment.deleteMany({

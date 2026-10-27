@@ -56,6 +56,8 @@ export interface CourseTaskFacts {
   courseLabel?: string | null;
   /** Canvas's word on the submission: unsubmitted | missing | missed | submitted | pending_review | graded | excused. */
   submissionStatus?: string | null;
+  /** Where Erwin overrides Canvas for it, each with what Canvas said; null when Canvas stands. */
+  corrections?: { id: string; field: string; canvas: string | null; value: string | null; reason: string }[] | null;
   /** Roughly how much of the course grade it's worth, 0–100, to one decimal. */
   gradeWeightPercent?: number | null;
   /** Only on work Focus judged DANGER. */

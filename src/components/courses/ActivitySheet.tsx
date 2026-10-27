@@ -55,6 +55,7 @@ const KIND: Record<ActivityKind, { tag: string; tone?: "danger"; label: string }
   GRADE_CHANGED: { tag: "Regrade", label: "Grade changed" },
   FEEDBACK: { tag: "Note", label: "Feedback" },
   MISSING: { tag: "Missing", tone: "danger", label: "Missing work" },
+  CORRECTION_RETIRED: { tag: "Fixed", tone: "danger", label: "Canvas changed something you corrected" },
 };
 
 type Row = { type: "day"; key: string; label: string } | { type: "item"; key: string; item: ActivityItem };

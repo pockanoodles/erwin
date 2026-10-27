@@ -5,6 +5,7 @@ jest.mock("@/lib/prisma", () => ({
     courseConversation: { findUnique: jest.fn(), upsert: jest.fn() },
     courseAssignmentGroup: { upsert: jest.fn(), deleteMany: jest.fn() },
     courseAssignment: { findMany: jest.fn(), upsert: jest.fn(), deleteMany: jest.fn() },
+    canvasCorrection: { findMany: jest.fn().mockResolvedValue([]) },
   },
 }));
 
