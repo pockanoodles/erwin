@@ -24,6 +24,9 @@ const MAX_LIMIT = 500;
  * - `since=<ISO time>` — only rows recorded after it, oldest first: a cursor
  *   for a poller (ops pushes these to the hub). Recorded time, not Canvas
  *   time, so a grade posted while sync was down is still after the cursor.
+ * - `afterId=<row id>`, with `since`: also rows recorded at exactly `since`
+ *   whose id sorts after it. Rows written in one sync share a timestamp, so
+ *   the last row's (createdAt, id) is a cursor that never skips or repeats.
  * - `courseId=<Erwin course id>`, `limit` (default 200, max 500).
  */
 export async function GET(request: NextRequest) {
@@ -41,6 +44,10 @@ export async function GET(request: NextRequest) {
     if (since && Number.isNaN(since.getTime())) {
       return NextResponse.json({ error: "since must be an ISO date-time" }, { status: 400 });
     }
+    const afterId = params.get("afterId");
+    if (afterId && !since) {
+      return NextResponse.json({ error: "afterId needs since" }, { status: 400 });
+    }
     const limit = Math.min(MAX_LIMIT, Math.max(1, Number(params.get("limit")) || DEFAULT_LIMIT));
 
     const scope: Prisma.CourseActivityWhereInput = {
@@ -52,7 +59,11 @@ export async function GET(request: NextRequest) {
         where: {
           ...scope,
           ...(params.get("unseen") === "1" ? { seenAt: null } : {}),
-          ...(since ? { createdAt: { gt: since } } : {}),
+          ...(since && afterId
+            ? { OR: [{ createdAt: { gt: since } }, { createdAt: since, id: { gt: afterId } }] }
+            : since
+              ? { createdAt: { gt: since } }
+              : {}),
         },
         orderBy: since ? [{ createdAt: "asc" }, { id: "asc" }] : [{ occurredAt: "desc" }, { id: "desc" }],
         take: limit,
