@@ -110,12 +110,27 @@ export async function unprojectShift(
 export async function restoreShiftEvents(userId: string): Promise<number> {
   const lost = await prisma.shift.findMany({
     where: { job: { userId }, dropped: false, eventId: null },
-    include: { job: true },
+    select: { id: true },
   });
-  for (const { job, ...shift } of lost) {
-    await prisma.$transaction(async (tx) =>
-      projectShift(tx, await ensureJobFeed(tx, job), shift)
-    );
+  let restored = 0;
+  for (const { id } of lost) {
+    restored += await prisma.$transaction(async (tx) => {
+      // Claim the row first: it locks the shift until this commits, so a
+      // drop made meanwhile either lands before (and this skips it) or
+      // after (and takes the event off again).
+      const claimed = await tx.shift.updateMany({
+        where: { id, dropped: false, eventId: null },
+        data: { updatedAt: new Date() },
+      });
+      if (claimed.count === 0) return 0;
+      // Read the job afresh: an earlier pass may have just made its feed.
+      const { job, ...shift } = await tx.shift.findUniqueOrThrow({
+        where: { id },
+        include: { job: true },
+      });
+      await projectShift(tx, await ensureJobFeed(tx, job), shift);
+      return 1;
+    });
   }
-  return lost.length;
+  return restored;
 }

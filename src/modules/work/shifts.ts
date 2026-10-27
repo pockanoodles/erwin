@@ -203,7 +203,6 @@ export async function nextShift(userId: string): Promise<NextShift | null> {
       ],
     },
     orderBy: { start: "asc" },
-    take: 20,
     include: { job: { select: { name: true, color: true } } },
   });
   const shift = candidates
