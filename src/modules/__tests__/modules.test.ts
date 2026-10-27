@@ -28,6 +28,7 @@ describe("resolveModuleStates", () => {
       { id: "training", on: false, position: 3 },
       { id: "nutrition", on: false, position: 4 },
       { id: "courses", on: true, position: 5 },
+      { id: "work", on: false, position: 5 },
     ]);
   });
 
@@ -49,6 +50,7 @@ describe("resolveModuleStates", () => {
       "people",
       "training",
       "nutrition",
+      "work",
     ]);
   });
 });
@@ -59,6 +61,7 @@ describe("hiddenSourcesOf", () => {
       "CANVAS",
       "PEOPLE",
       "TRAINING",
+      "WORK",
     ]);
     expect(
       hiddenSourcesOf(
@@ -66,6 +69,7 @@ describe("hiddenSourcesOf", () => {
           { moduleId: "courses", enabled: true, position: 0 },
           { moduleId: "people", enabled: true, position: 1 },
           { moduleId: "training", enabled: true, position: 2 },
+          { moduleId: "work", enabled: true, position: 3 },
         ])
       )
     ).toEqual([]);

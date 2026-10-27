@@ -19,6 +19,8 @@ import { applyGoalRules } from "../../src/lib/erwin/goal-rules";
 import { ensureCurrentHex } from "../../src/lib/erwin/hex";
 import { prisma } from "../../src/lib/prisma";
 import { syncWorkoutTask } from "../../src/modules/training/workout";
+import { ensureJobFeed, projectShift } from "../../src/modules/work/feed";
+import { syncTimesheetTasks } from "../../src/modules/work/timesheet";
 
 const url = process.env.DATABASE_URL ?? "";
 // `fluid_calendar` is the database name installs made before the rename keep, and
@@ -296,6 +298,47 @@ async function main() {
     await prisma.food.update({ where: { id }, data: { lastUsedAt: eatenAt } });
   }
 
+  // ── Work: a campus job, two weeks of shifts, and a pay period ending
+  // today, so its "Submit hours" task is up. One shift is a pickup added by
+  // hand; the rest came from the schedule.
+  await prisma.userModule.create({ data: { userId, moduleId: "work", enabled: true, position: 5 } });
+  const firstDay = localDay(at(-13, 12));
+  const job = await prisma.job.create({
+    data: {
+      userId,
+      name: "Rec Center Desk",
+      color: "#3E6E8EFF",
+      hourlyRate: 16.25,
+      payPeriodDays: 14,
+      payPeriodStart: new Date(`${firstDay}T00:00:00.000Z`),
+      timesheetDueDays: 1,
+      timesheetsFrom: new Date(`${localDay(at(-27, 12))}T00:00:00.000Z`),
+      weeklyCapHours: 20,
+      links: [{ label: "Timesheet", url: "https://example.edu/timesheet" }],
+      importKey: "demo",
+      contacts: {
+        create: [
+          { name: "Jamie Ortiz", role: "Desk supervisor", phone: "617-555-0142", email: "j.ortiz@example.edu", position: 0 },
+          { name: "Wren Okafor", role: "Facilities manager", phone: "617-555-0199", position: 1 },
+        ],
+      },
+    },
+  });
+  const feedId = await ensureJobFeed(prisma, job);
+  const desk = { title: "Front desk", location: "Rec Center lobby", role: "Desk staff", supervisor: "Jamie Ortiz" };
+  const shifts = [
+    { ...desk, start: at(-12, 17), end: at(-12, 21), importKey: "w1-a" },
+    { ...desk, start: at(-9, 7), end: at(-9, 11), importKey: "w1-b" },
+    { ...desk, start: at(-5, 17), end: at(-5, 21, 30), importKey: "w2-a", note: "Stayed to close" },
+    { ...desk, title: "Front desk (pickup)", start: at(-2, 12), end: at(-2, 16), importKey: null },
+    { ...desk, start: at(1, 17), end: at(1, 21), importKey: "w3-a" },
+    { ...desk, start: at(4, 7), end: at(4, 11), importKey: "w3-b" },
+  ];
+  for (const shift of shifts) {
+    await projectShift(prisma, feedId, await prisma.shift.create({ data: { ...shift, jobId: job.id } }));
+  }
+  await syncTimesheetTasks(prisma, userId);
+
   // ── Calendars: classes and a life ────────────────────────────────────
   const classes = await prisma.calendarFeed.create({ data: { name: "Classes", type: "LOCAL", color: "#7E513AFF", userId } });
   const life = await prisma.calendarFeed.create({ data: { name: "Personal", type: "LOCAL", color: "#4D6824FF", userId } });
@@ -335,7 +378,7 @@ async function main() {
   await applyGoalRules(prisma, userId);
 
   console.log(
-    `seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, ${routines.length} routines, ${meals.length} meals, 2 calendars for ${user.email}`
+    `seed: ${coursework.length + personal.length} tasks, ${courses.length} courses, 4 goals, ${routines.length} routines, ${meals.length} meals, ${shifts.length} shifts, 2 calendars for ${user.email}`
   );
 }
 

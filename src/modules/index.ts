@@ -3,6 +3,7 @@ import ladder from "@/modules/ladder/manifest";
 import nutrition from "@/modules/nutrition/manifest";
 import people from "@/modules/people/manifest";
 import training from "@/modules/training/manifest";
+import work from "@/modules/work/manifest";
 import type {
   ClaimOption,
   ModuleId,
@@ -21,6 +22,7 @@ export const MODULES: readonly ModuleManifest[] = [
   people,
   training,
   nutrition,
+  work,
 ];
 
 export function isModuleId(id: string): id is ModuleId {

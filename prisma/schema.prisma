@@ -107,6 +107,7 @@ model User {
   nutritionTarget      NutritionTarget?
   foods                Food[]
   foodEntries          FoodEntry[]
+  jobs                 Job[]
 }
 
 model VerificationToken {
@@ -133,6 +134,7 @@ model CalendarFeed {
   resourceId        String? // Google Calendar webhook resource ID
   channelExpiration DateTime? // When the webhook expires
   events            CalendarEvent[]
+  job               Job?
   userId            String?
   user              User?             @relation(fields: [userId], references: [id])
   accountId         String?
@@ -176,6 +178,7 @@ model CalendarEvent {
   masterEvent      CalendarEvent?  @relation("EventInstances", fields: [masterEventId], references: [id], onDelete: Cascade)
   instances        CalendarEvent[] @relation("EventInstances")
   recurringEventId String? // Google Calendar's recurring event ID
+  shift            Shift?
 
   // One row per (feed, external event, occurrence start).
   //
@@ -1170,6 +1173,141 @@ model FoodEntry {
   createdAt DateTime @default(now())
 
   @@index([userId, day])
+}
+
+/**
+ * Work module: a job someone works shifts at. Its shifts show on the calendar through one LOCAL feed of its own, and with a pay period set, each period's worked hours become one "Submit hours" task (source WORK, externalTaskId = "<job id>:<first day>").
+ */
+model Job {
+  id               String        @id @default(cuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  /**
+   * Its shifts' colour on the calendar, as #RRGGBBAA like a feed's.
+   */
+  color            String        @default("#E8590CFF")
+  /**
+   * Pay per hour before tax, in `currency`. Null means no pay estimate.
+   */
+  hourlyRate       Float?
+  currency         String        @default("USD")
+  /**
+   * Days in a pay period, 7 or 14. Null means no timesheets and no "Submit hours" task.
+   */
+  payPeriodDays    Int?
+  /**
+   * Any day a pay period starts on; the rest follow every payPeriodDays.
+   */
+  payPeriodStart   DateTime?     @db.Date
+  /**
+   * Days after a period's last day that its hours are due.
+   */
+  timesheetDueDays Int           @default(0)
+  /**
+   * Periods that start before this day get no task: their hours were handled before Erwin tracked them.
+   */
+  timesheetsFrom   DateTime?     @db.Date
+  /**
+   * Hours a week not to go over. Null means no cap.
+   */
+  weeklyCapHours   Float?
+  /**
+   * Where things about it live (the timesheet, a handbook): [{ label, url }].
+   */
+  links            Json          @default("[]")
+  notes            String?
+  /**
+   * The slug a schedule import names it by (PUT /api/erwin/shifts, "im"). Null for a job whose shifts are all added by hand.
+   */
+  importKey        String?
+  feedId           String?       @unique
+  feed             CalendarFeed? @relation(fields: [feedId], references: [id], onDelete: SetNull)
+  archived         Boolean       @default(false)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  shifts           Shift[]
+  contacts         JobContact[]
+
+  @@unique([userId, importKey])
+  @@index([userId, archived])
+}
+
+/**
+ * One shift at a job: as scheduled, and as it went. An imported one is replaced by the next import of its week; one added by hand stays until it's deleted.
+ */
+model Shift {
+  id          String         @id @default(cuid())
+  jobId       String
+  job         Job            @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  /**
+   * The schedule's key for it, stable within its week. Null when it was added by hand.
+   */
+  importKey   String?
+  title       String
+  start       DateTime
+  end         DateTime
+  location    String?
+  /**
+   * The position worked ("Staff 1").
+   */
+  role        String?
+  /**
+   * Who runs it, as the schedule names them.
+   */
+  supervisor  String?
+  /**
+   * What the schedule said about it, as it said it.
+   */
+  details     String?
+  /**
+   * Given away or called off: no longer theirs to work. Kept for the record, off the calendar.
+   */
+  dropped     Boolean        @default(false)
+  /**
+   * When it really started and ended, where that wasn't as scheduled.
+   */
+  workedStart DateTime?
+  workedEnd   DateTime?
+  note        String?
+  /**
+   * When its hours went on a timesheet.
+   */
+  loggedAt    DateTime?
+  /**
+   * Its copy on the calendar, in the job's feed.
+   */
+  eventId     String?        @unique
+  event       CalendarEvent? @relation(fields: [eventId], references: [id], onDelete: SetNull)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([jobId, importKey])
+  @@index([jobId, start])
+}
+
+/**
+ * Someone at a job to reach: a supervisor, the front desk. Kept in Erwin only; never put in an alert.
+ */
+model JobContact {
+  id        String   @id @default(cuid())
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  name      String
+  role      String?
+  phone     String?
+  email     String?
+  notes     String?
+  /**
+   * The roster import's key for them. Null when added by hand, which an import never touches.
+   */
+  importKey String?
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([jobId, importKey])
+  @@index([jobId, position])
 }
 
 model Tag {

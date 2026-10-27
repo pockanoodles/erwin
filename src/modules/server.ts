@@ -23,6 +23,7 @@ import {
 } from "@/modules/training/facts";
 import { reconcileWorkouts } from "@/modules/training/workout";
 import type { ClaimOption, ModuleId, ProofItem } from "@/modules/types";
+import { reconcileTimesheets } from "@/modules/work/timesheet";
 
 export interface ModuleJob {
   /** Names it in logs. */
@@ -109,4 +110,7 @@ export const SERVER_MODULES: Record<ModuleId, ServerContributions> = {
   },
   // Nutrition keeps to its own page and the top bar: nothing on the server's side.
   nutrition: {},
+  work: {
+    jobs: [{ id: "work.timesheets", run: reconcileTimesheets }],
+  },
 };

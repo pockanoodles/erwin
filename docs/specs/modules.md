@@ -1,6 +1,6 @@
 # Modules
 
-Erwin's core is Today, Focus, Calendar, Tasks, Settings and the `/modules` catalog. Everything else is a module that each person turns on or off: today Courses, Ladder, People, Training and Nutrition. The core works with every module off, and it never imports a module. A module adds to the core through fixed slots, listed in four registries under `src/modules/`.
+Erwin's core is Today, Focus, Calendar, Tasks, Settings and the `/modules` catalog. Everything else is a module that each person turns on or off: today Courses, Ladder, People, Training, Nutrition and Work. The core works with every module off, and it never imports a module. A module adds to the core through fixed slots, listed in four registries under `src/modules/`.
 
 ## What a module is made of
 
@@ -84,6 +84,6 @@ Two rules keep the bundles apart. `src/modules/index.ts` and the manifests are p
 5. Add its paths to `OWNED` in the boundary test.
 6. If it sends anything out of Erwin, list it in the manifest's `egress` and in `DATAFLOW.md`.
 
-People (`src/modules/people/`) is a complete small module: a page, its own tables, a job, tasks it owns, and a source goals can claim. Training adds claims per routine (`claimOptions`, `claimKeys`) and draws its own tasks in Focus and the task sheet (`TaskBody`, `TaskPane`). Nutrition owns no tasks at all: a page, its tables and a count in the top bar (`Status`).
+People (`src/modules/people/`) is a complete small module: a page, its own tables, a job, tasks it owns, and a source goals can claim. Training adds claims per routine (`claimOptions`, `claimKeys`) and draws its own tasks in Focus and the task sheet (`TaskBody`, `TaskPane`). Nutrition owns no tasks at all: a page, its tables and a count in the top bar (`Status`). Work takes data from outside through its own API (a schedule week, a contact roster, `src/modules/work/imports.ts`) and puts its shifts on the calendar through a LOCAL feed per job, which it keeps in step itself (`src/modules/work/feed.ts`), so the calendar and the scheduler see them without knowing the module exists.
 
 A module's tasks that fall on a day (a check-in, a workout) are due at the end of that day in the person's time zone (`endOfDayIn` in `src/lib/date-utils.ts`), the way a Canvas deadline at 11:59 PM is, so they read as that day everywhere and aren't late before it's over.

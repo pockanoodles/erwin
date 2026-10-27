@@ -27,7 +27,7 @@ Your week is spread across calendars, task lists and whatever else you keep trac
 - **It ranks by what is at stake.** Due dates, what each task is worth and how much its goal matters feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`). The order never changes for a reason you cannot read.
 - **It shows one thing at a time.** Focus puts the next task, what you need for it and its deadline on one screen, with done, skip and later on the D, S and L keys.
 - **It holds your week.** Google, Outlook and CalDAV calendars sit together in one view, and tasks drag into the open time or schedule themselves.
-- **It holds only what you use.** [Modules](#modules) add your Canvas courses, goals in two-month cycles, the people you keep in touch with, your workouts and what you eat. Turning one off hides it everywhere and deletes nothing.
+- **It holds only what you use.** [Modules](#modules) add your Canvas courses, goals in two-month cycles, the people you keep in touch with, your workouts, what you eat and the shifts you work. Turning one off hides it everywhere and deletes nothing.
 - **It keeps your data with you.** Everything sits in a database on your machine or your server, and Erwin has no analytics and no AI service ([Privacy](#privacy)).
 
 ## The core
@@ -54,6 +54,7 @@ The core works on its own, and everything else is a module you turn on or off at
 | **People** | The people you keep in touch with, and a reach-out task when someone is due a check-in | Nothing |
 | **Training** | The workouts you repeat, each due on its schedule and logged with its sets, reps and weights | Nothing |
 | **Nutrition** | What you eat against daily targets for calories, protein, carbs and fat, with the protein left today in the top bar | Nothing |
+| **Work** | The jobs you work shifts at: every shift on the calendar, hours against a weekly cap, pay so far, the people to call, and a task to submit your hours each pay period | Nothing |
 
 Turning a module off hides its page and its tasks from every list and from the scheduler, stops its background work and keeps everything it stored. Its API answers 409 `module_off` while it is off, so a script that calls it fails loudly instead of writing into a module no one can see.
 
@@ -87,6 +88,12 @@ You log a session on the Training page, one line per exercise as sets × reps @ 
 
 Nutrition tracks what you eat against daily targets for calories, protein, carbs and fat, and any target can be left untracked. The Day view shows each target as a meter above the day's entries, and you can step back through earlier days. A saved food is logged in one click, and a new food can be saved as you log it. Each entry keeps its own copy of the amounts, so changing a saved food later leaves what you already ate as it was. The top bar shows the protein left today on every page (or the calories when protein has no target). Nutrition creates no tasks.
 
+### Work
+
+Work holds the jobs you work shifts at. Each job's shifts show on the calendar through a feed of their own, so the scheduler never plans work on top of them, and the top bar shows the next shift on every page. Shifts come in two ways. A script can send a job's schedule a week at a time (`PUT /api/erwin/shifts`), and each new week replaces that week's imported shifts while keeping what you noted on them. You can also add a shift by hand, like one you picked up, and an import never deletes it. When the schedule later lists the same shift, the two become one.
+
+A shift that's over counts as worked. You can drop one you gave away, or enter the times you really worked when you stayed late. Give a job its hourly rate and pay period (weekly or every 2 weeks) and the Hours view adds up each period's hours and estimated pay. Once a period's shifts are worked, a task named for the hours shows up on its last day, listing every shift to enter on the timesheet. Marking the period submitted finishes the task, and ticking the task off anywhere else marks the period submitted. A weekly cap warns you when the week's shifts go over it. Each job also keeps its links (the timesheet, a handbook) and its contacts, and a shift's supervisor links to their phone number when the contacts list has them. A roster can be imported too (`PUT /api/erwin/work/import/contacts`). Contacts stay in Erwin.
+
 ### Writing a module
 
 A module reaches the core only through the registries in `src/modules/` (the manifests, the browser's slots and the server's hooks). The boundary test (`src/modules/__tests__/boundary.test.ts`) fails on any import that goes around them. [docs/specs/modules.md](docs/specs/modules.md) describes every slot and hook and walks through adding a module.
@@ -105,7 +112,7 @@ flowchart LR
     end
     subgraph Mods["Modules you turn on"]
         V["Courses (Canvas)"]
-        L["Ladder, People, Training, Nutrition"]
+        L["Ladder, People, Training, Nutrition, Work"]
     end
 
     S["Sync layer"]
@@ -220,7 +227,7 @@ npm install
 npm run dev:local -- --seed demo
 ```
 
-`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines and three days of meals, and it turns on Courses, Training and Nutrition. The `--reset` flag starts over with an empty database.
+`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on Courses, Training, Nutrition and Work. The `--reset` flag starts over with an empty database.
 
 ## Self-host
 
@@ -309,7 +316,7 @@ The repository holds the app (`src/`, with each module under `src/modules/`, and
 
 ## Privacy
 
-Your tasks, notes, goals, course materials, workouts and meals stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Ladder, People, Training and Nutrition send nothing anywhere. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Ladder, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
 
 ## Credits
 

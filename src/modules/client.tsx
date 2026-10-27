@@ -4,6 +4,7 @@ import type { ComponentType } from "react";
 
 import type { IconType } from "react-icons";
 import {
+  HiOutlineBriefcase,
   HiOutlineCollection,
   HiOutlineFlag,
   HiOutlineUserGroup,
@@ -52,6 +53,15 @@ import {
   WorkoutTaskPane,
 } from "@/modules/training/components/WorkoutSlots";
 import type { ModuleId, ModuleManifest } from "@/modules/types";
+import {
+  TimesheetTaskBody,
+  TimesheetTaskPane,
+} from "@/modules/work/components/TimesheetSlots";
+import {
+  WorkTopBarActions,
+  WorkTopBarViews,
+} from "@/modules/work/components/WorkTopBar";
+import { WorkStatus } from "@/modules/work/components/WorkStatus";
 
 /**
  * What each module puts into the browser's side of the core. The core reads
@@ -129,6 +139,14 @@ export const CLIENT_MODULES: Record<ModuleId, ClientContributions> = {
     Views: NutritionTopBarViews,
     Actions: NutritionTopBarActions,
     Status: NutritionStatus,
+  },
+  work: {
+    command: { icon: HiOutlineBriefcase, shortcut: "gj" },
+    Views: WorkTopBarViews,
+    Actions: WorkTopBarActions,
+    Status: WorkStatus,
+    TaskBody: TimesheetTaskBody,
+    TaskPane: TimesheetTaskPane,
   },
 };
 
