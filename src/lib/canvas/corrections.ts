@@ -125,8 +125,10 @@ function retiredBy(c: Correction, raw: PlannedAssignment, timeZone: string): str
   const field = c.field as CorrectionField;
   if (field === "state") {
     // Moving between open states (missing → missed) is the clock, not anyone's
-    // answer. Canvas taking the work in or grading it is.
-    return DONE_STATES.has(raw.state) ? `Canvas now says ${raw.state}` : null;
+    // answer. Canvas taking the work in, grading it or reopening it is.
+    const was = c.canvasValue ?? "";
+    const changed = raw.state !== was && (DONE_STATES.has(raw.state) || DONE_STATES.has(was));
+    return changed ? `Canvas now says ${raw.state}` : null;
   }
   const now = canvasValue(raw, field);
   return now === c.canvasValue
@@ -159,12 +161,16 @@ function correctedValue(
  * The assignment as Erwin should see it: Canvas's plan with every live
  * correction that matches laid on top. Course rules go first and corrections
  * for one assignment after, so the specific one wins; within each, oldest
- * first. `applied` lists only corrections that changed something.
+ * first. Dates go before state: a corrected date can change what the state
+ * is (a lock moved into the future reopens "missed" work), so `stateFor`
+ * works it out again from them, and a state correction still has the last
+ * word. `applied` lists only corrections that changed something.
  */
 export function applyCorrections(
   raw: PlannedAssignment,
   corrections: Correction[],
-  timeZone: string
+  timeZone: string,
+  stateFor?: (dates: Pick<PlannedAssignment, "dueAt" | "lockAt">) => PlannedAssignment["state"]
 ): { plan: PlannedAssignment; applied: AppliedCorrection[]; retired: Retirement[] } {
   const ordered = corrections
     .filter((c) => correctionMatches(c, raw))
@@ -176,20 +182,27 @@ export function applyCorrections(
   const plan = { ...raw };
   const winners = new Map<CorrectionField, Correction>();
   const retired: Retirement[] = [];
-  for (const c of ordered) {
+  const live = ordered.filter((c) => {
     const note = retiredBy(c, raw, timeZone);
-    if (note) {
-      retired.push({ id: c.id, field: c.field, note });
-      continue;
-    }
+    if (note) retired.push({ id: c.id, field: c.field, note });
+    return !note;
+  });
+  const lay = (c: Correction) => {
     const value = correctedValue(c, plan, timeZone);
     if (value === undefined) {
-      continue;
+      return;
     }
     const field = c.field as CorrectionField;
     (plan as Record<CorrectionField, unknown>)[field] = value;
     winners.set(field, c);
+  };
+  live.filter((c) => c.field !== "state").forEach(lay);
+  const dateWinner = winners.get("lockAt") ?? winners.get("dueAt");
+  if (stateFor && dateWinner) {
+    plan.state = stateFor(plan);
+    winners.set("state", dateWinner);
   }
+  live.filter((c) => c.field === "state").forEach(lay);
 
   const applied: AppliedCorrection[] = [];
   for (const [field, c] of winners) {
@@ -203,29 +216,46 @@ export function applyCorrections(
 }
 
 /**
- * The last sync's row as the activity diff should see it. A change Kaito made
- * himself — a correction applied or deleted since — isn't news, so on those
- * fields the baseline already holds the new value. A retirement is Canvas
- * changing its answer, which is.
+ * The last sync's row as the activity diff should see it. News is Canvas
+ * changing its answer; a field whose Canvas value is what it was last sync
+ * only moved because a correction came, went or was edited, which Kaito did
+ * himself, so there the baseline already holds the new value.
  */
 export function activityBaseline<T extends { dueAt: Date | null; state: string }>(
   prev: T | undefined,
   prevApplied: AppliedCorrection[],
-  next: { plan: PlannedAssignment; applied: AppliedCorrection[]; retired: Retirement[] }
+  raw: PlannedAssignment,
+  plan: PlannedAssignment
 ): T | undefined {
   if (!prev) {
     return prev;
   }
-  const ids = (list: AppliedCorrection[], field: string) =>
-    list.filter((a) => a.field === field).map((a) => a.id).join(",");
-  const canvasMoved = new Set(next.retired.map((r) => r.field));
   const baseline = { ...prev };
   for (const field of ["dueAt", "state"] as const) {
-    if (!canvasMoved.has(field) && ids(prevApplied, field) !== ids(next.applied, field)) {
-      (baseline as Record<string, unknown>)[field] = next.plan[field];
+    const stored = prev[field];
+    const was =
+      prevApplied.find((a) => a.field === field)?.canvas ??
+      (stored instanceof Date ? stored.toISOString() : stored);
+    if (was === canvasValue(raw, field)) {
+      (baseline as Record<string, unknown>)[field] = plan[field];
     }
   }
   return baseline;
+}
+
+/**
+ * Whether a correction alone had this work handed in and that's over: the
+ * last sync applied a done state Canvas didn't have, and now nothing does.
+ * Its task reopens instead of staying completed like a hand-ticked one.
+ */
+export function correctionUndone(prevApplied: AppliedCorrection[], plan: PlannedAssignment): boolean {
+  const was = prevApplied.find((a) => a.field === "state");
+  return (
+    was != null &&
+    DONE_STATES.has(was.value ?? "") &&
+    !DONE_STATES.has(was.canvas ?? "") &&
+    !DONE_STATES.has(plan.state)
+  );
 }
 
 /** Applied corrections as stored in the `corrections` Json column. */

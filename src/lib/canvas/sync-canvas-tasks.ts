@@ -94,8 +94,10 @@ export async function projectCourseTasks(
     const impact = shares.get(extId) ?? 0;
 
     // A hand-marked completion stands: group and external submissions never
-    // show up in Canvas, so "unsubmitted" can't reopen the task.
-    const done = prev?.status === "completed" || DONE_STATES.has(plan.state);
+    // show up in Canvas, so "unsubmitted" can't reopen the task. One a
+    // correction made, and that correction is gone, does reopen.
+    const undone = gradebook.undone.has(extId);
+    const done = (prev?.status === "completed" && !undone) || DONE_STATES.has(plan.state);
     // Closed without a submission: it locked (missed) or the course ended.
     // Dated by the lock when there is one, kept from the sync that first saw it.
     const closed = !done && CLOSED_STATES.has(plan.state);
@@ -106,7 +108,9 @@ export async function projectCourseTasks(
       // Completed by this sync: when it was handed in, not when Erwin noticed.
       completedAt: done
         ? (prev?.completedAt ?? plan.submittedAt ?? plan.gradedAt ?? now)
-        : undefined,
+        : undone
+          ? null
+          : undefined,
       dueDate: plan.dueAt,
       lockAt: plan.lockAt,
       unlockAt: plan.unlockAt,

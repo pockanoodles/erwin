@@ -3,6 +3,7 @@ import {
   activityBaseline,
   applyCorrections,
   correctionProblem,
+  correctionUndone,
 } from "@/lib/canvas/corrections";
 import { assignmentActivity, planAssignment } from "@/lib/canvas/gradebook-plan";
 import type { CanvasAssignment } from "@/lib/canvas/types";
@@ -146,33 +147,96 @@ describe("applyCorrections", () => {
 
 describe("activityBaseline", () => {
   const ctx = { actionable: true, timeZone: ZONE, courseGrade: null };
+  const row = (dueAt: string, state = "unsubmitted") => ({
+    canvasId: "901", dueAt: new Date(dueAt), state, score: null, grade: null, comments: [],
+  });
+  const kinds = (
+    prev: ReturnType<typeof row>,
+    prevApplied: Parameters<typeof activityBaseline>[1],
+    raw: ReturnType<typeof plan>,
+    corrections: Correction[]
+  ) => {
+    const { plan: next } = applyCorrections(raw, corrections, ZONE);
+    return assignmentActivity(activityBaseline(prev, prevApplied, raw, next), next, ctx, now).map((d) => d.kind);
+  };
 
   it("doesn't announce a correction Kaito just made", () => {
-    const corrected = applyCorrections(smartbook(), [noonRule], ZONE);
-    const prev = { canvasId: "901", dueAt: new Date("2026-11-07T04:59:59Z"), state: "unsubmitted", score: null, grade: null, comments: [] };
-    const drafts = assignmentActivity(activityBaseline(prev, [], corrected), corrected.plan, ctx, now);
-    expect(drafts.map((d) => d.kind)).not.toContain("DUE_CHANGED");
+    expect(kinds(row("2026-11-07T04:59:59Z"), [], smartbook(), [noonRule])).not.toContain("DUE_CHANGED");
   });
 
-  it("doesn't call corrected work missing", () => {
-    const corrected = applyCorrections(plan(), [correction({})], ZONE);
-    const prev = { canvasId: "900", dueAt: corrected.plan.dueAt, state: "unsubmitted", score: null, grade: null, comments: [] };
-    const drafts = assignmentActivity(activityBaseline(prev, [], corrected), corrected.plan, ctx, now);
-    expect(drafts.map((d) => d.kind)).not.toContain("MISSING");
+  it("doesn't announce a correction Kaito just deleted", () => {
+    const applied = [{ id: "rule", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
+    expect(kinds(row("2026-11-06T17:00:00Z"), applied, smartbook(), [])).not.toContain("DUE_CHANGED");
   });
 
-  it("still announces Canvas moving a date it had corrected", () => {
+  it("still announces Canvas moving a date a correction had changed", () => {
     const own = correction({
       assignmentCanvasId: "901",
       field: "dueAt",
       value: "2026-11-06T17:00:00Z",
       canvasValue: "2026-11-07T04:59:59.000Z",
     });
-    const corrected = applyCorrections(smartbook({ due_at: "2026-11-10T04:59:59Z" }), [own], ZONE);
-    const prevApplied = [{ id: "c1", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
-    const prev = { canvasId: "901", dueAt: new Date("2026-11-06T17:00:00Z"), state: "unsubmitted", score: null, grade: null, comments: [] };
-    const drafts = assignmentActivity(activityBaseline(prev, prevApplied, corrected), corrected.plan, ctx, now);
-    expect(drafts.map((d) => d.kind)).toContain("DUE_CHANGED");
+    const applied = [{ id: "c1", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
+    const moved = smartbook({ due_at: "2026-11-10T04:59:59Z" });
+    expect(kinds(row("2026-11-06T17:00:00Z"), applied, moved, [own])).toContain("DUE_CHANGED");
+  });
+
+  it("announces Canvas moving a date to where a rule would put it anyway", () => {
+    // The noon rule corrected Friday; Canvas now says Monday noon, so the rule changes nothing.
+    const applied = [{ id: "rule", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
+    const monday = smartbook({ due_at: "2026-11-09T17:00:00Z" });
+    expect(kinds(row("2026-11-06T17:00:00Z"), applied, monday, [noonRule])).toContain("DUE_CHANGED");
+  });
+});
+
+describe("date corrections and state", () => {
+  const stateFor = (raw: Partial<CanvasAssignment>) => (d: { dueAt: Date | null; lockAt: Date | null }) =>
+    plan({ ...raw, due_at: d.dueAt?.toISOString() ?? null, lock_at: d.lockAt?.toISOString() ?? null }).state;
+
+  it("reopens missed work when a correction moves its lock into the future", () => {
+    const reopen = correction({
+      field: "lockAt",
+      value: "2026-10-30T03:59:00Z",
+      canvasValue: "2026-10-24T05:00:00.000Z",
+    });
+    const { plan: next, applied } = applyCorrections(plan(), [reopen], ZONE, stateFor({}));
+    expect(next.state).toBe("unsubmitted");
+    expect(applied.find((a) => a.field === "state")).toMatchObject({ canvas: "missed", value: "unsubmitted" });
+  });
+
+  it("lets a state correction have the last word over a moved date", () => {
+    const reopen = correction({ id: "lock", field: "lockAt", value: "2026-10-30T03:59:00Z", canvasValue: "2026-10-24T05:00:00.000Z" });
+    const { plan: next } = applyCorrections(plan(), [reopen, correction({})], ZONE, stateFor({}));
+    expect(next.state).toBe("submitted");
+  });
+});
+
+describe("state corrections against done work", () => {
+  it("keeps a correction made on graded work until Canvas changes its answer", () => {
+    const graded = plan({ submission: { id: 1, workflow_state: "graded", score: 46 } });
+    const excuse = correction({ value: "excused", canvasValue: "graded" });
+    expect(applyCorrections(graded, [excuse], ZONE)).toMatchObject({ retired: [], plan: { state: "excused" } });
+  });
+
+  it("retires it when Canvas reopens the work", () => {
+    const excuse = correction({ value: "excused", canvasValue: "graded" });
+    expect(applyCorrections(plan(), [excuse], ZONE).retired).toEqual([
+      { id: "c1", field: "state", note: "Canvas now says missed" },
+    ]);
+  });
+});
+
+describe("correctionUndone", () => {
+  const handedIn = [{ id: "c1", field: "state", canvas: "missed", value: "submitted", reason: "" }];
+
+  it("reopens work only a deleted correction had handed in", () => {
+    expect(correctionUndone(handedIn, plan())).toBe(true);
+  });
+
+  it("leaves it done while a correction or Canvas still says so", () => {
+    expect(correctionUndone(handedIn, applyCorrections(plan(), [correction({})], ZONE).plan)).toBe(false);
+    expect(correctionUndone(handedIn, plan({ submission: { id: 1, workflow_state: "graded" } }))).toBe(false);
+    expect(correctionUndone([], plan())).toBe(false);
   });
 });
 

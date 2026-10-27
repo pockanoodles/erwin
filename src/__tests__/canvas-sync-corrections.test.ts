@@ -101,4 +101,18 @@ describe("syncCourseGradebook with corrections", () => {
     });
     expect(result.activity.map((a) => a.kind)).toEqual(["CORRECTION_RETIRED", "GRADE_POSTED"]);
   });
+
+  it("marks the work undone once the correction that handed it in is deleted", async () => {
+    db.canvasCorrection.findMany.mockResolvedValue([]);
+    db.courseAssignment.findMany.mockResolvedValue([
+      stored("submitted", [{ id: "c1", field: "state", canvas: "missed", value: "submitted", reason: "" }]),
+    ]);
+
+    const result = await syncCourseGradebook(client(report), "mktg-row", mktg, options);
+
+    expect(result.planned.get("900")?.state).toBe("missed");
+    expect([...result.undone]).toEqual(["900"]);
+    // Deleting it was Kaito's own doing, not news.
+    expect(result.activity).toEqual([]);
+  });
 });

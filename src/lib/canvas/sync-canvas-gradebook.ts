@@ -14,6 +14,7 @@ import {
   type Retirement,
   activityBaseline,
   applyCorrections,
+  correctionUndone,
   storedCorrections,
 } from "@/lib/canvas/corrections";
 import {
@@ -23,6 +24,7 @@ import {
   mergeSubmission,
   planAssignment,
   storedComments,
+  submissionState,
 } from "@/lib/canvas/gradebook-plan";
 import { courseLabel, syncProblem } from "@/lib/canvas/sync-problems";
 import type {
@@ -45,6 +47,8 @@ export interface GradebookSyncResult {
   planned: Map<string, PlannedAssignment>;
   /** CourseAssignment row id by Canvas id. */
   rowIds: Map<string, string>;
+  /** Canvas ids whose done state came from a correction that's gone; their tasks reopen. */
+  undone: Set<string>;
   activity: ActivityDraft[];
   /** Reads that failed this sync (not ones the course hides); the sync reports them. */
   problems: string[];
@@ -156,17 +160,22 @@ export async function syncCourseGradebook(
 
   const planned = new Map<string, PlannedAssignment>();
   const rowIds = new Map<string, string>();
+  const undone = new Set<string>();
   const activity: ActivityDraft[] = [];
   for (const a of assignments) {
-    const corrected = applyCorrections(
-      planAssignment(a, quizFor.get(a.id), options.selfId, now),
-      corrections,
-      options.timeZone
+    const raw = planAssignment(a, quizFor.get(a.id), options.selfId, now);
+    const { plan, applied, retired } = applyCorrections(raw, corrections, options.timeZone, (d) =>
+      submissionState(
+        { ...a, due_at: d.dueAt?.toISOString() ?? null, lock_at: d.lockAt?.toISOString() ?? null },
+        now
+      )
     );
-    const { plan, applied, retired } = corrected;
     const prev = previousById.get(plan.canvasId);
     planned.set(plan.canvasId, plan);
     retirements.push(...retired);
+    if (correctionUndone(prev?.corrections ?? [], plan)) {
+      undone.add(plan.canvasId);
+    }
     activity.push(
       ...retired.map((r) => ({
         kind: "CORRECTION_RETIRED" as const,
@@ -177,7 +186,7 @@ export async function syncCourseGradebook(
         target: { assignment: plan.canvasId },
       })),
       ...assignmentActivity(
-        activityBaseline(prev, prev?.corrections ?? [], corrected),
+        activityBaseline(prev, prev?.corrections ?? [], raw, plan),
         plan,
         { actionable: isActionable(a), timeZone: options.timeZone, courseGrade: options.courseGrade },
         now
@@ -235,5 +244,5 @@ export async function syncCourseGradebook(
     where: { courseId: courseRowId, canvasId: { notIn: [...groupRowIds.keys()] } },
   });
 
-  return { assignments, groups, planned, rowIds, activity, problems };
+  return { assignments, groups, planned, rowIds, undone, activity, problems };
 }
