@@ -51,9 +51,16 @@ function resync(userId: string) {
  * Stops corrections applying. They're retired, not deleted, so the record of
  * what was corrected stays and sync can tell Kaito's own change from news.
  * Work one of them had handed in reopens here, in the same transaction:
- * waiting for sync would lose it if that sync died halfway.
+ * waiting for sync would lose it if that sync died halfway. A replacement
+ * that still hands the work in passes `reopen: false`.
  */
-async function retire(tx: DbTransaction, ids: string[], note: string, now: Date) {
+async function retire(
+  tx: DbTransaction,
+  ids: string[],
+  note: string,
+  now: Date,
+  { reopen = true }: { reopen?: boolean } = {}
+) {
   if (ids.length === 0) {
     return;
   }
@@ -66,6 +73,9 @@ async function retire(tx: DbTransaction, ids: string[], note: string, now: Date)
     where: { id: { in: ids } },
     data: { retiredAt: now, retiredNote: note },
   });
+  if (!reopen) {
+    return;
+  }
   const rows = await tx.courseAssignment.findMany({
     where: {
       courseId: { in: courses.map((c) => c.courseId) },
@@ -182,7 +192,9 @@ export async function POST(request: NextRequest) {
           where: { courseId: row.courseId, assignmentCanvasId: row.canvasId, field, retiredAt: null },
           select: { id: true },
         });
-        await retire(tx, replaced.map((c) => c.id), "Replaced by a newer correction", new Date());
+        await retire(tx, replaced.map((c) => c.id), "Replaced by a newer correction", new Date(), {
+          reopen: field !== "state" || !DONE_STATES.has(body.value),
+        });
         return tx.canvasCorrection.create({
           data: {
             courseId: row.courseId,
