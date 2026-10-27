@@ -216,26 +216,43 @@ export function applyCorrections(
 }
 
 /**
+ * Whether Kaito changed this assignment's corrections since `since` (its last
+ * sync): one that matches was made, or deleted or replaced (both retire it).
+ */
+export function correctionsChangedSince(
+  all: (Correction & { retiredAt: Date | null })[],
+  plan: PlannedAssignment,
+  since: Date | null
+): boolean {
+  return all.some(
+    (c) =>
+      correctionMatches(c, plan) &&
+      (since == null || c.createdAt > since || (c.retiredAt != null && c.retiredAt > since))
+  );
+}
+
+/**
  * The last sync's row as the activity diff should see it. News is Canvas
- * changing its answer; a field whose Canvas value is what it was last sync
- * only moved because a correction came, went or was edited, which Kaito did
- * himself, so there the baseline already holds the new value.
+ * changing its answer, or the clock (a corrected lock passing). A field whose
+ * Canvas value didn't move, on an assignment whose corrections Kaito just
+ * changed, moved because of what he did, so there the baseline already holds
+ * the new value.
  */
 export function activityBaseline<T extends { dueAt: Date | null; state: string }>(
   prev: T | undefined,
   prevApplied: AppliedCorrection[],
   raw: PlannedAssignment,
-  plan: PlannedAssignment
+  plan: PlannedAssignment,
+  correctionsChanged: boolean
 ): T | undefined {
-  if (!prev) {
+  if (!prev || !correctionsChanged) {
     return prev;
   }
   const baseline = { ...prev };
   for (const field of ["dueAt", "state"] as const) {
+    const entry = prevApplied.find((a) => a.field === field);
     const stored = prev[field];
-    const was =
-      prevApplied.find((a) => a.field === field)?.canvas ??
-      (stored instanceof Date ? stored.toISOString() : stored);
+    const was = entry ? entry.canvas : stored instanceof Date ? stored.toISOString() : stored;
     if (was === canvasValue(raw, field)) {
       (baseline as Record<string, unknown>)[field] = plan[field];
     }

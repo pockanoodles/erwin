@@ -4,6 +4,7 @@ import {
   applyCorrections,
   correctionProblem,
   correctionUndone,
+  correctionsChangedSince,
 } from "@/lib/canvas/corrections";
 import { assignmentActivity, planAssignment } from "@/lib/canvas/gradebook-plan";
 import type { CanvasAssignment } from "@/lib/canvas/types";
@@ -147,26 +148,34 @@ describe("applyCorrections", () => {
 
 describe("activityBaseline", () => {
   const ctx = { actionable: true, timeZone: ZONE, courseGrade: null };
-  const row = (dueAt: string, state = "unsubmitted") => ({
-    canvasId: "901", dueAt: new Date(dueAt), state, score: null, grade: null, comments: [],
+  const row = (dueAt: string | null, state = "unsubmitted") => ({
+    canvasId: "901", dueAt: dueAt ? new Date(dueAt) : null, state, score: null, grade: null, comments: [],
   });
   const kinds = (
     prev: ReturnType<typeof row>,
     prevApplied: Parameters<typeof activityBaseline>[1],
     raw: ReturnType<typeof plan>,
-    corrections: Correction[]
+    corrections: Correction[],
+    changed: boolean
   ) => {
-    const { plan: next } = applyCorrections(raw, corrections, ZONE);
-    return assignmentActivity(activityBaseline(prev, prevApplied, raw, next), next, ctx, now).map((d) => d.kind);
+    const { plan: next } = applyCorrections(raw, corrections, ZONE, (d) =>
+      plan({ due_at: d.dueAt?.toISOString() ?? null, lock_at: d.lockAt?.toISOString() ?? null }).state
+    );
+    return assignmentActivity(activityBaseline(prev, prevApplied, raw, next, changed), next, ctx, now).map((d) => d.kind);
   };
+  const noonApplied = [{ id: "rule", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
 
   it("doesn't announce a correction Kaito just made", () => {
-    expect(kinds(row("2026-11-07T04:59:59Z"), [], smartbook(), [noonRule])).not.toContain("DUE_CHANGED");
+    expect(kinds(row("2026-11-07T04:59:59Z"), [], smartbook(), [noonRule], true)).not.toContain("DUE_CHANGED");
   });
 
   it("doesn't announce a correction Kaito just deleted", () => {
-    const applied = [{ id: "rule", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
-    expect(kinds(row("2026-11-06T17:00:00Z"), applied, smartbook(), [])).not.toContain("DUE_CHANGED");
+    expect(kinds(row("2026-11-06T17:00:00Z"), noonApplied, smartbook(), [], true)).not.toContain("DUE_CHANGED");
+  });
+
+  it("keeps an undated assignment undated in the baseline when its date correction goes", () => {
+    const applied = [{ id: "c1", field: "dueAt", canvas: null, value: "2026-11-06T17:00:00.000Z", reason: "" }];
+    expect(kinds(row("2026-11-06T17:00:00Z"), applied, smartbook({ due_at: null }), [], true)).not.toContain("DUE_CHANGED");
   });
 
   it("still announces Canvas moving a date a correction had changed", () => {
@@ -176,16 +185,37 @@ describe("activityBaseline", () => {
       value: "2026-11-06T17:00:00Z",
       canvasValue: "2026-11-07T04:59:59.000Z",
     });
-    const applied = [{ id: "c1", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
+    const applied = [{ ...noonApplied[0], id: "c1" }];
     const moved = smartbook({ due_at: "2026-11-10T04:59:59Z" });
-    expect(kinds(row("2026-11-06T17:00:00Z"), applied, moved, [own])).toContain("DUE_CHANGED");
+    expect(kinds(row("2026-11-06T17:00:00Z"), applied, moved, [own], true)).toContain("DUE_CHANGED");
   });
 
   it("announces Canvas moving a date to where a rule would put it anyway", () => {
-    // The noon rule corrected Friday; Canvas now says Monday noon, so the rule changes nothing.
-    const applied = [{ id: "rule", field: "dueAt", canvas: "2026-11-07T04:59:59.000Z", value: "2026-11-06T17:00:00.000Z", reason: "" }];
     const monday = smartbook({ due_at: "2026-11-09T17:00:00Z" });
-    expect(kinds(row("2026-11-06T17:00:00Z"), applied, monday, [noonRule])).toContain("DUE_CHANGED");
+    expect(kinds(row("2026-11-06T17:00:00Z"), noonApplied, monday, [noonRule], false)).toContain("DUE_CHANGED");
+  });
+
+  it("announces work going missing when a corrected lock passes", () => {
+    // Canvas's lock passed long ago; a correction moved it to an hour before `now`.
+    const lock = correction({ field: "lockAt", value: "2026-10-27T15:00:00Z", canvasValue: "2026-10-24T05:00:00.000Z" });
+    const applied = [
+      { id: "c1", field: "lockAt", canvas: "2026-10-24T05:00:00.000Z", value: "2026-10-27T15:00:00.000Z", reason: "" },
+      { id: "c1", field: "state", canvas: "missed", value: "unsubmitted", reason: "" },
+    ];
+    const prev = { ...row("2026-10-24T03:59:59Z"), canvasId: "900" };
+    expect(kinds(prev, applied, plan(), [lock], false)).toContain("MISSING");
+  });
+});
+
+describe("correctionsChangedSince", () => {
+  const lastSync = new Date("2026-10-27T12:30:00Z");
+  const live = { ...correction({}), retiredAt: null };
+
+  it("is true for a correction made or retired since the last sync, and only one that matches", () => {
+    expect(correctionsChangedSince([live], plan(), lastSync)).toBe(false);
+    expect(correctionsChangedSince([{ ...live, createdAt: new Date("2026-10-27T13:00:00Z") }], plan(), lastSync)).toBe(true);
+    expect(correctionsChangedSince([{ ...live, retiredAt: new Date("2026-10-27T13:00:00Z") }], plan(), lastSync)).toBe(true);
+    expect(correctionsChangedSince([{ ...live, createdAt: new Date("2026-10-27T13:00:00Z") }], plan({ id: 1 }), lastSync)).toBe(false);
   });
 });
 

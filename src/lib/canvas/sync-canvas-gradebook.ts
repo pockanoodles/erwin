@@ -15,6 +15,7 @@ import {
   activityBaseline,
   applyCorrections,
   correctionUndone,
+  correctionsChangedSince,
   storedCorrections,
 } from "@/lib/canvas/corrections";
 import {
@@ -145,6 +146,7 @@ export async function syncCourseGradebook(
       grade: true,
       comments: true,
       corrections: true,
+      lastSyncedAt: true,
     },
   });
   const previousById = new Map(
@@ -153,9 +155,10 @@ export async function syncCourseGradebook(
       { ...p, comments: storedComments(p.comments), corrections: storedCorrections(p.corrections) },
     ])
   );
-  const corrections = await prisma.canvasCorrection.findMany({
-    where: { courseId: courseRowId, retiredAt: null },
-  });
+  // Retired ones too: one deleted since an assignment's last sync means the
+  // change it leaves behind is Kaito's doing, not news.
+  const allCorrections = await prisma.canvasCorrection.findMany({ where: { courseId: courseRowId } });
+  const corrections = allCorrections.filter((c) => c.retiredAt == null);
   const retirements: Retirement[] = [];
 
   const planned = new Map<string, PlannedAssignment>();
@@ -186,7 +189,13 @@ export async function syncCourseGradebook(
         target: { assignment: plan.canvasId },
       })),
       ...assignmentActivity(
-        activityBaseline(prev, prev?.corrections ?? [], raw, plan),
+        activityBaseline(
+          prev,
+          prev?.corrections ?? [],
+          raw,
+          plan,
+          correctionsChangedSince(allCorrections, raw, prev?.lastSyncedAt ?? null)
+        ),
         plan,
         { actionable: isActionable(a), timeZone: options.timeZone, courseGrade: options.courseGrade },
         now

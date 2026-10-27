@@ -53,6 +53,7 @@ function client(assignment: CanvasAssignment): CanvasClient {
 }
 
 const stored = (state: string, corrections: unknown = null) => ({
+  lastSyncedAt: new Date("2026-10-27T15:45:00Z"),
   canvasId: "900",
   dueAt: new Date(report.due_at!),
   state,
@@ -67,7 +68,7 @@ beforeEach(() => {
   db.courseAssignment.upsert.mockResolvedValue({ id: "row" });
   db.courseAssignment.deleteMany.mockResolvedValue({ count: 0 });
   db.courseAssignmentGroup.deleteMany.mockResolvedValue({ count: 0 });
-  db.canvasCorrection.findMany.mockResolvedValue([teamCopy]);
+  db.canvasCorrection.findMany.mockResolvedValue([{ ...teamCopy, retiredAt: null }]);
 });
 
 describe("syncCourseGradebook with corrections", () => {
@@ -103,7 +104,7 @@ describe("syncCourseGradebook with corrections", () => {
   });
 
   it("marks the work undone once the correction that handed it in is deleted", async () => {
-    db.canvasCorrection.findMany.mockResolvedValue([]);
+    db.canvasCorrection.findMany.mockResolvedValue([{ ...teamCopy, retiredAt: now }]);
     db.courseAssignment.findMany.mockResolvedValue([
       stored("submitted", [{ id: "c1", field: "state", canvas: "missed", value: "submitted", reason: "" }]),
     ]);

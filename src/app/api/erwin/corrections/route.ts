@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
@@ -8,9 +9,10 @@ import {
   correctionProblem,
   storedCorrections,
 } from "@/lib/canvas/corrections";
+import { DONE_STATES } from "@/lib/canvas/gradebook-plan";
 import { syncCanvasForUser } from "@/lib/canvas/sync-canvas";
 import { logger } from "@/lib/logger";
-import { prisma } from "@/lib/prisma";
+import { type DbTransaction, prisma } from "@/lib/prisma";
 
 import { moduleOffResponse } from "@/modules/api";
 
@@ -43,6 +45,50 @@ function resync(userId: string) {
       LOG_SOURCE
     )
   );
+}
+
+/**
+ * Stops corrections applying. They're retired, not deleted, so the record of
+ * what was corrected stays and sync can tell Kaito's own change from news.
+ * Work one of them had handed in reopens here, in the same transaction:
+ * waiting for sync would lose it if that sync died halfway.
+ */
+async function retire(tx: DbTransaction, ids: string[], note: string, now: Date) {
+  if (ids.length === 0) {
+    return;
+  }
+  const courses = await tx.canvasCorrection.findMany({
+    where: { id: { in: ids } },
+    select: { courseId: true },
+    distinct: ["courseId"],
+  });
+  await tx.canvasCorrection.updateMany({
+    where: { id: { in: ids } },
+    data: { retiredAt: now, retiredNote: note },
+  });
+  const rows = await tx.courseAssignment.findMany({
+    where: {
+      courseId: { in: courses.map((c) => c.courseId) },
+      taskId: { not: null },
+      corrections: { not: Prisma.DbNull },
+    },
+    select: { taskId: true, corrections: true },
+  });
+  const handedIn = rows.filter((r) =>
+    storedCorrections(r.corrections).some(
+      (a) =>
+        a.field === "state" &&
+        ids.includes(a.id) &&
+        DONE_STATES.has(a.value ?? "") &&
+        !DONE_STATES.has(a.canvas ?? "")
+    )
+  );
+  if (handedIn.length > 0) {
+    await tx.task.updateMany({
+      where: { id: { in: handedIn.map((r) => r.taskId!) }, status: "completed" },
+      data: { status: "todo", completedAt: null },
+    });
+  }
 }
 
 function failed(what: string, error: unknown) {
@@ -80,8 +126,8 @@ export async function GET(request: NextRequest) {
  * POST /api/erwin/corrections
  *
  * Says where Canvas is wrong. For one assignment, `{ taskId | assignmentId,
- * field, op?, value, reason }`; it replaces that assignment's earlier
- * correction of the same field, and remembers what Canvas says now so a
+ * field, op?, value, reason }`; it replaces (retires) that assignment's
+ * earlier correction of the same field, and remembers what Canvas says now so a
  * change there retires it. For a course rule, `{ courseId, nameMatch?,
  * submissionType?, field, op, value, reason }` with at least one filter.
  * Fields: state | dueAt | lockAt. Ops: set (a state, or an ISO date-time) |
@@ -132,9 +178,11 @@ export async function POST(request: NextRequest) {
       const stored = row[field];
       const canvasValue = prior ? prior.canvas : stored instanceof Date ? iso(stored) : stored;
       const correction = await prisma.$transaction(async (tx) => {
-        await tx.canvasCorrection.deleteMany({
+        const replaced = await tx.canvasCorrection.findMany({
           where: { courseId: row.courseId, assignmentCanvasId: row.canvasId, field, retiredAt: null },
+          select: { id: true },
         });
+        await retire(tx, replaced.map((c) => c.id), "Replaced by a newer correction", new Date());
         return tx.canvasCorrection.create({
           data: {
             courseId: row.courseId,
@@ -183,7 +231,8 @@ export async function POST(request: NextRequest) {
 /**
  * DELETE /api/erwin/corrections?id=<correction id>
  *
- * Drops a correction; the next sync (started now) puts Canvas's answer back.
+ * Drops a correction (it stays listed, retired as "Deleted"); work it had
+ * handed in reopens, and the next sync (started now) puts Canvas's answer back.
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -197,12 +246,14 @@ export async function DELETE(request: NextRequest) {
     if (!id) {
       return NextResponse.json({ error: "id is required" }, { status: 400 });
     }
-    const { count } = await prisma.canvasCorrection.deleteMany({
-      where: { id, course: { userId: auth.userId } },
+    const found = await prisma.canvasCorrection.findFirst({
+      where: { id, course: { userId: auth.userId }, retiredAt: null },
+      select: { id: true },
     });
-    if (count === 0) {
-      return NextResponse.json({ error: "No such correction" }, { status: 404 });
+    if (!found) {
+      return NextResponse.json({ error: "No such correction in force" }, { status: 404 });
     }
+    await prisma.$transaction((tx) => retire(tx, [found.id], "Deleted", new Date()));
     resync(auth.userId);
     return NextResponse.json({ ok: true });
   } catch (error) {
