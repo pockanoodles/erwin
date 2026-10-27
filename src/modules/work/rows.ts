@@ -333,6 +333,35 @@ export async function jobRow(
 }
 
 /**
+ * One pay period of a job by its first day, however long ago. Null without
+ * the job or a pay period, or when that day doesn't start one.
+ */
+export async function periodRow(
+  db: Db,
+  userId: string,
+  jobId: string,
+  first: string
+): Promise<PeriodRow | null> {
+  const job = await db.job.findFirst({ where: { id: jobId, userId } });
+  if (!job || payPeriodAt(job, first)?.first !== first) return null;
+  const [{ timeZone }, tasks] = await Promise.all([
+    workSettings(db, userId),
+    openTimesheetTasks(db, userId),
+  ]);
+  const period = { first, last: shiftDay(first, job.payPeriodDays! - 1) };
+  const shifts = await db.shift.findMany({
+    where: { jobId, start: spanOfDays(period, timeZone) },
+  });
+  return toPeriodRow(
+    job,
+    period,
+    shifts,
+    timeZone,
+    tasks.get(`${jobId}:${first}`) ?? null
+  );
+}
+
+/**
  * A job's pay periods, newest first: today's, and every earlier one with a
  * shift in it, back to `limit` periods.
  */

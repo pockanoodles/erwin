@@ -3,11 +3,13 @@
  * (no account, so no calendar sync ever touches it), and each shift that
  * isn't dropped has one event in it, kept as the shift ran: worked times
  * where they were changed. The Shift row is the truth; the event is a copy
- * the calendar, availability and the scheduler read.
+ * the calendar, availability and the scheduler read, so an event deleted
+ * from the calendar comes back (`restoreShiftEvents`): a shift leaves the
+ * calendar by being dropped on the Work page.
  */
 import type { Job, Shift } from "@prisma/client";
 
-import type { Db as Client, DbTransaction } from "@/lib/prisma";
+import { type Db as Client, type DbTransaction, prisma } from "@/lib/prisma";
 
 import { spanOf } from "@/modules/work/hours";
 
@@ -98,4 +100,22 @@ export async function unprojectShift(
     where: { id: shift.id },
     data: { eventId: null },
   });
+}
+
+/**
+ * Puts back on the calendar every shift that isn't dropped but has lost its
+ * event (deleted from the calendar, or its feed deleted). Run by the sync
+ * loop for everyone with Work on; one query when there's nothing to do.
+ */
+export async function restoreShiftEvents(userId: string): Promise<number> {
+  const lost = await prisma.shift.findMany({
+    where: { job: { userId }, dropped: false, eventId: null },
+    include: { job: true },
+  });
+  for (const { job, ...shift } of lost) {
+    await prisma.$transaction(async (tx) =>
+      projectShift(tx, await ensureJobFeed(tx, job), shift)
+    );
+  }
+  return lost.length;
 }

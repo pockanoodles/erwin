@@ -9,7 +9,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
-import { dayIn, newDate, shiftDay } from "@/lib/date-utils";
+import { dayIn, newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -28,10 +28,10 @@ import {
   jobRow,
   jobRows,
   payPeriodAt,
+  periodRow,
   periodRows,
   spanOfDays,
   toContactRow,
-  toPeriodRow,
   workSettings,
 } from "@/modules/work/rows";
 import {
@@ -400,11 +400,6 @@ export async function listPeriods(request: NextRequest, { params }: Ctx) {
   }
 }
 
-async function periodAfter(userId: string, jobId: string, first: string) {
-  const periods = await periodRows(prisma, userId, jobId);
-  return periods?.find((p) => p.first === first) ?? null;
-}
-
 /** POST|DELETE /api/erwin/work/jobs/:id/periods/:first: marks a period's hours submitted, or takes them back. */
 export async function markPeriod(
   request: NextRequest,
@@ -422,33 +417,14 @@ export async function markPeriod(
     });
     if (!job) return notFound("job");
     if (!hasPayPeriod(job)) return badRequest("This job has no pay period");
-    const { timeZone } = await workSettings(prisma, auth.userId);
     if (payPeriodAt(job, first)?.first !== first)
       return badRequest("That day doesn't start a pay period");
     const done = submitted
       ? await submitPeriod(auth.userId, id, first)
       : await reopenPeriod(auth.userId, id, first);
     if (!done) return notFound("job");
-    const period = await periodAfter(auth.userId, id, first);
-    if (period) return NextResponse.json({ period });
-    // Older than the periods the page lists: answer with its own sums.
-    const shifts = await prisma.shift.findMany({
-      where: {
-        jobId: id,
-        start: spanOfDays(
-          { first, last: shiftDay(first, job.payPeriodDays - 1) },
-          timeZone
-        ),
-      },
-    });
     return NextResponse.json({
-      period: toPeriodRow(
-        job,
-        { first, last: shiftDay(first, job.payPeriodDays - 1) },
-        shifts,
-        timeZone,
-        null
-      ),
+      period: await periodRow(prisma, auth.userId, id, first),
     });
   } catch (error) {
     return failed("Failed to change the pay period", error);
@@ -569,7 +545,7 @@ export async function taskTimesheet(request: NextRequest, { params }: Ctx) {
     const key = parseTimesheetKey(task?.externalTaskId ?? null);
     const job = key ? await jobRow(prisma, auth.userId, key.jobId) : null;
     if (!key || !job || !job.payPeriodDays) return notFound("timesheet");
-    const period = await periodAfter(auth.userId, job.id, key.first);
+    const period = await periodRow(prisma, auth.userId, job.id, key.first);
     if (!period) return notFound("timesheet");
     const { timeZone } = await workSettings(prisma, auth.userId);
     const span = spanOfDays(period, timeZone);

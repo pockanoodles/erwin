@@ -16,6 +16,7 @@ import {
   projectShift,
   unprojectShift,
 } from "@/modules/work/feed";
+import { spanOf } from "@/modules/work/hours";
 import { toShiftRow, workSettings } from "@/modules/work/rows";
 import { reconcileTimesheets } from "@/modules/work/timesheet";
 import type { NextShift, ShiftRow } from "@/modules/work/types";
@@ -189,16 +190,25 @@ export async function deleteShift(
 /** The shift on now, or the next one within a day and a half, across every job that isn't archived. */
 export async function nextShift(userId: string): Promise<NextShift | null> {
   const now = newDate();
-  const shift = await prisma.shift.findFirst({
+  const horizon = new Date(now.getTime() + NEXT_WITHIN_MS);
+  const candidates = await prisma.shift.findMany({
     where: {
       job: { userId, archived: false },
       dropped: false,
-      start: { lt: new Date(now.getTime() + NEXT_WITHIN_MS) },
-      end: { gt: now },
+      // Worked times can sit either side of the schedule, so take either
+      // and judge each shift by the span it really runs.
+      AND: [
+        { OR: [{ start: { lt: horizon } }, { workedStart: { lt: horizon } }] },
+        { OR: [{ end: { gt: now } }, { workedEnd: { gt: now } }] },
+      ],
     },
     orderBy: { start: "asc" },
+    take: 20,
     include: { job: { select: { name: true, color: true } } },
   });
+  const shift = candidates
+    .filter((s) => spanOf(s).end > now && spanOf(s).start < horizon)
+    .sort((a, b) => spanOf(a).start.getTime() - spanOf(b).start.getTime())[0];
   if (!shift) return null;
   const { job, ...rest } = shift;
   return {

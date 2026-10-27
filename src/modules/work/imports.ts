@@ -6,9 +6,12 @@
  *
  * A source names its job by a slug ("im"), the job's `importKey`; the first
  * week from a new slug makes the job. The schedule is the truth for its
- * week: a shift it no longer lists is deleted, one it lists is written over
+ * week: a shift it no longer lists is deleted (unless it was dropped, which
+ * stays as the record of a shift given away), one it lists is written over
  * (keeping how it went: dropped, worked times, note, timesheet, and a role
- * or supervisor the source didn't send), and a new one is added. Shifts added by hand are never the import's to delete,
+ * or supervisor the source didn't send), and a new one is added. Keeping
+ * dropped ones also makes a read-back lossless: a source reads only what's
+ * still to be worked, so a week it writes back leaves dropped ones out. Shifts added by hand are never the import's to delete,
  * except that one the schedule now covers (same job, overlapping times) is
  * folded into the imported shift, since the schedule has caught up.
  */
@@ -169,6 +172,7 @@ async function importJob(
 /** What a hand-added shift had that the imported one taking its place lacks. */
 function carried(hand: Shift, into: Shift) {
   return {
+    dropped: into.dropped || hand.dropped,
     note: into.note ?? hand.note,
     workedStart: into.workedStart ?? hand.workedStart,
     workedEnd: into.workedEnd ?? hand.workedEnd,
@@ -188,7 +192,12 @@ export async function importShiftWeek(db: Db, userId: string, week: ShiftWeek) {
 
   const listed = new Set(week.shifts.map((s) => s.key));
   const stale = await db.shift.findMany({
-    where: { jobId: job.id, importKey: { not: null }, start: inWindow },
+    where: {
+      jobId: job.id,
+      importKey: { not: null },
+      dropped: false,
+      start: inWindow,
+    },
   });
   let removed = 0;
   for (const shift of stale) {

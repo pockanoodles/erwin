@@ -322,16 +322,17 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
 
     periodShifts: async (jobId, first, last) => {
       try {
+        // A day wider each side: this browser's midnight isn't the one in
+        // the person's Settings zone, which `day` is counted in.
         const range = new URLSearchParams({
-          from: startOf(first),
-          to: startOf(shiftDay(last, 1)),
+          from: startOf(shiftDay(first, -1)),
+          to: startOf(shiftDay(last, 2)),
           jobId,
         });
         const { shifts } = await json<{ shifts: ShiftRow[] }>(
           await fetch(`/api/erwin/work/shifts?${range}`)
         );
-        // The range also catches a shift that began the night before; a
-        // period counts the shifts that start in it.
+        // A period counts the shifts that start in it.
         return shifts.filter((s) => s.day >= first && s.day <= last);
       } catch {
         return null;
