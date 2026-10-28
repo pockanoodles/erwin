@@ -195,8 +195,10 @@ function HexTrack({ data }: { data: LadderPayload }) {
         <p className="er-label truncate">{heading}</p>
         <p
           className={cn(
-            "er-label flex-none transition-opacity duration-ui ease-field",
-            showLegend ? "opacity-100" : "pointer-events-none opacity-0"
+            "er-label flex-none overflow-hidden transition-[opacity,max-width] duration-ui ease-field",
+            showLegend
+              ? "max-w-[20rem] opacity-100"
+              : "pointer-events-none max-w-0 opacity-0"
           )}
           aria-hidden={!showLegend}
         >
