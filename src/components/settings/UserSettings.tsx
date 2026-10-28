@@ -1,6 +1,12 @@
-import { useSession } from "next-auth/react";
+"use client";
+
+import { useState } from "react";
+
+import { signOut, useSession } from "next-auth/react";
 import Image from "next/image";
 
+import { useTheme } from "@/components/providers/ThemeProvider";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -9,15 +15,25 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+import { cn } from "@/lib/utils";
+
 import { useSettingsStore } from "@/store/settings";
 
-import { TimeFormat, WeekStartDay } from "@/types/settings";
+import { ThemeMode, TimeFormat, WeekStartDay } from "@/types/settings";
 
 import { SettingRow, SettingsSection } from "./SettingsSection";
+
+const THEMES: { value: ThemeMode; label: string }[] = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System" },
+];
 
 export function UserSettings() {
   const { data: session } = useSession();
   const { user, updateUserSettings } = useSettingsStore();
+  const { theme, setTheme } = useTheme();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const timeFormats: { value: TimeFormat; label: string }[] = [
     { value: "12h", label: "12-hour" },
@@ -29,11 +45,8 @@ export function UserSettings() {
     { value: "monday", label: "Monday" },
   ];
 
-  // Comprehensive list of common timezones
   const timeZones = [
-    // UTC
     "UTC",
-    // North America
     "America/Anchorage",
     "America/Chicago",
     "America/Denver",
@@ -47,14 +60,12 @@ export function UserSettings() {
     "America/Toronto",
     "America/Vancouver",
     "America/Winnipeg",
-    // South America
     "America/Bogota",
     "America/Buenos_Aires",
     "America/Caracas",
     "America/Lima",
     "America/Santiago",
     "America/Sao_Paulo",
-    // Europe
     "Europe/Amsterdam",
     "Europe/Athens",
     "Europe/Berlin",
@@ -76,7 +87,6 @@ export function UserSettings() {
     "Europe/Vienna",
     "Europe/Warsaw",
     "Europe/Zurich",
-    // Asia
     "Asia/Bangkok",
     "Asia/Dubai",
     "Asia/Hong_Kong",
@@ -92,13 +102,11 @@ export function UserSettings() {
     "Asia/Singapore",
     "Asia/Taipei",
     "Asia/Tokyo",
-    // Africa
     "Africa/Cairo",
     "Africa/Casablanca",
     "Africa/Johannesburg",
     "Africa/Lagos",
     "Africa/Nairobi",
-    // Oceania
     "Australia/Adelaide",
     "Australia/Brisbane",
     "Australia/Darwin",
@@ -110,99 +118,156 @@ export function UserSettings() {
     "Pacific/Honolulu",
   ];
 
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    await signOut({ callbackUrl: "/auth/signin" });
+  };
+
   return (
-    <SettingsSection
-      title="User Settings"
-      description="Manage your personal preferences for the calendar application."
-    >
-      {session?.user && (
-        <SettingRow label="Profile" description="Your account information">
-          <div className="flex items-center space-x-3">
-            {session.user.image && (
-              <Image
-                src={session.user.image}
-                alt={session.user.name || ""}
-                width={40}
-                height={40}
-                className="rounded-full"
-              />
-            )}
-            <div>
-              <div className="font-medium">{session.user.name}</div>
-              <div className="text-sm text-muted-foreground">
-                {session.user.email}
+    <div className="space-y-10">
+      <SettingsSection
+        title="User"
+        description="How times read on your calendar, and which theme the window uses."
+      >
+        {session?.user ? (
+          <SettingRow label="Profile" description="Signed in as this account">
+            <div className="flex items-center gap-3">
+              {session.user.image ? (
+                <Image
+                  src={session.user.image}
+                  alt={session.user.name || ""}
+                  width={40}
+                  height={40}
+                  className="rounded-sm"
+                />
+              ) : null}
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">
+                  {session.user.name}
+                </div>
+                <div className="truncate text-[13px] text-muted-foreground">
+                  {session.user.email}
+                </div>
               </div>
             </div>
+          </SettingRow>
+        ) : null}
+
+        <SettingRow label="Theme" description="Light, dark, or follow the system">
+          <div
+            role="radiogroup"
+            aria-label="Theme"
+            className="grid grid-cols-3 gap-1 border border-border p-1"
+          >
+            {THEMES.map((option) => {
+              const active = theme === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setTheme(option.value)}
+                  className={cn(
+                    "h-8 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors duration-150",
+                    active
+                      ? "er-brackets bg-selected text-foreground [--bracket:var(--er-ink)]"
+                      : "text-muted-foreground hover:bg-hover hover:text-foreground"
+                  )}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
           </div>
         </SettingRow>
-      )}
 
-      <SettingRow
-        label="Time Format"
-        description="Choose how times are displayed"
-      >
-        <Select
-          value={user.timeFormat}
-          onValueChange={(value) =>
-            updateUserSettings({ timeFormat: value as TimeFormat })
-          }
+        <SettingRow
+          label="Time format"
+          description="How times are written in the calendar and tasks"
         >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {timeFormats.map((format) => (
-              <SelectItem key={format.value} value={format.value}>
-                {format.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingRow>
+          <Select
+            value={user.timeFormat}
+            onValueChange={(value) =>
+              updateUserSettings({ timeFormat: value as TimeFormat })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {timeFormats.map((format) => (
+                <SelectItem key={format.value} value={format.value}>
+                  {format.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
 
-      <SettingRow
-        label="Week Starts On"
-        description="Choose which day your week starts on"
-      >
-        <Select
-          value={user.weekStartDay}
-          onValueChange={(value) =>
-            updateUserSettings({ weekStartDay: value as WeekStartDay })
-          }
+        <SettingRow
+          label="Week starts on"
+          description="First day of the week in month and week views"
         >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {weekStarts.map((day) => (
-              <SelectItem key={day.value} value={day.value}>
-                {day.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingRow>
+          <Select
+            value={user.weekStartDay}
+            onValueChange={(value) =>
+              updateUserSettings({ weekStartDay: value as WeekStartDay })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {weekStarts.map((day) => (
+                <SelectItem key={day.value} value={day.value}>
+                  {day.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
 
-      <SettingRow
-        label="Time Zone"
-        description="Your current time zone setting"
-      >
-        <Select
-          value={user.timeZone}
-          onValueChange={(value) => updateUserSettings({ timeZone: value })}
+        <SettingRow label="Time zone" description="Used for due dates and the day boundary">
+          <Select
+            value={user.timeZone}
+            onValueChange={(value) => updateUserSettings({ timeZone: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="max-h-[300px]">
+              {timeZones.map((zone) => (
+                <SelectItem key={zone} value={zone}>
+                  {zone.replace(/_/g, " ")}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </SettingRow>
+      </SettingsSection>
+
+      {session?.user ? (
+        <SettingsSection
+          title="Session"
+          description="Sign out of this browser. Your data stays on this machine."
         >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="max-h-[300px]">
-            {timeZones.map((zone) => (
-              <SelectItem key={zone} value={zone}>
-                {zone.replace(/_/g, " ")}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </SettingRow>
-    </SettingsSection>
+          <SettingRow
+            label="Sign out"
+            description="Ends the session on this device"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void handleLogout()}
+              disabled={isLoggingOut}
+              className="font-mono text-[11px] uppercase tracking-[0.08em]"
+            >
+              {isLoggingOut ? "Signing out…" : "Sign out"}
+            </Button>
+          </SettingRow>
+        </SettingsSection>
+      ) : null}
+    </div>
   );
 }

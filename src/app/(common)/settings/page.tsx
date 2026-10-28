@@ -12,7 +12,6 @@ import { SystemSettings } from "@/components/settings/SystemSettings";
 import { TaskSyncSettings } from "@/components/settings/TaskSyncSettings";
 import { UserManagement } from "@/components/settings/UserManagement";
 import { UserSettings } from "@/components/settings/UserSettings";
-import { Card } from "@/components/ui/card";
 
 import { cn } from "@/lib/utils";
 
@@ -32,12 +31,13 @@ type SettingsTab =
   | "import-export"
   | "notifications";
 
+/** Settings as a normal page: a quiet side index and one section at a time,
+ *  using the same plate grammar as the rest of the app. */
 export default function SettingsPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
   const { initializeSettings } = useSettingsStore();
 
-  // Always initialize settings on mount
   useEffect(() => {
     initializeSettings();
   }, [initializeSettings]);
@@ -50,10 +50,9 @@ export default function SettingsPage() {
       { id: "auto-schedule", label: "Auto-Schedule" },
       { id: "task-sync", label: "Task Sync" },
       { id: "notifications", label: "Notifications" },
-      { id: "import-export", label: "Import/Export" },
+      { id: "import-export", label: "Import / Export" },
     ] as const;
 
-    // Add admin-only tabs
     if (isAdmin) {
       const adminTabs = [
         { id: "system", label: "System" },
@@ -69,12 +68,10 @@ export default function SettingsPage() {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("accounts");
 
-  // Check initial hash and handle changes
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.slice(1) as SettingsTab;
 
-      // Check if the hash is a valid tab ID, regardless of admin status
       const allPossibleTabIds: SettingsTab[] = [
         "accounts",
         "user",
@@ -93,20 +90,15 @@ export default function SettingsPage() {
       }
     };
 
-    // Handle initial hash
     handleHashChange();
-
-    // Listen for hash changes
     window.addEventListener("hashchange", handleHashChange);
     return () => window.removeEventListener("hashchange", handleHashChange);
-  }, []); // Remove tabs dependency since we're now checking against all possible tabs
+  }, []);
 
-  // Set hydrated state after mount
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  // Update hash when tab changes
   useEffect(() => {
     if (isHydrated) {
       window.location.hash = activeTab;
@@ -114,7 +106,6 @@ export default function SettingsPage() {
   }, [activeTab, isHydrated]);
 
   const renderContent = () => {
-    // Admin-only tabs
     const adminOnlyTabs = [
       "system",
       "logs",
@@ -123,22 +114,22 @@ export default function SettingsPage() {
       "admin-dashboard",
     ];
 
-    // If admin status is still loading and the active tab is admin-only, show loading state
     if (adminOnlyTabs.includes(activeTab) && isAdminLoading) {
       return (
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-          <p className="text-muted-foreground">Checking access privileges...</p>
+        <div className="flex flex-col items-start justify-center py-10">
+          <p className="er-label">Checking access…</p>
         </div>
       );
     }
 
-    // Check if the active tab is admin-only and the user is not an admin
     if (adminOnlyTabs.includes(activeTab) && !isAdmin) {
       return (
-        <div className="flex flex-col items-center justify-center p-8 text-center">
-          <h2 className="mb-4 text-2xl font-bold">Admin Access Required</h2>
-          <p className="text-muted-foreground">
-            You need administrator privileges to access this section.
+        <div className="flex flex-col items-start justify-center space-y-2 py-10">
+          <h2 className="er-display text-[13px] tracking-[0.12em] text-foreground">
+            Admin access required
+          </h2>
+          <p className="text-[13px] text-muted-foreground">
+            You need administrator privileges to open this section.
           </p>
         </div>
       );
@@ -171,12 +162,27 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="container py-6">
-      <div className="flex flex-col lg:flex-row lg:space-x-12 lg:space-y-0">
-        <aside className="lg:w-1/5">
-          <Card>
-            <nav className="space-y-1 p-1">
-              {tabs.map((tab) => (
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[72rem] flex-col px-4 py-6 md:px-8 md:py-8">
+      <header className="mb-6 flex-none space-y-1.5 md:mb-8">
+        <p className="er-label">Preferences</p>
+        <h1 className="er-display text-[clamp(1.25rem,2vw,1.5rem)] tracking-[0.08em] text-foreground">
+          Settings
+        </h1>
+        <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+          Accounts, display, calendars and the quiet switches that keep Erwin
+          pointed at your day.
+        </p>
+      </header>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row lg:gap-12">
+        <aside className="w-full flex-none lg:w-44">
+          <nav
+            aria-label="Settings sections"
+            className="flex gap-1 overflow-x-auto border-b border-border pb-px lg:flex-col lg:gap-0.5 lg:overflow-visible lg:border-b-0"
+          >
+            {tabs.map((tab) => {
+              const active = activeTab === tab.id;
+              return (
                 <a
                   key={tab.id}
                   href={`#${tab.id}`}
@@ -185,24 +191,28 @@ export default function SettingsPage() {
                     setActiveTab(tab.id as SettingsTab);
                   }}
                   className={cn(
-                    "flex w-full items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "flex h-9 flex-none items-center whitespace-nowrap px-2.5 text-[13px] transition-colors duration-150",
                     !isHydrated && "duration-0",
-                    activeTab === tab.id
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    active
+                      ? "er-brackets font-medium text-foreground [--bracket:var(--er-ink)]"
+                      : "text-muted-foreground hover:bg-hover hover:text-foreground"
                   )}
                 >
                   {tab.label}
                 </a>
-              ))}
-            </nav>
-          </Card>
+              );
+            })}
+          </nav>
         </aside>
-        <div className="mt-6 flex-1 lg:mt-0">
-          <div className="space-y-6">
-            <div className={cn("space-y-8", !isHydrated && "opacity-0")}>
-              {renderContent()}
-            </div>
+
+        <div className="min-w-0 flex-1">
+          <div
+            className={cn(
+              "er-layout-soft max-w-3xl space-y-8 transition-opacity duration-ui ease-field",
+              isHydrated ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {renderContent()}
           </div>
         </div>
       </div>

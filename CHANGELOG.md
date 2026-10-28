@@ -29,6 +29,9 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 
 ### Changed
 
+- Default module labels in the rail and catalog: Ladder is **Stats**, Courses is **School**, Work stays Work. Routes and module ids are unchanged.
+- Settings opens as a normal page from the rail (no popup). Theme and sign-out live under User. The page uses the field-kit side index and section plates instead of card chrome.
+- Window resize on Stats (and the nav rail) eases on the brand curve: day-track labels fade by measured density before they collide, and layout gaps soften instead of snapping.
 - `PATCH /api/system-settings` accepts only the real settings fields and answers 400 for a bad value, instead of passing the request body to the database.
 - Password reset email sends from the address in `EMAIL_FROM`. With `RESEND_API_KEY` set and no `EMAIL_FROM`, the server logs an error and sends nothing.
 - Docker Compose needs `POSTGRES_PASSWORD`, has no default password, and publishes Postgres and Redis on 127.0.0.1 only. The default database user and name are now `erwin`.

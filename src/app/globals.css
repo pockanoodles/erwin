@@ -530,4 +530,17 @@
     background-image: var(--er-grain);
     opacity: var(--er-grain-opacity);
   }
+
+  /* Soften gap and padding shifts while the window is being resized, so
+     layout density changes feel continuous instead of stepped. */
+  .er-layout-soft {
+    transition-property: gap, row-gap, column-gap, padding, margin;
+    transition-duration: var(--er-dur-ui);
+    transition-timing-function: var(--er-ease);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .er-layout-soft {
+      transition: none;
+    }
+  }
 }

@@ -2,7 +2,7 @@ import type { ModuleManifest } from "@/modules/types";
 
 const courses: ModuleManifest = {
   id: "courses",
-  name: "Courses",
+  name: "School",
   summary:
     "Your Canvas courses: assignments ranked by what they're worth, with grades, files and announcements.",
   defaultOn: false,
@@ -10,6 +10,8 @@ const courses: ModuleManifest = {
     href: "/courses",
     keywords: [
       "canvas",
+      "courses",
+      "school",
       "materials",
       "library",
       "syllabus",
@@ -22,7 +24,7 @@ const courses: ModuleManifest = {
   claimLabels: { CANVAS: "All Canvas work" },
   adds: [
     "Canvas assignments in Today, Focus and Tasks, ranked by their share of your grade",
-    "The Courses page, with files, grades, news and activity",
+    "The School page, with files, grades, news and activity",
     "A count of new Canvas activity in the top bar",
     "Canvas grades as proof that a goal's boss fell",
   ],

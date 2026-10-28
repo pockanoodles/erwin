@@ -14,9 +14,10 @@ import { StatSheet } from "./StatSheet";
 import { XpLog } from "./XpLog";
 
 /**
- * The Ladder: the RPG layer over Erwin, kept to one page. It never decides
- * what to do next (Today and Focus do that); it reads the work already done
- * as a character sheet for the hex, the two-month block it was done in.
+ * Stats (the Ladder module): the RPG layer over Erwin, kept to one page. It
+ * never decides what to do next (Today and Focus do that); it reads the work
+ * already done as a character sheet for the hex, the two-month block it was
+ * done in.
  */
 export function LadderPage() {
   const data = useLadderStore((s) => s.data);
@@ -63,7 +64,7 @@ export function LadderPage() {
             </Button>
           </>
         ) : (
-          <p className="text-sm text-muted-foreground">Loading the Ladder…</p>
+          <p className="text-sm text-muted-foreground">Loading Stats…</p>
         )}
       </div>
     );
@@ -72,7 +73,7 @@ export function LadderPage() {
   return (
     <div className="flex h-full flex-col overflow-y-auto xl:overflow-hidden">
       <HexBand data={data} />
-      <div className="grid flex-1 grid-cols-1 xl:min-h-0 xl:grid-cols-[minmax(0,7fr)_minmax(0,6fr)]">
+      <div className="er-layout-soft grid flex-1 grid-cols-1 xl:min-h-0 xl:grid-cols-[minmax(0,7fr)_minmax(0,6fr)]">
         <div className="border-b border-border xl:min-h-0 xl:border-b-0 xl:border-r">
           <StatSheet data={data} />
         </div>

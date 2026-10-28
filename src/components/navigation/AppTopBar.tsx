@@ -162,8 +162,8 @@ export function AppTopBar() {
             equipment, the same size on every route. */}
         <span
           className={cn(
-            "er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground",
-            route?.headingInViews && "hidden lg:inline"
+            "er-display flex-none whitespace-nowrap text-[12px] tracking-[0.14em] text-foreground transition-opacity duration-ui ease-field",
+            route?.headingInViews && "max-lg:pointer-events-none max-lg:w-0 max-lg:overflow-hidden max-lg:opacity-0 lg:opacity-100"
           )}
         >
           {route?.title ?? brand.name}
@@ -173,8 +173,8 @@ export function AppTopBar() {
           <>
             <span
               className={cn(
-                "flex flex-none",
-                route?.headingInViews && "hidden lg:flex"
+                "flex flex-none transition-opacity duration-ui ease-field",
+                route?.headingInViews && "max-lg:pointer-events-none max-lg:w-0 max-lg:overflow-hidden max-lg:opacity-0 lg:opacity-100"
               )}
             >
               <BarDivider />

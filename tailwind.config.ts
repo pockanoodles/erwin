@@ -73,6 +73,12 @@ const config: Config = {
       transitionTimingFunction: {
         field: "cubic-bezier(0.2, 0.8, 0.2, 1)",
       },
+      transitionDuration: {
+        micro: "var(--er-dur-micro)",
+        ui: "var(--er-dur-ui)",
+        enter: "var(--er-dur-enter)",
+        rail: "320ms",
+      },
       spacing: {
         /** Height of the app top bar (AppTopBar). Pages that need to size
          *  against the viewport minus the bar can use `h-[calc(100dvh-theme(spacing.topbar))]`. */

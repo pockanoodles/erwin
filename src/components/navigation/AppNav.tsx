@@ -89,7 +89,7 @@ export function AppNav({ className }: AppNavProps) {
   }, [isDrawerOpen, setDrawerOpen]);
 
   const label = cn(
-    "transition-opacity duration-200 motion-reduce:transition-none",
+    "transition-opacity duration-ui ease-field motion-reduce:transition-none",
     isNavOpen ? "opacity-100" : "opacity-0"
   );
 
@@ -164,14 +164,14 @@ export function AppNav({ className }: AppNavProps) {
           onClick={() => setDrawerOpen(false)}
           aria-hidden
           className={cn(
-            "fixed inset-0 z-40 bg-background/70 transition-opacity duration-200 motion-reduce:transition-none",
+            "fixed inset-0 z-40 bg-background/70 transition-opacity duration-ui ease-field motion-reduce:transition-none",
             isDrawerOpen ? "opacity-100" : "pointer-events-none opacity-0"
           )}
         />
         <div
           className={cn(
             "fixed bottom-0 left-0 top-topbar z-50 w-64 border-r border-border bg-sidebar",
-            "transition-transform duration-200 ease-out motion-reduce:transition-none",
+            "transition-transform duration-ui ease-field motion-reduce:transition-none",
             isDrawerOpen ? "translate-x-0" : "-translate-x-full",
             className
           )}
@@ -196,7 +196,7 @@ export function AppNav({ className }: AppNavProps) {
         // overflow-clip (not hidden): focusing the full-width Settings row must
         // never scroll the clipped rail and shove it offscreen.
         "er-grain h-full flex-none overflow-clip bg-sidebar",
-        "transition-[width] duration-300 ease-out motion-reduce:transition-none",
+        "transition-[width] duration-rail ease-field motion-reduce:transition-none",
         // The hairline is part of the rail, so it leaves with it — a border on
         // a zero-width element still paints a 1px line down the page.
         isNavOpen ? "w-rail border-r border-border" : "w-0",

@@ -1,7 +1,11 @@
 "use client";
 
+import { useRef } from "react";
+
 import { STAT_ABBREV, STAT_NAMES } from "@/lib/erwin/stats";
 import { cn } from "@/lib/utils";
+
+import { useElementWidth } from "@/hooks/use-element-width";
 
 import { useLadderStore } from "@/store/ladder";
 
@@ -9,18 +13,33 @@ import type { LadderBoss, LadderDay, LadderPayload } from "@/types/ladder";
 
 import { countdown, daysBetween, fmtXp, monthOf, shortDay, weekdayOf } from "./format";
 
+/** How much label the day track can carry without letters colliding. */
+type TrackDensity = "roomy" | "cozy" | "tight" | "dense";
+
+function trackDensity(trackWidth: number, dayCount: number): TrackDensity {
+  if (trackWidth <= 0 || dayCount <= 0) return "roomy";
+  const dayPx = trackWidth / dayCount;
+  if (dayPx < 10) return "dense";
+  if (dayPx < 16) return "tight";
+  if (dayPx < 22) return "cozy";
+  return "roomy";
+}
+
 /**
- * The hex across the top of the Ladder: which two months these are and what
- * they push, the days as a field watch's railroad track with the work done on
- * each and the bosses beneath, and the four numbers that say how it's going.
+ * The hex across the top of Stats: which two months these are and what they
+ * push, the days as a field watch's railroad track with the work done on each
+ * and the bosses beneath, and the four numbers that say how it's going.
  * Rust marks today and nothing else, because rust means "now".
+ *
+ * Density follows the track's measured width so labels fade out before they
+ * collide, instead of snapping or overlapping during a window resize.
  */
 export function HexBand({ data }: { data: LadderPayload }) {
   const { hex } = data;
   return (
     <section
       aria-label={hex.label}
-      className="grid flex-none gap-x-10 gap-y-6 border-b border-border px-4 py-5 md:px-8 md:py-6 lg:grid-cols-[13rem_minmax(0,1fr)] xl:grid-cols-[13rem_minmax(0,1fr)_15rem]"
+      className="er-layout-soft grid flex-none gap-x-8 gap-y-5 border-b border-border px-4 py-5 md:gap-x-10 md:px-8 md:py-6 lg:grid-cols-[minmax(10rem,13rem)_minmax(0,1fr)] xl:grid-cols-[minmax(10rem,13rem)_minmax(0,1fr)_minmax(12rem,15rem)]"
     >
       <Identity data={data} />
       <HexTrack data={data} />
@@ -38,7 +57,7 @@ function Identity({ data }: { data: LadderPayload }) {
       <p className="er-label">
         Hex {hex.index} of 6 · {hex.year}
       </p>
-      <h1 className="er-display mt-1.5 whitespace-nowrap text-[28px] tracking-[0.04em] text-foreground">
+      <h1 className="er-display mt-1.5 truncate text-[clamp(1.125rem,2.4vw,1.75rem)] tracking-[0.04em] text-foreground">
         {hex.months}
       </h1>
       <p className="mt-1 truncate text-[13px] text-muted-foreground" title={hex.theme || undefined}>
@@ -92,9 +111,10 @@ function Identity({ data }: { data: LadderPayload }) {
  * XP it earned. The day track above is this segment opened up, and a segment
  * is also a way to jump to that hex.
  */
-function YearRail({ data }: { data: LadderPayload }) {
+function YearRail({ data, density }: { data: LadderPayload; density: TrackDensity }) {
   const showHex = useLadderStore((s) => s.showHex);
   const most = Math.max(1, ...data.year.map((h) => h.xp));
+  const showMonths = density === "roomy" || density === "cozy";
   return (
     <div className="mt-4">
       <p className="er-label">{data.hex.year} · XP by hex</p>
@@ -103,29 +123,40 @@ function YearRail({ data }: { data: LadderPayload }) {
           const shown = h.index === data.hex.index;
           const isCurrent = data.current.year === data.hex.year && data.current.index === h.index;
           return (
-            <li key={h.index}>
+            <li key={h.index} className="min-w-0">
               <button
                 type="button"
                 onClick={() => showHex(isCurrent ? null : { year: data.hex.year, index: h.index })}
                 aria-current={shown || undefined}
                 title={`Hex ${h.index} · ${h.months} ${data.hex.year} · ${h.done} done · ${fmtXp(h.xp)} XP`}
                 className={cn(
-                  "relative flex h-7 w-full items-center justify-between gap-1 px-2 transition-colors duration-150",
+                  "relative flex h-7 w-full items-center justify-between gap-1 overflow-hidden px-1.5 transition-colors duration-150 sm:px-2",
                   shown ? "er-brackets bg-selected [--bracket:var(--er-ink)]" : "bg-surface hover:bg-hover"
                 )}
               >
-                <span className={cn("font-mono text-[10px] uppercase tracking-[0.1em]", shown ? "text-foreground" : "text-muted-foreground")}>
-                  <span className="hidden sm:inline">{h.months}</span>
-                  <span className="sm:hidden">{h.index}</span>
+                <span
+                  className={cn(
+                    "min-w-0 truncate font-mono text-[10px] uppercase tracking-[0.1em] transition-opacity duration-ui ease-field",
+                    shown ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {showMonths ? h.months : h.index}
                 </span>
-                <span className="flex items-center gap-1.5 font-mono text-[11px] tabular-nums text-foreground">
-                  {h.state === "future" ? "" : h.xp > 0 ? fmtXp(h.xp) : <span className="text-muted-foreground">—</span>}
+                <span className="flex flex-none items-center gap-1 font-mono text-[11px] tabular-nums text-foreground sm:gap-1.5">
+                  <span
+                    className={cn(
+                      "transition-opacity duration-ui ease-field",
+                      density === "dense" ? "opacity-0" : "opacity-100"
+                    )}
+                  >
+                    {h.state === "future" ? "" : h.xp > 0 ? fmtXp(h.xp) : <span className="text-muted-foreground">—</span>}
+                  </span>
                   {isCurrent ? <span aria-label="now" className="h-1 w-1 flex-none rounded-full bg-rust" /> : null}
                 </span>
                 {h.xp > 0 ? (
                   <span
                     aria-hidden
-                    className="absolute bottom-0 left-0 h-[2px] bg-foreground/70"
+                    className="absolute bottom-0 left-0 h-[2px] bg-foreground/70 transition-[width] duration-ui ease-field"
                     style={{ width: `${(h.xp / most) * 100}%` }}
                   />
                 ) : null}
@@ -140,6 +171,9 @@ function YearRail({ data }: { data: LadderPayload }) {
 
 function HexTrack({ data }: { data: LadderPayload }) {
   const { hex, days, today } = data;
+  const trackRef = useRef<HTMLDivElement>(null);
+  const trackWidth = useElementWidth(trackRef);
+  const density = trackDensity(trackWidth, days.length);
   const columns = { gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` };
   const most = Math.max(3, ...days.map((d) => d.done));
   const bossesOn = new Map<string, LadderBoss[]>();
@@ -152,23 +186,40 @@ function HexTrack({ data }: { data: LadderPayload }) {
         ? `${hex.days} days · ended ${shortDay(hex.last)}`
         : `${hex.days} days · starts ${shortDay(hex.first)}`;
 
+  const showMonths = density === "roomy" || density === "cozy";
+  const showLegend = density === "roomy";
+
   return (
-    <div className="min-w-0">
+    <div ref={trackRef} className="min-w-0">
       <div className="flex items-baseline justify-between gap-4">
-        <p className="er-label">{heading}</p>
-        <p className="er-label hidden sm:block">
+        <p className="er-label truncate">{heading}</p>
+        <p
+          className={cn(
+            "er-label flex-none transition-opacity duration-ui ease-field",
+            showLegend ? "opacity-100" : "pointer-events-none opacity-0"
+          )}
+          aria-hidden={!showLegend}
+        >
           Tasks done each day · <span className="text-foreground">◆</span> boss
         </p>
       </div>
 
-      {/* Month names sit over the first day of each month. */}
-      <div className="mt-3 grid" style={columns} aria-hidden>
+      {/* Month names sit over the first day of each month; they fade before
+          they would collide with a neighbour when the track is tight. */}
+      <div
+        className={cn(
+          "mt-3 grid overflow-hidden transition-opacity duration-ui ease-field",
+          showMonths ? "opacity-100" : "opacity-0"
+        )}
+        style={columns}
+        aria-hidden={!showMonths}
+      >
         {days.map((d, i) =>
           i === 0 || d.day.endsWith("-01") ? (
             <span
               key={d.day}
-              className="font-mono text-[10px] uppercase leading-none tracking-[0.12em] text-muted-foreground"
-              style={{ gridColumn: `${i + 1} / span 6` }}
+              className="truncate font-mono text-[10px] uppercase leading-none tracking-[0.12em] text-muted-foreground"
+              style={{ gridColumn: `${i + 1} / span ${Math.min(4, days.length - i)}` }}
             >
               {monthOf(d.day)}
             </span>
@@ -178,11 +229,18 @@ function HexTrack({ data }: { data: LadderPayload }) {
 
       <ol className="mt-1.5 grid" style={columns} aria-label="Days of the hex">
         {days.map((d) => (
-          <TrackDay key={d.day} day={d} today={today} most={most} bosses={bossesOn.get(d.day) ?? []} />
+          <TrackDay
+            key={d.day}
+            day={d}
+            today={today}
+            most={most}
+            bosses={bossesOn.get(d.day) ?? []}
+            density={density}
+          />
         ))}
       </ol>
 
-      <YearRail data={data} />
+      <YearRail data={data} density={density} />
     </div>
   );
 }
@@ -192,11 +250,13 @@ function TrackDay({
   today,
   most,
   bosses,
+  density,
 }: {
   day: LadderDay;
   today: string;
   most: number;
   bosses: LadderBoss[];
+  density: TrackDensity;
 }) {
   const setGoalDialog = useLadderStore((s) => s.setGoalDialog);
   const isToday = day.day === today;
@@ -204,7 +264,13 @@ function TrackDay({
   const monthStart = day.day.endsWith("-01");
   const monday = weekdayOf(day.day) === 1;
   // A Monday's number beside "Today" would print over it.
-  const label = isToday ? "Today" : monday && Math.abs(daysBetween(today, day.day)) > 2 ? Number(day.day.slice(8, 10)) : null;
+  const wantNumber =
+    density !== "dense" &&
+    density !== "tight" &&
+    !isToday &&
+    monday &&
+    Math.abs(daysBetween(today, day.day)) > 2;
+  const dayNumber = wantNumber ? Number(day.day.slice(8, 10)) : null;
   const facts = [shortDay(day.day), `${day.done} done`, day.xp > 0 ? `${fmtXp(day.xp)} XP` : null]
     .filter(Boolean)
     .join(" · ");
@@ -215,7 +281,10 @@ function TrackDay({
       <span className="flex h-10 w-full items-end justify-center">
         {day.done > 0 ? (
           <span
-            className={cn("w-[3px] sm:w-1", isToday ? "bg-rust" : "bg-foreground/80")}
+            className={cn(
+              "w-[3px] transition-[height,background-color] duration-ui ease-field sm:w-1",
+              isToday ? "bg-rust" : "bg-foreground/80"
+            )}
             style={{ height: `${Math.max(14, (day.done / most) * 100)}%` }}
           />
         ) : null}
@@ -225,6 +294,7 @@ function TrackDay({
       <span className="flex h-3 w-full items-end justify-center border-b border-line-strong">
         <span
           className={cn(
+            "transition-[height,background-color] duration-ui ease-field",
             isToday ? "h-3 w-[2px] bg-rust" : "w-px",
             !isToday && (monthStart ? "h-3" : monday ? "h-2" : "h-1"),
             !isToday && (gone ? "bg-ink-faint" : "bg-line-strong")
@@ -232,16 +302,40 @@ function TrackDay({
         />
       </span>
       {isToday ? (
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[52px] w-[2px] bg-rust/70" />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 mx-auto h-[52px] w-[2px] bg-rust/70 transition-opacity duration-ui ease-field"
+        />
       ) : null}
 
       <span
         className={cn(
-          "mt-1 flex h-2.5 w-full justify-center whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.08em]",
-          isToday ? "font-semibold text-rust-text" : "text-muted-foreground"
+          "relative mt-1 flex h-2.5 w-full justify-center whitespace-nowrap font-mono text-[9px] uppercase leading-none tracking-[0.08em]",
+          "transition-opacity duration-ui ease-field",
+          isToday ? "font-semibold text-rust-text" : "overflow-hidden text-muted-foreground"
         )}
       >
-        {label}
+        {isToday ? (
+          <span
+            className={cn(
+              "absolute left-1/2 -translate-x-1/2 transition-opacity duration-ui ease-field",
+              // "Today" is wider than a cozy day column; keep it only when the
+              // track is roomy enough to print the whole word.
+              density === "roomy" ? "opacity-100" : "opacity-0"
+            )}
+          >
+            Today
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "transition-opacity duration-ui ease-field",
+              dayNumber !== null ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {dayNumber ?? ""}
+          </span>
+        )}
       </span>
 
       {/* Bosses dated that day. */}
@@ -319,9 +413,9 @@ function Readouts({ data }: { data: LadderPayload }) {
     <div className="min-w-0 lg:col-span-2 xl:col-span-1">
       <dl className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4 xl:grid-cols-2">
         {readouts.map((r) => (
-          <div key={r.label}>
-            <dt className="er-label">{r.label}</dt>
-            <dd className="er-display mt-1.5 text-[22px] tabular-nums text-foreground">
+          <div key={r.label} className="min-w-0">
+            <dt className="er-label truncate">{r.label}</dt>
+            <dd className="er-display mt-1.5 truncate text-[clamp(1.125rem,2vw,1.375rem)] tabular-nums text-foreground">
               {r.value}
               {/* Michroma's % is a stylised glyph that reads as "o/o"; the mono one reads as percent. */}
               {r.unit ? <span className="ml-0.5 font-mono text-[15px]">{r.unit}</span> : null}
