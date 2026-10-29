@@ -7,7 +7,7 @@ import { brand } from "./brand";
  * management) so Erwin behaves like every other app on the machine; the only
  * additions are Settings in the app menu and help links.
  */
-export function buildMenu(actions: { openSettings: () => void; openLogs: () => void }): Menu {
+export function buildMenu(actions: { openSettings: () => void; openLogs: () => void; openBackups: () => void }): Menu {
   const isMac = process.platform === "darwin";
   const settings: MenuItemConstructorOptions = {
     label: isMac ? "Settings…" : "Settings",
@@ -61,6 +61,7 @@ export function buildMenu(actions: { openSettings: () => void; openLogs: () => v
         { label: `${brand.name} website`, click: () => void shell.openExternal(brand.siteUrl) },
         { label: "Report a problem", click: () => void shell.openExternal(brand.issuesUrl) },
         { type: "separator" },
+        { label: "Show backups", click: actions.openBackups },
         { label: "Show logs", click: actions.openLogs },
       ],
     },

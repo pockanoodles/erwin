@@ -43,4 +43,6 @@ export type RuntimeToMain =
   | { type: "progress"; step: "database" | "migrations" | "server" }
   | { type: "ready"; port: number }
   | { type: "failed"; message: string }
-  | { type: "stopped" };
+  | { type: "stopped" }
+  /** A backup was marked to restore: stop the runtime and start it again. */
+  | { type: "restart" };

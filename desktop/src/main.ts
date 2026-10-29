@@ -90,7 +90,16 @@ async function onReady(): Promise<void> {
   logStream = fs.createWriteStream(path.join(p.logs, "runtime.log"), { flags: "a" });
   log(`--- ${brand.name} ${app.getVersion()} starting on ${process.platform} ${process.arch}`);
 
-  Menu.setApplicationMenu(buildMenu({ openSettings: () => navigate("/settings"), openLogs: () => shell.openPath(p.logs) }));
+  Menu.setApplicationMenu(
+    buildMenu({
+      openSettings: () => navigate("/settings"),
+      openLogs: () => shell.openPath(p.logs),
+      openBackups: () => {
+        fs.mkdirSync(path.join(p.userData, "backups"), { recursive: true });
+        return shell.openPath(path.join(p.userData, "backups"));
+      },
+    })
+  );
   ipcMain.handle("erwin:boot:restart", () => restartRuntime());
   ipcMain.handle("erwin:boot:open-logs", () => shell.openPath(p.logs));
 
@@ -187,6 +196,10 @@ function startRuntime(): void {
         void showFailure(message.message);
         break;
       case "stopped":
+        break;
+      case "restart":
+        log("runtime asked for a restart to restore a backup");
+        void restartRuntime();
         break;
     }
   });

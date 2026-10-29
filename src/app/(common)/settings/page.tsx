@@ -7,6 +7,7 @@ import {
   type IntegrationStatus,
 } from "@/components/settings/AccountManager";
 import { AutoScheduleSettings } from "@/components/settings/AutoScheduleSettings";
+import { BackupSettings } from "@/components/settings/BackupSettings";
 import { CalendarSettings } from "@/components/settings/CalendarSettings";
 import { ImportExportSettings } from "@/components/settings/ImportExportSettings";
 import { LogViewer } from "@/components/settings/LogViewer";
@@ -62,7 +63,11 @@ export default function SettingsPage() {
     ] as const;
 
     if (desktop) {
-      const local = baseTabs.filter((tab) => tab.id !== "task-sync");
+      const local = baseTabs
+        .filter((tab) => tab.id !== "task-sync")
+        .map((tab) =>
+          tab.id === "import-export" ? { ...tab, label: "Backups" } : tab
+        );
       return isAdmin ? [...local, { id: "logs", label: "Logs" } as const] : local;
     }
 
@@ -165,7 +170,13 @@ export default function SettingsPage() {
       case "user-management":
         return <UserManagement />;
       case "import-export":
-        return <ImportExportSettings />;
+        // BackupSettings renders only in the desktop app.
+        return (
+          <div className="space-y-12">
+            <BackupSettings />
+            <ImportExportSettings />
+          </div>
+        );
       default:
         return null;
     }

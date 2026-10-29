@@ -253,6 +253,8 @@ Password reset email needs `RESEND_API_KEY` and `EMAIL_FROM`, an address on a do
 
 Background sync runs on a timer in the `worker` service, every 15 minutes by default (`ERWIN_BACKGROUND_SYNC_INTERVAL_MS`). A single container can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same loop inside the app. Run one or the other, because running both syncs everything twice.
 
+Back up the database yourself, because a server keeps no copies of its own. `docker compose exec db pg_dump -U erwin -Fc erwin > erwin-$(date +%F).dump` makes one, `pg_restore` puts it back, and `ERWIN_SECRET_KEY` has to travel with it.
+
 ## On a phone
 
 On a phone, Erwin is the same web app with a layout for small screens and a bottom bar. Open it in the browser and add it to your home screen (in Safari, Share, then Add to Home Screen).
@@ -322,6 +324,8 @@ In the desktop app, Canvas, CalDAV and iCal links connect today. Google and Outl
 ## How the desktop app works
 
 The desktop app is Electron around the same Next.js server. On launch it opens a PGlite database in the app's data folder, applies the migrations, saves a copy of the database before any migration that changes it, and serves it over the Postgres wire protocol, so the app's Prisma client uses it exactly as it uses Postgres on a server. The server listens on the loopback interface only, signs the one local user in with a token that changes every launch, and runs background sync on a timer. [`DATAFLOW.md`](DATAFLOW.md) lists what leaves your machine and why.
+
+It keeps its own backups in the data folder: one a day while it's open (14 kept), one before any migration that changes the database (5 kept), and one whenever you press Back up now in Settings (10 kept). Help, Show backups opens the folder, and Settings, Backups restores one: the app restarts into that copy and keeps the database it replaced beside it. The copies stay on the same disk, so copy the folder somewhere else now and then.
 
 ## Development
 
