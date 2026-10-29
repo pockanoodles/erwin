@@ -26,6 +26,7 @@ const KIND_LABEL: Record<DesktopBackupKind, string> = {
   manual: "By hand",
 };
 
+/** Rows shown before "Show all"; every kept copy stays one click away. */
 const SHOWN = 12;
 
 function size(bytes: number): string {
@@ -46,6 +47,7 @@ export function BackupSettings() {
   const [working, setWorking] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [restarting, setRestarting] = useState(false);
+  const [showAll, setShowAll] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -146,7 +148,7 @@ export function BackupSettings() {
           <p className="text-[13px] text-muted-foreground">Nothing to restore yet.</p>
         ) : (
           <ul className="border-t border-border">
-            {backups.slice(0, SHOWN).map((backup) => (
+            {(showAll ? backups : backups.slice(0, SHOWN)).map((backup) => (
               <li
                 key={backup.name}
                 className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-2"
@@ -193,6 +195,18 @@ export function BackupSettings() {
                 )}
               </li>
             ))}
+            {!showAll && backups.length > SHOWN ? (
+              <li className="py-2">
+                <Button
+                  size="sm"
+                  variant="quiet"
+                  onClick={() => setShowAll(true)}
+                  className="font-mono text-[11px] uppercase tracking-[0.08em]"
+                >
+                  Show all {backups.length}
+                </Button>
+              </li>
+            ) : null}
           </ul>
         )}
       </SettingRow>
