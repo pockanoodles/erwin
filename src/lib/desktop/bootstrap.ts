@@ -24,7 +24,7 @@ import { prisma } from "@/lib/prisma";
 const LOG_SOURCE = "DesktopBootstrap";
 
 /** `.invalid` is reserved (RFC 2606): this address can never receive mail. */
-export const DESKTOP_USER_EMAIL = "local@erwin.invalid";
+export const DESKTOP_USER_EMAIL = "local@sigwald.invalid";
 
 export async function ensureDesktopUser() {
   const existing =
@@ -39,7 +39,7 @@ export async function ensureDesktopUser() {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: process.env.ERWIN_DESKTOP_USER_NAME || "You",
+        name: process.env.SIGWALD_DESKTOP_USER_NAME || "You",
         email: DESKTOP_USER_EMAIL,
         password: randomBytes(32).toString("base64url"),
       }),
@@ -64,9 +64,9 @@ export async function ensureDesktopUser() {
  * are only right for some of the people who download the app.
  */
 async function applyMachineDefaults(userId: string): Promise<void> {
-  const timeZone = process.env.ERWIN_DESKTOP_TIME_ZONE;
-  const hourCycle = process.env.ERWIN_DESKTOP_HOUR_CYCLE;
-  const firstDay = process.env.ERWIN_DESKTOP_FIRST_DAY;
+  const timeZone = process.env.SIGWALD_DESKTOP_TIME_ZONE;
+  const hourCycle = process.env.SIGWALD_DESKTOP_HOUR_CYCLE;
+  const firstDay = process.env.SIGWALD_DESKTOP_FIRST_DAY;
 
   await prisma.userSettings.update({
     where: { userId },

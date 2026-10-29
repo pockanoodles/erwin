@@ -345,7 +345,7 @@ function EmptyState({
     <div className="max-w-xl space-y-5 p-6 md:p-10">
       <p className="er-label">No routines yet</p>
       <p className="text-lg leading-relaxed text-foreground">
-        Add the workouts you repeat. Give one a schedule and Erwin puts it in
+        Add the workouts you repeat. Give one a schedule and Sigwald puts it in
         Today when it&apos;s due, with what you lifted last time.
       </p>
       <Button onClick={onAdd}>Add routine</Button>

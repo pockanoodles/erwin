@@ -7,7 +7,7 @@ import { metadata as baseMetadata } from "./metadata";
 
 /**
  * Equipment plate (brand/BRAND.md § Type). next/font fetches these at build
- * time and serves them from the app itself, so Erwin makes no font request
+ * time and serves them from the app itself, so Sigwald makes no font request
  * to anyone at run time, the desktop app included.
  */
 const display = Michroma({

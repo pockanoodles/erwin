@@ -7,7 +7,7 @@
 // The desktop build (`npm run build:desktop`) gets a third directory for the
 // same reason: it must never replace the build a running server is using.
 const distDir =
-  process.env.ERWIN_DIST_DIR ||
+  process.env.SIGWALD_DIST_DIR ||
   (process.env.NODE_ENV === "development" ? ".next-dev" : ".next");
 
 /** @type {import('next').NextConfig} */
@@ -36,7 +36,7 @@ const nextConfig = {
   // Standalone output is only needed for the minimal Docker image. Native
   // `next start` (the daily-driver run path) needs a full build, and using
   // standalone with `next start` is unsupported — so gate it behind a flag.
-  output: process.env.ERWIN_STANDALONE === "1" ? "standalone" : undefined,
+  output: process.env.SIGWALD_STANDALONE === "1" ? "standalone" : undefined,
 
   // `@/lib/logger` is one facade used from both sides: it decides at runtime
   // whether to write to the database or POST to /api/logs/batch. The bundler
@@ -71,6 +71,13 @@ const nextConfig = {
         browser: "./src/lib/logger/server.browser.ts",
       },
     },
+  },
+
+  // The product was called Erwin until 1.0. ops still calls /api/erwin/* and
+  // reads each Focus task's `erwin` field (sigwald/focus/queue/route.ts), so
+  // both answer until ops moves to the new names. Delete both together then.
+  async rewrites() {
+    return [{ source: "/api/erwin/:path*", destination: "/api/sigwald/:path*" }];
   },
 };
 

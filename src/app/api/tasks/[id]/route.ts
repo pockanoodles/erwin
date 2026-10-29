@@ -304,7 +304,7 @@ export async function PUT(
 
     // Legacy single-goal setter: `goalId` in the payload replaces the task's
     // goal links wholesale (null clears them) and pins the task, so the vault's
-    // goal rules stop refiling it. Multi-link callers use /api/erwin/task-links.
+    // goal rules stop refiling it. Multi-link callers use /api/sigwald/task-links.
     // The task modal echoes the goal it showed on every save, so a goalId the
     // task already has is not a choice — unless the caller also asks to pin
     // (the Goal column choosing the goal the rules already gave it).

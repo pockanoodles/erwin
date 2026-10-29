@@ -5,7 +5,7 @@ export const dynamic = "force-static";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
-    { url: `${SITE}/erwin/`, alternates: { languages: { ja: `${SITE}/erwin/ja/` } } },
-    { url: `${SITE}/erwin/ja/`, alternates: { languages: { en: `${SITE}/erwin/` } } },
+    { url: `${SITE}/sigwald/`, alternates: { languages: { ja: `${SITE}/sigwald/ja/` } } },
+    { url: `${SITE}/sigwald/ja/`, alternates: { languages: { en: `${SITE}/sigwald/` } } },
   ];
 }

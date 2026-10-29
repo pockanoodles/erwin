@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Regenerates every icon Erwin ships from the masters in brand/.
+ * Regenerates every icon Sigwald ships from the masters in brand/.
  *
  *   node scripts/brand-assets.mjs
  *

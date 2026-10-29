@@ -2,7 +2,7 @@
 
 // The landing page, both languages. Composition is ui-master Design 03 (the
 // spacing Mahoraga's page uses too): a corner-anchored hero with the dial in
-// the middle, then one idea per screen. The parts are Erwin's own field kit
+// the middle, then one idea per screen. The parts are Sigwald's own field kit
 // (brand/BRAND.md): rust plates for the one main action per screen, corner
 // brackets for frames, Michroma for the statement and readouts.
 import { useEffect, useState } from "react";
@@ -36,14 +36,14 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
   const liveForMine = channels.some((c) => c.group === group && c.live && c.href);
   const ctaLabel = group === "mac" ? t.hero.cta.mac : group === "windows" ? t.hero.cta.windows : group === "linux" ? t.hero.cta.linux : t.hero.cta.other;
   const ctaHref = liveForMine ? RELEASES_URL : "#install";
-  const other = locale === "en" ? { href: "/erwin/ja/", label: "日本語" } : { href: "/erwin/", label: "English" };
+  const other = locale === "en" ? { href: "/sigwald/ja/", label: "日本語" } : { href: "/sigwald/", label: "English" };
 
   return (
     <>
       <header className="bar">
-        <a href={locale === "en" ? "/erwin/" : "/erwin/ja/"} className="bar__brand" aria-label={t.nav.label}>
+        <a href={locale === "en" ? "/sigwald/" : "/sigwald/ja/"} className="bar__brand" aria-label={t.nav.label}>
           <Mark size={26} />
-          <span>ERWIN</span>
+          <span>SIGWALD</span>
         </a>
         <nav className="bar__nav" aria-label={t.nav.label}>
           <a href="#how">{t.nav.how}</a>

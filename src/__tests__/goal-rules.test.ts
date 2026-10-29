@@ -1,4 +1,4 @@
-import { claimKeys, planLinks } from "@/lib/erwin/goal-rules";
+import { claimKeys, planLinks } from "@/lib/sigwald/goal-rules";
 
 const goal = (id: string, externalId: string | null, taskSources: string[] = [], extra = {}) => ({
   id,
@@ -57,7 +57,7 @@ describe("planLinks", () => {
     expect(plan).toEqual({ create: [], stale: [] });
   });
 
-  it("lets a goal made in Erwin claim a course or a project", () => {
+  it("lets a goal made in Sigwald claim a course or a project", () => {
     const marketing = goal("mktg", null, ["course:c-mktg"]);
     const thesis = goal("thesis", null, ["project:p-thesis"]);
     const plan = planLinks([marketing, thesis], new Map(), [

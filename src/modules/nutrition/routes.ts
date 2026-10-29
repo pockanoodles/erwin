@@ -1,6 +1,6 @@
 /**
  * The Nutrition module's HTTP handlers. The route files under
- * src/app/api/erwin/nutrition only forward here, so the module's server code
+ * src/app/api/sigwald/nutrition only forward here, so the module's server code
  * lives in one folder. Every handler answers 409 module_off while Nutrition
  * is off.
  *
@@ -147,7 +147,7 @@ function invalid(error: z.ZodError) {
 const notFound = (what: string) =>
   NextResponse.json({ error: `No such ${what}` }, { status: 404 });
 
-/** GET /api/erwin/nutrition/day[?day=2026-10-25]: a day's entries and the targets. */
+/** GET /api/sigwald/nutrition/day[?day=2026-10-25]: a day's entries and the targets. */
 export async function getDay(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -180,7 +180,7 @@ export async function getDay(request: NextRequest) {
 }
 
 /**
- * POST /api/erwin/nutrition/entries
+ * POST /api/sigwald/nutrition/entries
  *   { day, servings, foodId }                  a saved food
  *   { day, servings, food: {...}, save? }      one typed in, saved too if asked
  *
@@ -244,7 +244,7 @@ export async function createEntry(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/nutrition/entries/:id: changes servings, amounts, name or day. */
+/** PATCH /api/sigwald/nutrition/entries/:id: changes servings, amounts, name or day. */
 export async function updateEntry(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -271,7 +271,7 @@ export async function updateEntry(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/erwin/nutrition/entries/:id */
+/** DELETE /api/sigwald/nutrition/entries/:id */
 export async function deleteEntry(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -287,7 +287,7 @@ export async function deleteEntry(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/nutrition/foods[?archived=1]: saved foods, the usual first. */
+/** GET /api/sigwald/nutrition/foods[?archived=1]: saved foods, the usual first. */
 export async function listFoods(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -306,7 +306,7 @@ export async function listFoods(request: NextRequest) {
   }
 }
 
-/** POST /api/erwin/nutrition/foods: saves a food. */
+/** POST /api/sigwald/nutrition/foods: saves a food. */
 export async function createFood(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -322,7 +322,7 @@ export async function createFood(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/nutrition/foods/:id: edits, archives or restores a food. What's already eaten keeps its own amounts. */
+/** PATCH /api/sigwald/nutrition/foods/:id: edits, archives or restores a food. What's already eaten keeps its own amounts. */
 export async function updateFood(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -344,7 +344,7 @@ export async function updateFood(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** PUT /api/erwin/nutrition/targets { calories, protein, carbs, fat }: null stops tracking one. */
+/** PUT /api/sigwald/nutrition/targets { calories, protein, carbs, fat }: null stops tracking one. */
 export async function putTargets(request: NextRequest) {
   try {
     const auth = await authorize(request);

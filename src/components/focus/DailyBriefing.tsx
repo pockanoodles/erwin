@@ -94,7 +94,7 @@ export function DailyBriefing({
                   className="grid w-full grid-cols-[2rem_minmax(0,1fr)_auto] items-baseline gap-3 py-2.5 text-left text-sm transition-colors hover:bg-hover"
                   onClick={() => {
                     if (typeof window !== "undefined") {
-                      sessionStorage.setItem("erwin-focus-boost", t.id);
+                      sessionStorage.setItem("sigwald-focus-boost", t.id);
                     }
                   }}
                 >

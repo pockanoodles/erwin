@@ -1,4 +1,4 @@
-// Copies Erwin's staged server into the packed app, after packing and before
+// Copies Sigwald's staged server into the packed app, after packing and before
 // signing. It cannot go through extraResources: electron-builder applies the
 // repository's .gitignore to those copies, which drops node_modules, and the
 // server cannot start without its own (Next's runtime, Prisma's engine).

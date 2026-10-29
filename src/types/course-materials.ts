@@ -1,4 +1,4 @@
-/** Client shapes for the Canvas materials APIs (src/app/api/erwin/{tasks,courses,materials}). */
+/** Client shapes for the Canvas materials APIs (src/app/api/sigwald/{tasks,courses,materials}). */
 
 export type MaterialKind =
   | "FILE"
@@ -79,7 +79,7 @@ export interface LibraryMaterial extends MaterialSummary {
   parentId: string | null;
   /** New or changed since it was last opened. */
   unseen: boolean;
-  /** The Erwin task behind an assignment, quiz or discussion row. */
+  /** The Sigwald task behind an assignment, quiz or discussion row. */
   task: { id: string; dueDate: string | null; status: string } | null;
   /** The soonest open task this material is linked to. */
   nextTask: { id: string; title: string; dueDate: string | null } | null;

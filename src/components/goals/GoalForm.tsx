@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
-import { suggestProof } from "@/lib/erwin/boss-proof";
-import { STAT_ABBREV, STAT_KEYS, type StatKey } from "@/lib/erwin/stats";
+import { suggestProof } from "@/lib/sigwald/boss-proof";
+import { STAT_ABBREV, STAT_KEYS, type StatKey } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import type { ClaimOption } from "@/modules/types";
@@ -28,7 +28,7 @@ export interface GoalFormValues {
   status: string;
 }
 
-/** GET /api/erwin/goals/sources: what a goal can claim and a boss can name as proof. */
+/** GET /api/sigwald/goals/sources: what a goal can claim and a boss can name as proof. */
 export interface GoalSources {
   /** Whole task sources that have work in them ("All Canvas work"). */
   sources: ClaimOption[];
@@ -104,7 +104,7 @@ function Chip({ on, onClick, title, children }: { on: boolean; onClick: () => vo
   );
 }
 
-/** The form for adding or editing a goal made in Erwin. */
+/** The form for adding or editing a goal made in Sigwald. */
 export function GoalForm({
   initialValues,
   submitLabel,

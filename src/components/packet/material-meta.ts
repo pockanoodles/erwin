@@ -48,17 +48,17 @@ export function sizeLabel(bytes: number | null): string | null {
 
 export interface OpenTarget {
   href: string;
-  /** Leaves Erwin (Canvas or the open web). */
+  /** Leaves Sigwald (Canvas or the open web). */
   external: boolean;
 }
 
 /**
  * Where a material opens. A cached file opens its local copy and a page opens
- * in the library — both skip the Canvas login. Anything Erwin couldn't
+ * in the library — both skip the Canvas login. Anything Sigwald couldn't
  * mirror (locked, oversized, publisher tools) falls back to Canvas.
  */
 export function openTarget(m: MaterialSummary): OpenTarget | null {
-  if (m.kind === "FILE" && m.cached) return { href: `/api/erwin/materials/${m.id}/file`, external: false };
+  if (m.kind === "FILE" && m.cached) return { href: `/api/sigwald/materials/${m.id}/file`, external: false };
   if (m.kind === "PAGE") return { href: `/courses?m=${m.id}`, external: false };
   return m.htmlUrl ? { href: m.htmlUrl, external: true } : null;
 }

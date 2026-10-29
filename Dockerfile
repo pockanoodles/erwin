@@ -33,7 +33,7 @@ RUN test -f src/components/focus/FocusMode.tsx \
 # Generate the Prisma client first — `npm ci --ignore-scripts` skips the
 # postinstall generate, and `next build` type-checks against the client.
 RUN npm run prisma:generate
-RUN ERWIN_STANDALONE=1 npm run build
+RUN SIGWALD_STANDALONE=1 npm run build
 
 # Production stage
 FROM base AS production

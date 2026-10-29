@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       // Google and Outlook sign-in can't finish there (it opens in a browser
       // without the app's session), and accounts for other people mean
       // nothing, so Settings leaves both out.
-      desktop: process.env.ERWIN_RUNTIME === "desktop",
+      desktop: process.env.SIGWALD_RUNTIME === "desktop",
     });
   } catch (error) {
     logger.error(

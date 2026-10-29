@@ -171,7 +171,7 @@ export function TaskModal({
   useEffect(() => {
     if (!isOpen || !ladderOn) return;
     let cancelled = false;
-    fetch("/api/erwin/goals")
+    fetch("/api/sigwald/goals")
       .then((res) => (res.ok ? res.json() : []))
       .then((json: { id: string; title: string }[]) => {
         if (!cancelled) setGoals(json);

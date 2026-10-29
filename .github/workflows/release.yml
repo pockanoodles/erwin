@@ -1,4 +1,4 @@
-# Release pipeline for Erwin. The runbook is packaging/README.md.
+# Release pipeline for Sigwald. The runbook is packaging/README.md.
 #
 # Push a tag vX.Y.Z (it must match the version in desktop/package.json) and this
 # builds every package, drafts a GitHub Release with the files and
@@ -182,7 +182,7 @@ jobs:
       # electron-builder 26 skips signing when it finds no identity, and Apple
       # silicon will not run an unsigned app. Identity "-" asks for an ad-hoc
       # signature. Hardened runtime goes off with it, because electron-builder
-      # warns that it can stop an unsigned app from launching. erwinBuild=adhoc
+      # warns that it can stop an unsigned app from launching. sigwaldBuild=adhoc
       # turns the in-app updater off (desktop/src/updater.ts): Squirrel.Mac
       # can't update an ad-hoc signed app.
       - name: Build DMG and zip (unsigned)
@@ -190,7 +190,7 @@ jobs:
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run dist -- --mac dmg zip --arm64 --x64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false -c.extraMetadata.erwinBuild=adhoc
+        run: npm run dist -- --mac dmg zip --arm64 --x64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false -c.extraMetadata.sigwaldBuild=adhoc
 
       # The x64 app is packed on an arm64 runner. This fails the job if the
       # staged Prisma engines do not cover both arches.
@@ -212,8 +212,8 @@ jobs:
               *) echo "::error::$found is built for $archs, expected $want."; fail=1 ;;
             esac
           }
-          check desktop/release/mac/Erwin.app libquery_engine-darwin.dylib.node x86_64
-          check desktop/release/mac-arm64/Erwin.app libquery_engine-darwin-arm64.dylib.node arm64
+          check desktop/release/mac/Sigwald.app libquery_engine-darwin.dylib.node x86_64
+          check desktop/release/mac-arm64/Sigwald.app libquery_engine-darwin-arm64.dylib.node arm64
           exit "$fail"
 
       - name: Upload
@@ -266,13 +266,13 @@ jobs:
         if: needs.plan.outputs.win_sign == 'true'
         env:
           WIN_CERT_BASE64: ${{ secrets.WIN_CSC_LINK }}
-        run: printf '%s' "$WIN_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/erwin-win.pfx"
+        run: printf '%s' "$WIN_CERT_BASE64" | base64 --decode > "$RUNNER_TEMP/sigwald-win.pfx"
 
       - name: Build the installer (signed)
         if: needs.plan.outputs.win_sign == 'true'
         working-directory: desktop
         env:
-          WIN_CSC_LINK: ${{ runner.temp }}/erwin-win.pfx
+          WIN_CSC_LINK: ${{ runner.temp }}/sigwald-win.pfx
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: npm run dist -- --win nsis --x64 --publish never
 
@@ -406,11 +406,11 @@ jobs:
             fi
           }
           # The package manifests depend on these exact names.
-          need "Erwin-${VERSION}-mac-arm64.dmg"
-          need "Erwin-${VERSION}-mac-x64.dmg"
-          need "Erwin-${VERSION}-win-x64.exe"
-          need "Erwin-${VERSION}-linux-x64.tar.gz"
-          need "Erwin-${VERSION}-linux-arm64.tar.gz"
+          need "Sigwald-${VERSION}-mac-arm64.dmg"
+          need "Sigwald-${VERSION}-mac-x64.dmg"
+          need "Sigwald-${VERSION}-win-x64.exe"
+          need "Sigwald-${VERSION}-linux-x64.tar.gz"
+          need "Sigwald-${VERSION}-linux-arm64.tar.gz"
           count '*.zip' 2
           count '*.AppImage' 2
           count '*.deb' 2
@@ -431,7 +431,7 @@ jobs:
 
       # A signed SLSA provenance statement for every file, so anyone can check
       # that a download was built by this workflow from this tag:
-      # gh attestation verify <file> -R pockanoodles/erwin
+      # gh attestation verify <file> -R pockanoodles/sigwald
       - name: Attest build provenance
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
@@ -458,8 +458,8 @@ jobs:
             fi
             gh release upload "$TAG" "${files[@]}" --clobber
           else
-            flags=(--draft --title "Erwin ${VERSION}" --target "$GITHUB_SHA" --generate-notes
-                   --notes "Check a download against SHA256SUMS.txt, or with gh attestation verify <file> -R pockanoodles/erwin, before you run it.")
+            flags=(--draft --title "Sigwald ${VERSION}" --target "$GITHUB_SHA" --generate-notes
+                   --notes "Check a download against SHA256SUMS.txt, or with gh attestation verify <file> -R pockanoodles/sigwald, before you run it.")
             if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
             gh release create "$TAG" "${files[@]}" "${flags[@]}"
           fi
@@ -545,7 +545,7 @@ jobs:
         run: |
           set -euo pipefail
           fail=0
-          app="$(find desktop/release -maxdepth 2 -type d -name Erwin.app -print -quit)"
+          app="$(find desktop/release -maxdepth 2 -type d -name Sigwald.app -print -quit)"
           test -n "$app"
           check() {
             local engine="$1" want="$2" found archs
@@ -594,7 +594,7 @@ jobs:
           test -n "$pkg"
           xcrun altool --upload-package "$pkg" --type macos \
             --apple-id "$APP_ID" \
-            --bundle-id com.kaitosoeno.erwin \
+            --bundle-id com.kaitosoeno.sigwald \
             --bundle-short-version-string "$VERSION" \
             --bundle-version "1.0.${GITHUB_RUN_NUMBER}" \
             --apiKey "$KEY_ID" --apiIssuer "$ISSUER_ID"
@@ -672,7 +672,7 @@ jobs:
           msstore reconfigure --tenantId $env:MS_STORE_TENANT_ID --sellerId $env:MS_STORE_SELLER_ID --clientId $env:MS_STORE_CLIENT_ID --clientSecret $env:MS_STORE_CLIENT_SECRET
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           $appx = Get-ChildItem -Path desktop/release -Filter *.appx | Select-Object -First 1
-          $msix = Join-Path $env:RUNNER_TEMP 'Erwin.msix'
+          $msix = Join-Path $env:RUNNER_TEMP 'Sigwald.msix'
           Copy-Item -Path $appx.FullName -Destination $msix
           msstore publish $msix -id $env:MS_STORE_PRODUCT_ID --noCommit
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

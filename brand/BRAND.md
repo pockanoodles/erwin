@@ -1,10 +1,10 @@
-# Erwin brand
+# Sigwald brand
 
-One look for the app (`src/`), the desktop shell (`desktop/`) and the landing page (`site/`, served at kaitosoeno.com/erwin). The values live in `tokens.css`, and this file says why they are what they are, so a later change can disagree with a reason instead of a hex.
+One look for the app (`src/`), the desktop shell (`desktop/`) and the landing page (`site/`, served at kaitosoeno.com/sigwald). The values live in `tokens.css`, and this file says why they are what they are, so a later change can disagree with a reason instead of a hex.
 
 ## The idea
 
-Erwin answers one question, which is what you should do right now, and it should be as easy to read as a field watch, because a field watch exists to be read at a glance in bad light. The reference is the Hamilton Khaki Field Mechanical, a watch Hamilton still makes in the line of the ones it built for soldiers. Its olive strap, cream lume and leather band gave the palette, its dial gave the motif, and its plain equipment-plate lettering gave the type. The "rough" in the brief comes from material rather than decoration (bead-blasted grain, stenciled plates, rust).
+Sigwald answers one question, which is what you should do right now, and it should be as easy to read as a field watch, because a field watch exists to be read at a glance in bad light. The reference is the Hamilton Khaki Field Mechanical, a watch Hamilton still makes in the line of the ones it built for soldiers. Its olive strap, cream lume and leather band gave the palette, its dial gave the motif, and its plain equipment-plate lettering gave the type. The "rough" in the brief comes from material rather than decoration (bead-blasted grain, stenciled plates, rust).
 
 ## Mark
 
@@ -12,7 +12,7 @@ A plate with two corners cut, carrying the dial's twelve-o'clock index and a sho
 
 - The minimum size is 16px, and below 32px use `favicon.svg`, since the track turns to noise.
 - Keep clear space of half the mark's width around it.
-- The wordmark is live text, "ERWIN" in Michroma at 0.14em tracking, set 10 to 12px from the mark.
+- The wordmark is live text, "SIGWALD" in Michroma at 0.14em tracking, set 10 to 12px from the mark.
 - Never add a container, a gradient or a second colour to the small marks.
 
 `app-icon.svg` is the platform icon. It is full bleed because macOS 26 masks app icons into its own squircle and puts any icon with a transparent margin into a grey box, so the art sits inside the central 72% where every platform's mask leaves it whole. `node scripts/brand-assets.mjs` regenerates every raster icon from these files.
@@ -50,9 +50,9 @@ The pick is F4 from the specimen, "equipment plate", and it has three voices wit
 - **Michroma** (display) sets titles, the page name in the top bar, big readouts and the wordmark. It is wide and has one weight, so it is set in capitals, small, at 0.02 to 0.14em tracking. It sits in the rounded-square line of Microgramma, which is the look of 1960s instrument panels.
 - **Chivo** (text) sets everything that is read, from task titles to body copy. Body is 15px in the app and 16 to 18px on the landing page.
 - **Chivo Mono** (data) sets anything a machine would print, such as times, dates, counts, course codes, column headers and labels. Labels are 11 to 12px capitals at 0.08 to 0.12em tracking, and figures that line up in a column are tabular.
-- **Murecho** sets Japanese on /erwin/ja.
+- **Murecho** sets Japanese on /sigwald/ja.
 
-All four are SIL Open Font License. The app and the site load them through `next/font`, which downloads them at build time and serves them itself, so Erwin makes no font request to anyone at run time.
+All four are SIL Open Font License. The app and the site load them through `next/font`, which downloads them at build time and serves them itself, so Sigwald makes no font request to anyone at run time.
 
 ## Components
 

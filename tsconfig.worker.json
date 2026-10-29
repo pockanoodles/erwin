@@ -12,7 +12,7 @@
   },
   "include": [
     "src/worker/**/*.ts",
-    "src/lib/erwin/job-sync-runner.ts",
+    "src/lib/sigwald/job-sync-runner.ts",
     "src/lib/canvas/**/*.ts",
     "src/lib/caldav-calendar.ts",
     "src/lib/caldav-helpers.ts",

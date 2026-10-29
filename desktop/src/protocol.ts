@@ -20,7 +20,7 @@ export interface RuntimeInit {
   port: number;
   secrets: {
     nextauthSecret: string;
-    erwinSecretKey: string;
+    sigwaldSecretKey: string;
     bootToken: string;
   };
   /** Read from the OS, so the first-run user matches this machine. */

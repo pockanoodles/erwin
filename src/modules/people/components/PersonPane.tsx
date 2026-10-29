@@ -130,7 +130,7 @@ export function PersonPane({ person }: { person: PersonRow | null }) {
           <p className="text-sm text-foreground">
             {person.cadenceDays
               ? `Every ${cadenceLabel(person.cadenceDays)}. Next check-in ${dueLabel(next, now)}.`
-              : "No cadence, so Erwin won't remind you."}{" "}
+              : "No cadence, so Sigwald won't remind you."}{" "}
             <span className="text-muted-foreground">
               Last talked{" "}
               {agoLabel(

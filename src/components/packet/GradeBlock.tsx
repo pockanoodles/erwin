@@ -28,7 +28,7 @@ export interface GradeBlockData {
   quiz: { timeLimit: number | null; allowedAttempts: number | null; questionCount: number | null; lockdownBrowser: boolean } | null;
 }
 
-/** Erwin's submission state as a stencil word, and whether it's bad news. */
+/** Sigwald's submission state as a stencil word, and whether it's bad news. */
 export const STATE_LABEL: Record<string, { word: string; tone?: "danger" }> = {
   unsubmitted: { word: "Open" },
   missing: { word: "Missing", tone: "danger" },

@@ -1,7 +1,7 @@
 /**
  * Ladder's server side for the module registry (src/modules/server.ts).
  */
-import { applyGoalRules } from "@/lib/erwin/goal-rules";
+import { applyGoalRules } from "@/lib/sigwald/goal-rules";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 /**

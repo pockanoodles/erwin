@@ -11,7 +11,7 @@ async function expectOk(res: Response): Promise<Response> {
 }
 
 export async function fetchGoal(id: string): Promise<GoalFormValues> {
-  const res = await expectOk(await fetch(`/api/erwin/goals/${id}`));
+  const res = await expectOk(await fetch(`/api/sigwald/goals/${id}`));
   const json = await res.json();
   return {
     title: json.title,
@@ -29,7 +29,7 @@ export async function fetchGoal(id: string): Promise<GoalFormValues> {
 }
 
 export async function fetchGoalSources(): Promise<GoalSources> {
-  const res = await expectOk(await fetch("/api/erwin/goals/sources"));
+  const res = await expectOk(await fetch("/api/sigwald/goals/sources"));
   return res.json();
 }
 
@@ -37,7 +37,7 @@ export async function createGoal(
   values: GoalFormValues & { parentGoalIds?: string[] }
 ): Promise<void> {
   await expectOk(
-    await fetch("/api/erwin/goals", {
+    await fetch("/api/sigwald/goals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
@@ -47,7 +47,7 @@ export async function createGoal(
 
 export async function updateGoal(id: string, values: GoalFormValues): Promise<void> {
   await expectOk(
-    await fetch(`/api/erwin/goals/${id}`, {
+    await fetch(`/api/sigwald/goals/${id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),
@@ -56,7 +56,7 @@ export async function updateGoal(id: string, values: GoalFormValues): Promise<vo
 }
 
 export async function deleteGoal(id: string): Promise<void> {
-  await expectOk(await fetch(`/api/erwin/goals/${id}`, { method: "DELETE" }));
+  await expectOk(await fetch(`/api/sigwald/goals/${id}`, { method: "DELETE" }));
 }
 
 export async function updateCycle(
@@ -64,7 +64,7 @@ export async function updateCycle(
   values: { theme?: string; focusStats?: string[] }
 ): Promise<void> {
   await expectOk(
-    await fetch(`/api/erwin/cycles/${cycleId}`, {
+    await fetch(`/api/sigwald/cycles/${cycleId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(values),

@@ -12,7 +12,7 @@
 // (mahoraga/site/components/SiteMenu.tsx is the twin).
 //
 // The links are plain anchors on purpose: they leave this app for the site, so
-// they must not get the /erwin base path a Next <Link> would add.
+// they must not get the /sigwald base path a Next <Link> would add.
 import { useEffect, useRef, useState } from "react";
 import type { Dict } from "@/content/copy";
 

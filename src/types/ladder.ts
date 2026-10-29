@@ -1,7 +1,7 @@
-/** Client shapes for GET /api/erwin/ladder (src/lib/erwin/ladder.ts). */
+/** Client shapes for GET /api/sigwald/ladder (src/lib/sigwald/ladder.ts). */
 
-import type { BossProof } from "@/lib/erwin/boss-proof";
-import type { StatKey } from "@/lib/erwin/stats";
+import type { BossProof } from "@/lib/sigwald/boss-proof";
+import type { StatKey } from "@/lib/sigwald/stats";
 
 export type HexState = "past" | "current" | "future";
 
@@ -81,7 +81,7 @@ export interface LadderBoss {
   day: string;
   felled: boolean;
   goalTitle: string | null;
-  /** How Erwin knows it was beaten, and what that says now. */
+  /** How Sigwald knows it was beaten, and what that says now. */
   proof: BossProof;
   /** Projected from the vault, so it's edited there. */
   managed: boolean;

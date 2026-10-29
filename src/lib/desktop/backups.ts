@@ -28,7 +28,7 @@ export interface DesktopBackups {
 
 export function desktopBackups(): DesktopBackups | null {
   return (
-    (globalThis as { erwinDesktopBackups?: DesktopBackups })
-      .erwinDesktopBackups ?? null
+    (globalThis as { sigwaldDesktopBackups?: DesktopBackups })
+      .sigwaldDesktopBackups ?? null
   );
 }

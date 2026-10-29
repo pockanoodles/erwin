@@ -4,7 +4,7 @@
  * in its description.
  *
  * It closes from either side. Logging a session on the Training page
- * finishes the open task; finishing the task anywhere else in Erwin (Today,
+ * finishes the open task; finishing the task anywhere else in Sigwald (Today,
  * Focus, Tasks, ops) becomes a session with nothing entered yet, by
  * `reconcileWorkouts`, which the sync loop runs and the page runs before it
  * reads. Either way the next session is planned from it.

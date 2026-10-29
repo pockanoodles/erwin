@@ -1,6 +1,6 @@
 /**
  * The Work module's HTTP handlers. The route files under
- * src/app/api/erwin/work (and the import's src/app/api/erwin/shifts) only
+ * src/app/api/sigwald/work (and the import's src/app/api/sigwald/shifts) only
  * forward here, so the module's server code lives in one folder. Every
  * handler answers 409 module_off while Work is off.
  */
@@ -176,7 +176,7 @@ function jobData(data: JobData) {
 /**
  * A pay period needs both its length and a day one starts. Turning one on
  * counts timesheets from the period it's in now unless a day is given:
- * hours from before were handled before Erwin tracked them.
+ * hours from before were handled before Sigwald tracked them.
  */
 async function payPeriodRule(
   userId: string,
@@ -204,7 +204,7 @@ async function payPeriodRule(
   return { ...data, timesheetsFrom: period?.first ?? null };
 }
 
-/** GET /api/erwin/work/jobs[?archived=1]: every job, or the archived. */
+/** GET /api/sigwald/work/jobs[?archived=1]: every job, or the archived. */
 export async function listJobs(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -219,7 +219,7 @@ export async function listJobs(request: NextRequest) {
   }
 }
 
-/** POST /api/erwin/work/jobs: adds a job, and its calendar feed. */
+/** POST /api/sigwald/work/jobs: adds a job, and its calendar feed. */
 export async function createJob(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -245,7 +245,7 @@ export async function createJob(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/work/jobs/:id: edits, archives or restores a job. */
+/** PATCH /api/sigwald/work/jobs/:id: edits, archives or restores a job. */
 export async function updateJob(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -271,7 +271,7 @@ export async function updateJob(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/erwin/work/jobs/:id: deletes a job with its shifts, contacts and calendar feed. */
+/** DELETE /api/sigwald/work/jobs/:id: deletes a job with its shifts, contacts and calendar feed. */
 export async function removeJob(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -293,7 +293,7 @@ export async function removeJob(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/work/shifts?from=&to=[&jobId=]: shifts overlapping the range, soonest first. */
+/** GET /api/sigwald/work/shifts?from=&to=[&jobId=]: shifts overlapping the range, soonest first. */
 export async function listShifts(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -321,7 +321,7 @@ export async function listShifts(request: NextRequest) {
   }
 }
 
-/** POST /api/erwin/work/jobs/:id/shifts: adds a shift by hand. */
+/** POST /api/sigwald/work/jobs/:id/shifts: adds a shift by hand. */
 export async function createShift(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -339,7 +339,7 @@ export async function createShift(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** PATCH /api/erwin/work/shifts/:id: drops, restores or changes a shift. */
+/** PATCH /api/sigwald/work/shifts/:id: drops, restores or changes a shift. */
 export async function updateShift(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -362,7 +362,7 @@ export async function updateShift(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/erwin/work/shifts/:id: deletes a shift added by hand. */
+/** DELETE /api/sigwald/work/shifts/:id: deletes a shift added by hand. */
 export async function removeShift(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -385,7 +385,7 @@ export async function removeShift(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/work/jobs/:id/periods: its pay periods, newest first. */
+/** GET /api/sigwald/work/jobs/:id/periods: its pay periods, newest first. */
 export async function listPeriods(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -400,7 +400,7 @@ export async function listPeriods(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** POST|DELETE /api/erwin/work/jobs/:id/periods/:first: marks a period's hours submitted, or takes them back. */
+/** POST|DELETE /api/sigwald/work/jobs/:id/periods/:first: marks a period's hours submitted, or takes them back. */
 export async function markPeriod(
   request: NextRequest,
   { params }: PeriodCtx,
@@ -431,7 +431,7 @@ export async function markPeriod(
   }
 }
 
-/** GET /api/erwin/work/jobs/:id/contacts: the people to reach at a job. */
+/** GET /api/sigwald/work/jobs/:id/contacts: the people to reach at a job. */
 export async function listContacts(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -450,7 +450,7 @@ export async function listContacts(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** POST /api/erwin/work/jobs/:id/contacts: adds a contact by hand, after the rest. */
+/** POST /api/sigwald/work/jobs/:id/contacts: adds a contact by hand, after the rest. */
 export async function createContact(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -479,7 +479,7 @@ export async function createContact(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** PATCH /api/erwin/work/contacts/:id: changes a contact. */
+/** PATCH /api/sigwald/work/contacts/:id: changes a contact. */
 export async function updateContact(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -501,7 +501,7 @@ export async function updateContact(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/erwin/work/contacts/:id: removes a contact. */
+/** DELETE /api/sigwald/work/contacts/:id: removes a contact. */
 export async function removeContact(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -517,7 +517,7 @@ export async function removeContact(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/work/next: the shift on now, or the next within a day and a half. */
+/** GET /api/sigwald/work/next: the shift on now, or the next within a day and a half. */
 export async function getNextShift(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -529,7 +529,7 @@ export async function getNextShift(request: NextRequest) {
 }
 
 /**
- * GET /api/erwin/work/tasks/:id: the pay period behind a "Submit hours"
+ * GET /api/sigwald/work/tasks/:id: the pay period behind a "Submit hours"
  * task, with its job and shifts, for Focus and the task sheet.
  */
 export async function taskTimesheet(request: NextRequest, { params }: Ctx) {
@@ -561,7 +561,7 @@ export async function taskTimesheet(request: NextRequest, { params }: Ctx) {
 }
 
 /**
- * PUT /api/erwin/shifts
+ * PUT /api/sigwald/shifts
  * Body: { source, feedName?, color?, windowStart, windowEnd, shifts: [{ key, title, start, end, location?, role?, supervisor?, description? }] }
  * Writes one schedule week into the source's job (src/modules/work/imports.ts).
  * An empty `shifts` list is a real answer — that week has none — and clears
@@ -585,7 +585,7 @@ export async function putShiftWeek(request: NextRequest) {
 }
 
 /**
- * GET /api/erwin/shifts?source=im&from=<iso>&to=<iso>
+ * GET /api/sigwald/shifts?source=im&from=<iso>&to=<iso>
  * The source's job's shifts overlapping [from, to), soonest first, without
  * dropped ones — what ops' reminders poll and its hand edits read back.
  */
@@ -617,7 +617,7 @@ export async function getSourceShifts(request: NextRequest) {
 }
 
 /**
- * PUT /api/erwin/work/import/contacts
+ * PUT /api/sigwald/work/import/contacts
  * Body: { source, contacts: [{ key, name, role?, phone?, email? }] }
  * Replaces the source's job's imported contacts with this roster; ones added
  * by hand stay. 404 until the source has sent a schedule week (no job yet).

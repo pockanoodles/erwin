@@ -4,7 +4,7 @@
  */
 import { syncCanvasForUser } from "@/lib/canvas/sync-canvas";
 import { newDate } from "@/lib/date-utils";
-import { DEFAULT_CANVAS_SYNC_MINUTES, isDue } from "@/lib/erwin/sync-interval";
+import { DEFAULT_CANVAS_SYNC_MINUTES, isDue } from "@/lib/sigwald/sync-interval";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 

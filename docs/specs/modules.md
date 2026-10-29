@@ -1,6 +1,6 @@
 # Modules
 
-Erwin's core is Today, Focus, Calendar, Tasks, Settings and the `/modules` catalog. Everything else is a module that each person turns on or off: today Courses, Ladder, People, Training, Nutrition and Work. The core works with every module off, and it never imports a module. A module adds to the core through fixed slots, listed in four registries under `src/modules/`.
+Sigwald's core is Today, Focus, Calendar, Tasks, Settings and the `/modules` catalog. Everything else is a module that each person turns on or off: today Courses, Ladder, People, Training, Nutrition and Work. The core works with every module off, and it never imports a module. A module adds to the core through fixed slots, listed in four registries under `src/modules/`.
 
 ## What a module is made of
 
@@ -16,7 +16,7 @@ A module is split three ways so the browser bundle never pulls in server code.
 | `sources` | The `Task.source` values it owns. While it's off, those tasks leave every list. |
 | `linkLabels` | What a task's link says, per source ("Open in Canvas"). |
 | `claimLabels` | What the goal form calls claiming every task of a source ("All Canvas work"). A source without one can't be claimed whole. |
-| `adds`, `keeps`, `egress` | What the catalog tells a person: what it adds, what it stores, and everything it sends out of Erwin. |
+| `adds`, `keeps`, `egress` | What the catalog tells a person: what it adds, what it stores, and everything it sends out of Sigwald. |
 
 **The browser side** (`CLIENT_MODULES` in `src/modules/client.tsx`) holds its components. Each is optional and draws only while the module is on.
 
@@ -61,7 +61,7 @@ Turning a module off deletes nothing. While it's off:
 
 **Task facts.** `taskFacts` returns fields per task, and the core spreads them onto the task in `GET /api/tasks`, `GET` and `PUT /api/tasks/:id`, the Focus queue and the briefing without reading them. Courses adds the course, Canvas's submission state, the share of the grade, the grade if a task in danger is missed, and the material count. Ladder adds the goals a task serves. Writes to a task keep only `Task`'s own columns, since clients send whole tasks back, facts included.
 
-**Ranking.** The ranker (`src/lib/erwin/rank-stage1.ts`) names no module. It reads three things a module can supply:
+**Ranking.** The ranker (`src/lib/sigwald/rank-stage1.ts`) names no module. It reads three things a module can supply:
 
 - `Task.impact`, how much a task matters from 0 to 1, set by the module that owns it (Courses: its share of the grade);
 - `Task.closedAt`, set when the source closed a task without it being done (Canvas: missed, or the course ended);
@@ -82,7 +82,7 @@ Two rules keep the bundles apart. `src/modules/index.ts` and the manifests are p
 3. Put its page under `src/app/(common)/` with a layout that wraps it in `ModuleGate`. Make its API routes call `moduleOffResponse` before anything else.
 4. Fill the slots and hooks it needs in `client.tsx` and `server.ts`. If it owns tasks, give them their own `source`, list it in `sources`, and set `impact` on them if they have stakes.
 5. Add its paths to `OWNED` in the boundary test.
-6. If it sends anything out of Erwin, list it in the manifest's `egress` and in `DATAFLOW.md`.
+6. If it sends anything out of Sigwald, list it in the manifest's `egress` and in `DATAFLOW.md`.
 
 People (`src/modules/people/`) is a complete small module: a page, its own tables, a job, tasks it owns, and a source goals can claim. Training adds claims per routine (`claimOptions`, `claimKeys`) and draws its own tasks in Focus and the task sheet (`TaskBody`, `TaskPane`). Nutrition owns no tasks at all: a page, its tables and a count in the top bar (`Status`). Work takes data from outside through its own API (a schedule week, a contact roster, `src/modules/work/imports.ts`) and puts its shifts on the calendar through a LOCAL feed per job, which it keeps in step itself (`src/modules/work/feed.ts`), so the calendar and the scheduler see them without knowing the module exists.
 

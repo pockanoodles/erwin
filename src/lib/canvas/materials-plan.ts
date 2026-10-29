@@ -61,7 +61,7 @@ export function assignmentIdMaps(assignments: CanvasAssignment[]): {
   return { byQuiz, byTopic };
 }
 
-/** A module item as a material row, or null for item types Erwin doesn't mirror. */
+/** A module item as a material row, or null for item types Sigwald doesn't mirror. */
 export function planModuleItem(
   item: CanvasModuleItem,
   maps: ReturnType<typeof assignmentIdMaps>

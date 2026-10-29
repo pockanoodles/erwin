@@ -45,7 +45,7 @@ const SENSITIVE_KEYS = new Set([
   "cookie",
   "credentials",
   "privatekey",
-  "erwinsecretkey",
+  "sigwaldsecretkey",
   "nextauthsecret",
 ]);
 

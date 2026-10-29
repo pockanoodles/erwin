@@ -1,6 +1,6 @@
-import { dateOnlyDay, dueBy, dueDay } from "@/lib/erwin/due";
-import { toTaskForRanking } from "@/lib/erwin/focus-queue-core";
-import { isDangerForFocus } from "@/lib/erwin/rank-stage1";
+import { dateOnlyDay, dueBy, dueDay } from "@/lib/sigwald/due";
+import { toTaskForRanking } from "@/lib/sigwald/focus-queue-core";
+import { isDangerForFocus } from "@/lib/sigwald/rank-stage1";
 
 jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 

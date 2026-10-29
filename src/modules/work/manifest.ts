@@ -26,7 +26,7 @@ const work: ModuleManifest = {
     "The next shift in the top bar on every page",
   ],
   keeps:
-    "Your jobs, every shift (imported from a schedule or added by hand) and how it went, and the contacts you keep for each job. Contacts stay in Erwin.",
+    "Your jobs, every shift (imported from a schedule or added by hand) and how it went, and the contacts you keep for each job. Contacts stay in Sigwald.",
   egress: [],
 };
 

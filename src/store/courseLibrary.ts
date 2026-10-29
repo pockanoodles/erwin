@@ -48,7 +48,7 @@ export const useCourseLibraryStore = create<CourseLibraryState>()((set, get) => 
 
   fetchCourses: async () => {
     try {
-      const [res, status] = await Promise.all([fetch("/api/erwin/courses"), fetch("/api/erwin/canvas")]);
+      const [res, status] = await Promise.all([fetch("/api/sigwald/courses"), fetch("/api/sigwald/canvas")]);
       if (!res.ok) throw new Error(`Failed to load courses (${res.status})`);
       const provider = status.ok
         ? ((await status.json()) as { provider: { lastSyncedAt: string | null; error: string | null } | null }).provider
@@ -68,7 +68,7 @@ export const useCourseLibraryStore = create<CourseLibraryState>()((set, get) => 
     if (get().syncing) return;
     set({ syncing: true, lastSyncError: null });
     try {
-      const res = await fetch("/api/erwin/canvas", {
+      const res = await fetch("/api/sigwald/canvas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "sync" }),
@@ -79,7 +79,7 @@ export const useCourseLibraryStore = create<CourseLibraryState>()((set, get) => 
       }
       // Bodies and packets may have moved; the Tasks sheet's material counts
       // come with its next task list.
-      invalidateResources("/api/erwin/");
+      invalidateResources("/api/sigwald/");
       await get().fetchCourses();
     } catch (e) {
       set({ lastSyncError: e instanceof Error ? e.message : "Sync failed" });

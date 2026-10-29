@@ -20,7 +20,7 @@ export interface TopGoal {
   goalIds: string[];
 }
 
-/** A goal as GET /api/erwin/goals/overview sends it, as far as the tabs read it. */
+/** A goal as GET /api/sigwald/goals/overview sends it, as far as the tabs read it. */
 export interface OverviewGoal {
   id: string;
   title: string;
@@ -106,7 +106,7 @@ export const useGoalTabStore = create<GoalTabStore>()(
 
       load: async () => {
         try {
-          const res = await fetch("/api/erwin/goals/overview");
+          const res = await fetch("/api/sigwald/goals/overview");
           if (!res.ok) return;
           const json: { goals: OverviewGoal[] } = await res.json();
           const topGoals = topGoalsFrom(json.goals);

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
 
 import { format } from "@/lib/date-utils";
-import { type FocusQueueTask, primaryLadderGoal } from "@/lib/erwin/parse-task";
+import { type FocusQueueTask, primaryLadderGoal } from "@/lib/sigwald/parse-task";
 import { cn } from "@/lib/utils";
 
 import { useTaskModule } from "@/modules/client";
@@ -103,7 +103,7 @@ export function FocusDesk({
       ? task.dueDate
       : new Date(task.dueDate)
     : null;
-  const countdown = task.erwin?.countdownHuman;
+  const countdown = task.sigwald?.countdownHuman;
   const subtasks = task.subtasks ?? [];
   const doneCount = subtasks.filter(
     (child) => child.status === TaskStatus.COMPLETED
@@ -200,8 +200,8 @@ export function FocusDesk({
               <div className="er-label">
                 {[
                   task.submissionStatus?.replaceAll("_", " "),
-                  task.erwin?.urgencyTier && task.erwin.urgencyTier !== "NONE"
-                    ? task.erwin.urgencyTier.toLowerCase()
+                  task.sigwald?.urgencyTier && task.sigwald.urgencyTier !== "NONE"
+                    ? task.sigwald.urgencyTier.toLowerCase()
                     : null,
                 ]
                   .filter(Boolean)
@@ -319,11 +319,11 @@ export function FocusDesk({
                 "Pressure",
                 (task.skipCount ?? 0) > 0
                   ? `Skipped ${task.skipCount}×${
-                      task.erwin?.lastSkippedAgo
-                        ? `, ${task.erwin.lastSkippedAgo}`
+                      task.sigwald?.lastSkippedAgo
+                        ? `, ${task.sigwald.lastSkippedAgo}`
                         : ""
                     }`
-                  : (task.erwin?.effortEstimate ?? null)
+                  : (task.sigwald?.effortEstimate ?? null)
               )}
             </div>
           </details>
@@ -398,11 +398,11 @@ export function FocusDesk({
               "Pressure",
               (task.skipCount ?? 0) > 0
                 ? `Skipped ${task.skipCount}×${
-                    task.erwin?.lastSkippedAgo
-                      ? `, ${task.erwin.lastSkippedAgo}`
+                    task.sigwald?.lastSkippedAgo
+                      ? `, ${task.sigwald.lastSkippedAgo}`
                       : ""
                   }`
-                : (task.erwin?.effortEstimate ?? null)
+                : (task.sigwald?.effortEstimate ?? null)
             )}
           </div>
         </section>
@@ -428,7 +428,7 @@ export function FocusDesk({
               <span className="truncate">{next.title}</span>
               <span className="text-[12px] text-muted-foreground">
                 {[
-                  next.erwin?.countdownHuman,
+                  next.sigwald?.countdownHuman,
                   next.courseName,
                   next.gradeWeightPercent != null
                     ? `${next.gradeWeightPercent}%`

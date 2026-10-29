@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
 
     const json = await request.json();
     // `goalId` is a convenience alias: it becomes a TaskGoalLink row (tasks
-    // link to goals many-to-many; /api/erwin/task-links manages further links).
+    // link to goals many-to-many; /api/sigwald/task-links manages further links).
     const {
       tagIds,
       recurrenceRule,

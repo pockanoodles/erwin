@@ -15,7 +15,7 @@ import { useModulesStore } from "@/store/modules";
 
 /**
  * Today before there's anything to rank — the first screen a new install
- * shows. It asks what Erwin should keep track of: each module can be turned
+ * shows. It asks what Sigwald should keep track of: each module can be turned
  * on right here, and one that's on offers its own first step (Courses:
  * connect Canvas). A calendar or a task by hand works without any module.
  */

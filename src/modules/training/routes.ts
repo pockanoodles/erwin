@@ -1,6 +1,6 @@
 /**
  * The Training module's HTTP handlers. The route files under
- * src/app/api/erwin/training only forward here, so the module's server code
+ * src/app/api/sigwald/training only forward here, so the module's server code
  * lives in one folder. Every handler answers 409 module_off while Training
  * is off.
  */
@@ -169,7 +169,7 @@ const notFound = (what: string) =>
   NextResponse.json({ error: `No such ${what}` }, { status: 404 });
 
 /**
- * GET /api/erwin/training/routines[?archived=1]: every routine, or the
+ * GET /api/sigwald/training/routines[?archived=1]: every routine, or the
  * archived, and the unit weights were last entered in (null before any).
  */
 export async function listRoutines(request: NextRequest) {
@@ -196,7 +196,7 @@ export async function listRoutines(request: NextRequest) {
   }
 }
 
-/** POST /api/erwin/training/routines: adds a routine, and its workout task if it has a schedule. */
+/** POST /api/sigwald/training/routines: adds a routine, and its workout task if it has a schedule. */
 export async function createRoutine(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -221,7 +221,7 @@ export async function createRoutine(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/training/routines/:id: edits, archives or restores a routine. */
+/** PATCH /api/sigwald/training/routines/:id: edits, archives or restores a routine. */
 export async function updateRoutine(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -246,7 +246,7 @@ export async function updateRoutine(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/training/routines/:id/workouts: its sessions, newest first. */
+/** GET /api/sigwald/training/routines/:id/workouts: its sessions, newest first. */
 export async function listRoutineWorkouts(
   request: NextRequest,
   { params }: Ctx
@@ -271,7 +271,7 @@ export async function listRoutineWorkouts(
 }
 
 /**
- * POST /api/erwin/training/routines/:id/workouts  { unit, entries, note?, at? }
+ * POST /api/sigwald/training/routines/:id/workouts  { unit, entries, note?, at? }
  *
  * Logs a session. It finishes the open workout task and plans the next one.
  * `at` defaults to now.
@@ -304,7 +304,7 @@ export async function createWorkout(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/training/workouts: every routine's sessions, newest first. */
+/** GET /api/sigwald/training/workouts: every routine's sessions, newest first. */
 export async function listWorkouts(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -327,7 +327,7 @@ export async function listWorkouts(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/training/workouts/:id: changes a session, or fills in one ticked elsewhere. */
+/** PATCH /api/sigwald/training/workouts/:id: changes a session, or fills in one ticked elsewhere. */
 export async function updateWorkout(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -352,7 +352,7 @@ export async function updateWorkout(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** DELETE /api/erwin/training/workouts/:id: removes a session logged by mistake. */
+/** DELETE /api/sigwald/training/workouts/:id: removes a session logged by mistake. */
 export async function removeWorkout(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -366,7 +366,7 @@ export async function removeWorkout(request: NextRequest, { params }: Ctx) {
 }
 
 /**
- * GET /api/erwin/training/tasks/:id: the routine behind a workout task, with
+ * GET /api/sigwald/training/tasks/:id: the routine behind a workout task, with
  * its latest sessions, for Focus and the task sheet to show what to do.
  */
 export async function taskRoutine(request: NextRequest, { params }: Ctx) {

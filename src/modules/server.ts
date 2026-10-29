@@ -3,7 +3,7 @@
  * import Prisma). The core reads this list and never imports a module's
  * server code itself.
  */
-import type { RankSignals } from "@/lib/erwin/rank-stage1";
+import type { RankSignals } from "@/lib/sigwald/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import {

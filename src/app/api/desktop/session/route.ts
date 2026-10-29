@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  * GET /api/desktop/session?t=<boot token>&next=<path>
  *
  * Signs the desktop app's one local user in. Only exists when the server runs
- * inside the Electron shell (`ERWIN_RUNTIME=desktop`); everywhere else it is a
+ * inside the Electron shell (`SIGWALD_RUNTIME=desktop`); everywhere else it is a
  * 404. The shell generates a fresh random token on every launch and hands it
  * to this process over IPC, never through argv or the spawn environment, so it
  * does not show up in `ps`. The server listens on the loopback interface only;
@@ -27,11 +27,11 @@ export const dynamic = "force-dynamic";
  * other route authenticates it the ordinary way.
  */
 export async function GET(request: NextRequest) {
-  if (process.env.ERWIN_RUNTIME !== "desktop") {
+  if (process.env.SIGWALD_RUNTIME !== "desktop") {
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const expected = process.env.ERWIN_DESKTOP_BOOT_TOKEN ?? "";
+  const expected = process.env.SIGWALD_DESKTOP_BOOT_TOKEN ?? "";
   const given = request.nextUrl.searchParams.get("t") ?? "";
   if (!expected || !tokensMatch(given, expected)) {
     logger.warn("Desktop session refused: bad boot token", {}, LOG_SOURCE);

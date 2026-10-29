@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Erwin with nothing installed: no Postgres, no Docker.
+ * Sigwald with nothing installed: no Postgres, no Docker.
  *
  *   npm run dev:local                 → http://localhost:3000, signed in
  *   npm run dev:local -- --port 3100
@@ -58,7 +58,7 @@ const keysFile = path.join(local, "keys.json");
 if (!fs.existsSync(keysFile)) {
   const keys = {
     nextauthSecret: crypto.randomBytes(32).toString("base64"),
-    erwinSecretKey: crypto.randomBytes(32).toString("base64"),
+    sigwaldSecretKey: crypto.randomBytes(32).toString("base64"),
   };
   fs.writeFileSync(keysFile, JSON.stringify(keys, null, 2), { mode: 0o600 });
 }
@@ -82,12 +82,12 @@ const env = {
   NEXTAUTH_URL: origin,
   NEXT_PUBLIC_APP_URL: origin,
   NEXTAUTH_SECRET: keys.nextauthSecret,
-  ERWIN_SECRET_KEY: keys.erwinSecretKey,
-  ERWIN_RUNTIME: "desktop",
-  ERWIN_SCHEDULER: "inprocess",
-  ERWIN_DESKTOP_BOOT_TOKEN: bootToken,
-  ERWIN_DESKTOP_TIME_ZONE: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  ERWIN_DIST_DIR: ".next-local",
+  SIGWALD_SECRET_KEY: keys.sigwaldSecretKey,
+  SIGWALD_RUNTIME: "desktop",
+  SIGWALD_SCHEDULER: "inprocess",
+  SIGWALD_DESKTOP_BOOT_TOKEN: bootToken,
+  SIGWALD_DESKTOP_TIME_ZONE: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  SIGWALD_DIST_DIR: ".next-local",
   PRISMA_HIDE_UPDATE_MESSAGE: "1",
 };
 
@@ -139,7 +139,7 @@ function networkEndpoints() {
 }
 
 const { tailscale, lan } = lanAccess ? networkEndpoints() : { tailscale: [], lan: [] };
-console.log(`\n  Erwin (local) · database ${path.relative(root, dataDir)}`);
+console.log(`\n  Sigwald (local) · database ${path.relative(root, dataDir)}`);
 console.log(`  Mac:       ${origin}/api/desktop/session?t=${bootToken}`);
 for (const tsUrl of tailscale) {
   console.log(`  Tailscale: ${tsUrl}/api/desktop/session?t=${bootToken}`);

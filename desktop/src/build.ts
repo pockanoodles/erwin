@@ -3,13 +3,13 @@ import path from "node:path";
 
 import { app } from "electron";
 
-/** `erwinBuild` in the packed package.json; release.yml sets it with -c.extraMetadata. */
+/** `sigwaldBuild` in the packed package.json; release.yml sets it with -c.extraMetadata. */
 function buildKind(): string | undefined {
   try {
     const pkg = JSON.parse(fs.readFileSync(path.join(app.getAppPath(), "package.json"), "utf8")) as {
-      erwinBuild?: unknown;
+      sigwaldBuild?: unknown;
     };
-    return typeof pkg.erwinBuild === "string" ? pkg.erwinBuild : undefined;
+    return typeof pkg.sigwaldBuild === "string" ? pkg.sigwaldBuild : undefined;
   } catch {
     return undefined;
   }

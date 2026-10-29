@@ -89,7 +89,7 @@ export function ICalCalendarForm({
       <CardHeader>
         <CardTitle>Subscribe by iCal link</CardTitle>
         <CardDescription>
-          Any calendar with an iCal link shows up here, read-only, and Erwin
+          Any calendar with an iCal link shows up here, read-only, and Sigwald
           reads it again every 15 minutes. Changes you make to it happen in
           the calendar it comes from.
         </CardDescription>

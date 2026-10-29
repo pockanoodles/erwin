@@ -81,7 +81,7 @@ const send = (url: string, method: string, body?: unknown) =>
   });
 
 const fetchDay = async (day: string) =>
-  json<DayRow>(await fetch(`/api/erwin/nutrition/day?day=${day}`));
+  json<DayRow>(await fetch(`/api/sigwald/nutrition/day?day=${day}`));
 
 const todayOf = (row: DayRow): Today => ({
   day: row.day,
@@ -97,8 +97,8 @@ export const useNutritionStore = create<NutritionStore>()((set, get) => {
   const loadFoods = async () => {
     const [active, archived] = await Promise.all(
       [
-        "/api/erwin/nutrition/foods",
-        "/api/erwin/nutrition/foods?archived=1",
+        "/api/sigwald/nutrition/foods",
+        "/api/sigwald/nutrition/foods?archived=1",
       ].map(
         async (url) =>
           (await json<{ foods: FoodRow[] }>(await fetch(url))).foods
@@ -172,17 +172,17 @@ export const useNutritionStore = create<NutritionStore>()((set, get) => {
 
     add: (input) =>
       attempt(async () =>
-        json(await send("/api/erwin/nutrition/entries", "POST", input))
+        json(await send("/api/sigwald/nutrition/entries", "POST", input))
       ),
 
     editEntry: (id, input) =>
       attempt(async () =>
-        json(await send(`/api/erwin/nutrition/entries/${id}`, "PATCH", input))
+        json(await send(`/api/sigwald/nutrition/entries/${id}`, "PATCH", input))
       ),
 
     removeEntry: async (id) => {
       const ok = await attempt(async () =>
-        json(await send(`/api/erwin/nutrition/entries/${id}`, "DELETE"))
+        json(await send(`/api/sigwald/nutrition/entries/${id}`, "DELETE"))
       );
       if (ok && get().selected === id) set({ selected: null });
       return ok;
@@ -191,7 +191,7 @@ export const useNutritionStore = create<NutritionStore>()((set, get) => {
     saveFood: async (input) => {
       try {
         const { food } = await json<{ food: FoodRow }>(
-          await send("/api/erwin/nutrition/foods", "POST", input)
+          await send("/api/sigwald/nutrition/foods", "POST", input)
         );
         await get().load();
         return food;
@@ -202,12 +202,12 @@ export const useNutritionStore = create<NutritionStore>()((set, get) => {
 
     updateFood: (id, input) =>
       attempt(async () =>
-        json(await send(`/api/erwin/nutrition/foods/${id}`, "PATCH", input))
+        json(await send(`/api/sigwald/nutrition/foods/${id}`, "PATCH", input))
       ),
 
     setTargets: (targets) =>
       attempt(async () =>
-        json(await send("/api/erwin/nutrition/targets", "PUT", targets))
+        json(await send("/api/sigwald/nutrition/targets", "PUT", targets))
       ),
   };
 });

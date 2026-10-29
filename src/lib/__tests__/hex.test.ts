@@ -1,6 +1,6 @@
 import type { Db } from "@/lib/prisma";
 
-import { ensureCurrentHex, hexDayRange, hexForDate, hexLabel, hexOf, hexOfDay } from "../erwin/hex";
+import { ensureCurrentHex, hexDayRange, hexForDate, hexLabel, hexOf, hexOfDay } from "../sigwald/hex";
 
 describe("hexForDate", () => {
   it("maps January 1 to hex 1", () => {

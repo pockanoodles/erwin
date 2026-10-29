@@ -12,9 +12,9 @@ export async function register(): Promise<void> {
   // Imported lazily so the edge build never sees Prisma.
   if (
     process.env.NEXT_RUNTIME === "nodejs" &&
-    process.env.ERWIN_SCHEDULER === "inprocess"
+    process.env.SIGWALD_SCHEDULER === "inprocess"
   ) {
-    const { startSyncLoop } = await import("@/lib/erwin/sync-loop");
+    const { startSyncLoop } = await import("@/lib/sigwald/sync-loop");
     startSyncLoop({ where: "in-process", firstTickDelayMs: 20_000 });
   }
 }

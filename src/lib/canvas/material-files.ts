@@ -1,6 +1,6 @@
 /**
  * On-disk cache for Canvas course files. Local runtime state, outside the
- * repo: `ERWIN_MATERIALS_DIR` (default ~/.erwin/materials), one folder per
+ * repo: `SIGWALD_MATERIALS_DIR` (default ~/.sigwald/materials), one folder per
  * Canvas course (plus a course-code alias beside it), one file per Canvas file
  * id — shared by every module item that points at it.
  */
@@ -15,12 +15,12 @@ import type { ReadableStream as WebReadableStream } from "node:stream/web";
 const DEFAULT_MAX_FILE_MB = 100;
 
 export function materialsRoot(): string {
-  return process.env.ERWIN_MATERIALS_DIR || path.join(os.homedir(), ".erwin", "materials");
+  return process.env.SIGWALD_MATERIALS_DIR || path.join(os.homedir(), ".sigwald", "materials");
 }
 
 /** Files above this are recorded but not downloaded (lecture recordings, datasets). */
 export function maxFileBytes(): number {
-  const mb = Number(process.env.ERWIN_MATERIALS_MAX_FILE_MB);
+  const mb = Number(process.env.SIGWALD_MATERIALS_MAX_FILE_MB);
   return (Number.isFinite(mb) && mb > 0 ? mb : DEFAULT_MAX_FILE_MB) * 1_000_000;
 }
 
@@ -83,7 +83,7 @@ export async function linkCourseFolder(courseCanvasId: string, courseCode: strin
 /**
  * Delete cached files in a course's folder that no material points at any
  * more: files Canvas dropped, versions a renamed file left behind, and
- * `.partial` leftovers from an interrupted download. Only Erwin's own
+ * `.partial` leftovers from an interrupted download. Only Sigwald's own
  * `<file id>-<name>` entries are touched. Returns how many were removed.
  */
 export async function pruneCourseFolder(courseCanvasId: string, keep: ReadonlySet<string>): Promise<number> {

@@ -1,4 +1,4 @@
-import { buildXpReport, type XpReportGoalRow, type XpReportInput } from "../erwin/xp-report";
+import { buildXpReport, type XpReportGoalRow, type XpReportInput } from "../sigwald/xp-report";
 
 const goal = (row: Partial<XpReportGoalRow> & Pick<XpReportGoalRow, "id" | "title">): XpReportGoalRow => ({
   isBoss: false,

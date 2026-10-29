@@ -459,7 +459,7 @@ function PeriodState({ job, period: p }: { job: JobRow; period: PeriodRow }) {
     return <span className="text-muted-foreground">Nothing worked</span>;
   }
   if (!p.tracked) {
-    return <span className="text-muted-foreground">Before Erwin</span>;
+    return <span className="text-muted-foreground">Before Sigwald</span>;
   }
   const late = p.unlogged > 0 && new Date(p.dueBy).getTime() < Date.now();
   const control = (label: string, act: () => Promise<PeriodRow | null>) => (

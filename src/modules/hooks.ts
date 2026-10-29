@@ -2,7 +2,7 @@
  * What the core asks of every module, and the events it raises for them to
  * hear (server only).
  */
-import type { RankSignals } from "@/lib/erwin/rank-stage1";
+import type { RankSignals } from "@/lib/sigwald/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import { MODULES } from "@/modules";

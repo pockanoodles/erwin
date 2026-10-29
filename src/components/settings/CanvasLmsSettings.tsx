@@ -30,7 +30,7 @@ interface CanvasStatus {
 }
 
 /**
- * Erwin: configure Canvas LMS (personal access token) and trigger sync.
+ * Sigwald: configure Canvas LMS (personal access token) and trigger sync.
  */
 export function CanvasLmsSettings() {
   const [baseUrl, setBaseUrl] = useState("");
@@ -43,7 +43,7 @@ export function CanvasLmsSettings() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/erwin/canvas");
+      const res = await fetch("/api/sigwald/canvas");
       if (!res.ok) {
         throw new Error("Failed to load Canvas status");
       }
@@ -74,7 +74,7 @@ export function CanvasLmsSettings() {
   const runValidate = async () => {
     setBusy("validate");
     try {
-      const res = await fetch("/api/erwin/canvas", {
+      const res = await fetch("/api/sigwald/canvas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -98,7 +98,7 @@ export function CanvasLmsSettings() {
   const runSave = async () => {
     setBusy("save");
     try {
-      const res = await fetch("/api/erwin/canvas", {
+      const res = await fetch("/api/sigwald/canvas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -124,7 +124,7 @@ export function CanvasLmsSettings() {
   const runSync = async () => {
     setBusy("sync");
     try {
-      const res = await fetch("/api/erwin/canvas", {
+      const res = await fetch("/api/sigwald/canvas", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

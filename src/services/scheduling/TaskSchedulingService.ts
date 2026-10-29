@@ -1,5 +1,5 @@
 import { newDate } from "@/lib/date-utils";
-import { dueBy } from "@/lib/erwin/due";
+import { dueBy } from "@/lib/sigwald/due";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -215,7 +215,7 @@ export async function scheduleAllTasksForUser(
     });
 
     // Schedule all tasks against the moment each is due by: a date with no
-    // time can still be worked on that day (lib/erwin/due.ts). Only the
+    // time can still be worked on that day (lib/sigwald/due.ts). Only the
     // schedule is written back, so the stored date stays as it was.
     const timeZone = tzSettings?.timeZone || "UTC";
     const updatedTasks = await schedulingService.scheduleMultipleTasks(

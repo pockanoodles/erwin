@@ -39,7 +39,7 @@ model ConnectedAccount {
 }
 
 /// A link to an external identity provider. Upstream stored the local password
-/// hash here in `id_token`; Erwin keeps it on `User.passwordHash` instead, so
+/// hash here in `id_token`; Sigwald keeps it on `User.passwordHash` instead, so
 /// every column below means what its name says.
 model Account {
   id                String  @id @default(cuid())
@@ -166,7 +166,7 @@ model CalendarEvent {
   organizer       Json? // Stored as JSON { name?: string, email: string }
   attendees       Json? // Stored as JSON array of { name?: string, email: string, status?: string }
   /**
-   * iCal TRANSP: OPAQUE (busy) or TRANSPARENT (free) — used by Erwin availability
+   * iCal TRANSP: OPAQUE (busy) or TRANSPARENT (free) — used by Sigwald availability
    */
   transparency    String?
   createdAt       DateTime     @default(now())
@@ -263,7 +263,7 @@ model Task {
   source         String?
   lastSyncedAt   DateTime?
 
-  // Erwin: what Focus ranks by. The module that owns a task can set these;
+  // Sigwald: what Focus ranks by. The module that owns a task can set these;
   // a task made by hand leaves them empty.
 
   /**
@@ -323,14 +323,14 @@ model Task {
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id])
 
-  // Erwin v3: tasks link to any number of goals/subgoals through TaskGoalLink
+  // Sigwald v3: tasks link to any number of goals/subgoals through TaskGoalLink
   goalLinks   TaskGoalLink[]
   /**
    * Bosses this task settles (Goal.proofTaskId).
    */
   proofFor    Goal[]         @relation("BossProof")
   /**
-   * Set once a person picks this task's goal by hand; the goal rules (src/lib/erwin/goal-rules.ts) then leave its links alone.
+   * Set once a person picks this task's goal by hand; the goal rules (src/lib/sigwald/goal-rules.ts) then leave its links alone.
    */
   goalsPinned Boolean        @default(false)
 
@@ -364,17 +364,17 @@ model Task {
 }
 
 /**
- * Erwin v2.2: a two-month planning block. One active at a time per user; mirrors how Kaito already plans the year.
+ * Sigwald v2.2: a two-month planning block. One active at a time per user; mirrors how Kaito already plans the year.
  */
 model GoalCycle {
   id             String   @id @default(cuid())
   theme          String
   /**
-   * The hex's Build: 2–3 stat keys being pushed this cycle. Vocabulary in src/lib/erwin/stats.ts (mirrors ops/brain _map.md).
+   * The hex's Build: 2–3 stat keys being pushed this cycle. Vocabulary in src/lib/sigwald/stats.ts (mirrors ops/brain _map.md).
    */
   focusStats     String[] @default([])
   /**
-   * The Build came from the vault's map (ops' goal sync sends it with every projection), so Erwin shows it read-only.
+   * The Build came from the vault's map (ops' goal sync sends it with every projection), so Sigwald shows it read-only.
    */
   buildProjected Boolean  @default(false)
   startDate      DateTime
@@ -396,7 +396,7 @@ model GoalCycle {
 }
 
 /**
- * Erwin v2.2: a goal within a cycle. Goal-linked tasks get an importance signal parallel to Task.gradeImpactScore.
+ * Sigwald v2.2: a goal within a cycle. Goal-linked tasks get an importance signal parallel to Task.gradeImpactScore.
  */
 model Goal {
   id               String  @id @default(cuid())
@@ -405,7 +405,7 @@ model Goal {
   definitionOfDone String? // what "done" looks like for this goal
   status           String  @default("active") // enum: 'active' | 'done' | 'dropped' (no longer pursued: left out of the vault's projection or set aside by hand; its finished work keeps its XP)
   /**
-   * Erwin: importance signal (0–100) parallel to Task.gradeImpactScore; feeds Stage 1 ranking
+   * Sigwald: importance signal (0–100) parallel to Task.gradeImpactScore; feeds Stage 1 ranking
    */
   importanceScore  Float?  @default(50)
 
@@ -414,18 +414,18 @@ model Goal {
    */
   sortOrder  Int       @default(0)
   /**
-   * Stat keys this goal develops (mirrors the vault goal's `develops:` frontmatter; vocabulary in src/lib/erwin/stats.ts).
+   * Stat keys this goal develops (mirrors the vault goal's `develops:` frontmatter; vocabulary in src/lib/sigwald/stats.ts).
    */
   develops   String[]  @default([])
   /**
-   * Boss = dated, pass/fail milestone on a goal; felling it pays 5 XP (src/lib/erwin/xp.ts).
+   * Boss = dated, pass/fail milestone on a goal; felling it pays 5 XP (src/lib/sigwald/xp.ts).
    */
   isBoss     Boolean   @default(false)
   targetDate DateTime?
 
   /**
    * Goals-sync projection identity: "venture:<slug>" for a vault Lord, "venture:<slug>#boss:<name-slug>"
-   * for a vault boss. NULL = hand-made in erwin; the pump only ever touches non-NULL (venture:) rows.
+   * for a vault boss. NULL = hand-made in sigwald; the pump only ever touches non-NULL (venture:) rows.
    */
   externalId String?
 
@@ -434,11 +434,11 @@ model Goal {
    */
   taskSources        String[] @default([])
   /**
-   * Boss: the Canvas gradebook item it is (`canvas: <id>` in the vault, or picked in Erwin). Canvas settles it: handing the work in, a grade or being excused fells the boss, and the item's due date wins over the boss's own.
+   * Boss: the Canvas gradebook item it is (`canvas: <id>` in the vault, or picked in Sigwald). Canvas settles it: handing the work in, a grade or being excused fells the boss, and the item's due date wins over the boss's own.
    */
   canvasAssignmentId String?
   /**
-   * Boss: an Erwin task that settles it, for proof that isn't a Canvas item (another task source, or a task made by hand). Finishing the task fells the boss.
+   * Boss: an Sigwald task that settles it, for proof that isn't a Canvas item (another task source, or a task made by hand). Finishing the task fells the boss.
    */
   proofTaskId        String?
   proofTask          Task?    @relation("BossProof", fields: [proofTaskId], references: [id], onDelete: SetNull)
@@ -467,7 +467,7 @@ model Goal {
 }
 
 /**
- * Erwin v3: goal→goal DAG edge. Both ends must live in the same cycle; cycle-free enforced at the API layer.
+ * Sigwald v3: goal→goal DAG edge. Both ends must live in the same cycle; cycle-free enforced at the API layer.
  */
 model GoalLink {
   id       String @id @default(cuid())
@@ -483,7 +483,7 @@ model GoalLink {
 }
 
 /**
- * Erwin v3: task↔goal many-to-many — a task can serve several goals/subgoals.
+ * Sigwald v3: task↔goal many-to-many — a task can serve several goals/subgoals.
  */
 model TaskGoalLink {
   id     String @id @default(cuid())
@@ -499,7 +499,7 @@ model TaskGoalLink {
 }
 
 /**
- * Erwin: a mirrored Canvas course — its materials, gradebook, announcements and
+ * Sigwald: a mirrored Canvas course — its materials, gradebook, announcements and
  * inbox. Canvas stays the source of truth — every row here is rebuilt by sync
  * and pruned when Canvas drops it. Tasks keep their denormalized
  * courseId/courseName (the Canvas id), which matches `canvasId` here.
@@ -560,7 +560,7 @@ model Course {
 }
 
 /**
- * Erwin: one Canvas module — usually a week or a unit — in Canvas order.
+ * Sigwald: one Canvas module — usually a week or a unit — in Canvas order.
  */
 model CourseModule {
   id       String    @id @default(cuid())
@@ -577,7 +577,7 @@ model CourseModule {
 }
 
 /**
- * Erwin: one thing a student can open. A module item ("item:<id>"), a file a
+ * Sigwald: one thing a student can open. A module item ("item:<id>"), a file a
  * module page links to ("file:<id>" with `parentId` = that page), or a file or
  * page reached only from an assignment, announcement or the syllabus
  * ("file:<id>", "page:<slug>", no module). Keyed by item rather than content
@@ -644,7 +644,7 @@ model CourseMaterial {
 }
 
 /**
- * Erwin: task ↔ material, with why they're linked.
+ * Sigwald: task ↔ material, with why they're linked.
  */
 model TaskMaterialLink {
   id         String         @id @default(cuid())
@@ -662,7 +662,7 @@ model TaskMaterialLink {
 }
 
 /**
- * Erwin: a Canvas assignment group — a gradebook category, with its weight and drop rules.
+ * Sigwald: a Canvas assignment group — a gradebook category, with its weight and drop rules.
  */
 model CourseAssignmentGroup {
   id          String             @id @default(cuid())
@@ -687,10 +687,10 @@ model CourseAssignmentGroup {
 }
 
 /**
- * Erwin: every assignment in a live course with this student's submission —
+ * Sigwald: every assignment in a live course with this student's submission —
  * the gradebook. Tasks are the actionable subset (`taskId`); this table also
  * keeps what isn't a task: participation grades, posted final grades, work
- * graded before Erwin first saw it.
+ * graded before Sigwald first saw it.
  */
 model CourseAssignment {
   id                  String    @id @default(cuid())
@@ -710,7 +710,7 @@ model CourseAssignment {
    */
   rubric              Json?
   /**
-   * Roughly how much of the course grade it's worth, 0–100: its points against the biggest in its group, times the group's weight. Set on work Erwin tracks as a task.
+   * Roughly how much of the course grade it's worth, 0–100: its points against the biggest in its group, times the group's weight. Set on work Sigwald tracks as a task.
    */
   gradeWeightPercent  Float?
   /**
@@ -722,7 +722,7 @@ model CourseAssignment {
   lockdownBrowser     Boolean   @default(false)
 
   /**
-   * This student's submission as Erwin reads it: unsubmitted | missing (past due, Canvas still takes it) | missed (closed, never submitted) | submitted | pending_review | graded | excused
+   * This student's submission as Sigwald reads it: unsubmitted | missing (past due, Canvas still takes it) | missed (closed, never submitted) | submitted | pending_review | graded | excused
    */
   state            String    @default("unsubmitted")
   submittedAt      DateTime?
@@ -765,7 +765,7 @@ model CourseAssignment {
 }
 
 /**
- * Erwin: a course announcement. The body is raw Canvas HTML — sanitize it when rendering.
+ * Sigwald: a course announcement. The body is raw Canvas HTML — sanitize it when rendering.
  */
 model CourseAnnouncement {
   id           String           @id @default(cuid())
@@ -776,7 +776,7 @@ model CourseAnnouncement {
   postedAt     DateTime
   htmlUrl      String?
   /**
-   * Canvas's own read flag at the last sync. Erwin reads it and never writes it back.
+   * Canvas's own read flag at the last sync. Sigwald reads it and never writes it back.
    */
   readInCanvas Boolean          @default(false)
   lastSyncedAt DateTime
@@ -789,7 +789,7 @@ model CourseAnnouncement {
 }
 
 /**
- * Erwin: a Canvas Inbox thread sent in a live course — instructor messages
+ * Sigwald: a Canvas Inbox thread sent in a live course — instructor messages
  * like a schedule change.
  */
 model CourseConversation {
@@ -811,7 +811,7 @@ model CourseConversation {
 }
 
 /**
- * Erwin: where Canvas is wrong about an assignment, and what's true instead —
+ * Sigwald: where Canvas is wrong about an assignment, and what's true instead —
  * a teammate handed in the group copy, Connect closes at noon. Canvas stays the
  * source of truth; sync applies these on top (`lib/canvas/corrections.ts`).
  * Either one assignment (`assignmentCanvasId`) or a course rule matched by
@@ -856,7 +856,7 @@ model CanvasCorrection {
 }
 
 /**
- * Erwin: something that changed in a course since the last sync — a new
+ * Sigwald: something that changed in a course since the last sync — a new
  * announcement, file, grade or due date. The UI marks it seen; ops pushes it
  * to the hub. Never written for what already existed at a course's first sync.
  */
@@ -904,7 +904,7 @@ model CourseActivity {
 }
 
 /**
- * Erwin: implicit feedback for learning-to-rank (Done / Skip / Surfaced)
+ * Sigwald: implicit feedback for learning-to-rank (Done / Skip / Surfaced)
  */
 model TaskInteraction {
   id          String   @id @default(cuid())
@@ -921,7 +921,7 @@ model TaskInteraction {
 }
 
 /**
- * Erwin: per-user learned ranker weights and blend metadata
+ * Sigwald: per-user learned ranker weights and blend metadata
  */
 model RankerState {
   id                     String   @id @default(cuid())
@@ -997,7 +997,7 @@ model Person {
 }
 
 /**
- * People module: one conversation with a person. Logging one closes their open reach-out task; finishing that task anywhere in Erwin logs one.
+ * People module: one conversation with a person. Logging one closes their open reach-out task; finishing that task anywhere in Sigwald logs one.
  */
 model Interaction {
   id        String   @id @default(cuid())
@@ -1205,7 +1205,7 @@ model Job {
    */
   timesheetDueDays Int           @default(0)
   /**
-   * Periods that start before this day get no task: their hours were handled before Erwin tracked them.
+   * Periods that start before this day get no task: their hours were handled before Sigwald tracked them.
    */
   timesheetsFrom   DateTime?     @db.Date
   /**
@@ -1218,7 +1218,7 @@ model Job {
   links            Json          @default("[]")
   notes            String?
   /**
-   * The slug a schedule import names it by (PUT /api/erwin/shifts, "im"). Null for a job whose shifts are all added by hand.
+   * The slug a schedule import names it by (PUT /api/sigwald/shifts, "im"). Null for a job whose shifts are all added by hand.
    */
   importKey        String?
   feedId           String?       @unique
@@ -1287,7 +1287,7 @@ model Shift {
 }
 
 /**
- * Someone at a job to reach: a supervisor, the front desk. Kept in Erwin only; never put in an alert.
+ * Someone at a job to reach: a supervisor, the front desk. Kept in Sigwald only; never put in an alert.
  */
 model JobContact {
   id        String   @id @default(cuid())
@@ -1477,11 +1477,11 @@ model TaskProvider {
   syncEnabled         Boolean           @default(true)
   syncInterval        String            @default("hourly") // 'hourly', 'daily', 'manual'
   /**
-   * Erwin: polling interval in minutes (Canvas default 15 — new announcements, files and grades shouldn't wait hours)
+   * Sigwald: polling interval in minutes (Canvas default 15 — new announcements, files and grades shouldn't wait hours)
    */
   syncIntervalMinutes Int?              @default(15)
   /**
-   * Erwin: Canvas base URL or other provider base
+   * Sigwald: Canvas base URL or other provider base
    */
   serverUrl           String?
   lastSyncedAt        DateTime?

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src file:; img-src data:">
 <meta name="color-scheme" content="dark light">
-<title>Erwin</title>
+<title>Sigwald</title>
 <style>
   /* The boot screen: what you see for the second or two before the server
      answers, and the failure screen if it never does. Tokens mirror
@@ -88,10 +88,10 @@
 </head>
 <body>
 <main id="boot">
-  <div class="mark"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="plate" fill-rule="evenodd" d="M16 4H60V48L48 60H4V16ZM11 14h1v4h-1zM15.5 14h1v4h-1zM20 14h1v4h-1zM24.5 14h1v4h-1zM38.5 14h1v4h-1zM43 14h1v4h-1zM47.5 14h1v4h-1zM52 14h1v4h-1zM11 19h42v1H11zM25 11h14l-7 13z"/><path class="index" d="M26.5 12h11L32 22.2z"/></svg>ERWIN</div>
+  <div class="mark"><svg viewBox="0 0 64 64" aria-hidden="true"><path class="plate" fill-rule="evenodd" d="M16 4H60V48L48 60H4V16ZM11 14h1v4h-1zM15.5 14h1v4h-1zM20 14h1v4h-1zM24.5 14h1v4h-1zM38.5 14h1v4h-1zM43 14h1v4h-1zM47.5 14h1v4h-1zM52 14h1v4h-1zM11 19h42v1H11zM25 11h14l-7 13z"/><path class="index" d="M26.5 12h11L32 22.2z"/></svg>SIGWALD</div>
   <h1 id="title">Opening your database</h1>
   <div class="track" aria-hidden="true"><i id="s0" class="live"></i><i id="s1"></i><i id="s2"></i></div>
-  <div class="steps"><span id="l0" class="on">Database</span><span id="l1">Updates</span><span id="l2">Erwin</span></div>
+  <div class="steps"><span id="l0" class="on">Database</span><span id="l1">Updates</span><span id="l2">Sigwald</span></div>
   <section class="fail" aria-live="assertive">
     <p style="margin:0;color:var(--muted)">Your data is safe on this machine. The log has the details; trying again usually works.</p>
     <pre id="detail"></pre>
@@ -102,25 +102,25 @@
   </section>
 </main>
 <script>
-  var titles = { database: "Opening your database", migrations: "Updating the database", server: "Starting Erwin" };
+  var titles = { database: "Opening your database", migrations: "Updating the database", server: "Starting Sigwald" };
   var order = ["database", "migrations", "server"];
-  window.erwinBootStep = function (step) {
+  window.sigwaldBootStep = function (step) {
     var at = order.indexOf(step);
-    document.getElementById("title").textContent = titles[step] || "Starting Erwin";
+    document.getElementById("title").textContent = titles[step] || "Starting Sigwald";
     for (var i = 0; i < 3; i++) {
       var seg = document.getElementById("s" + i), label = document.getElementById("l" + i);
       seg.className = i < at ? "on" : i === at ? "live" : "";
       label.className = i <= at ? "on" : "";
     }
   };
-  window.erwinBootFailed = function (message) {
+  window.sigwaldBootFailed = function (message) {
     document.getElementById("boot").className = "failed";
-    document.getElementById("title").textContent = "Erwin couldn't start";
+    document.getElementById("title").textContent = "Sigwald couldn't start";
     document.getElementById("detail").textContent = message;
     document.getElementById("retry").focus();
   };
-  document.getElementById("retry").addEventListener("click", function () { window.erwinBoot && window.erwinBoot.restart(); });
-  document.getElementById("logs").addEventListener("click", function () { window.erwinBoot && window.erwinBoot.openLogs(); });
+  document.getElementById("retry").addEventListener("click", function () { window.sigwaldBoot && window.sigwaldBoot.restart(); });
+  document.getElementById("logs").addEventListener("click", function () { window.sigwaldBoot && window.sigwaldBoot.openLogs(); });
 </script>
 </body>
 </html>

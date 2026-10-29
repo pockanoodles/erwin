@@ -2,7 +2,7 @@
  * The two keys a desktop install needs, made on first launch and kept.
  *
  *   nextauthSecret  signs session cookies
- *   erwinSecretKey  encrypts stored credentials at rest (Canvas token, CalDAV
+ *   sigwaldSecretKey  encrypts stored credentials at rest (Canvas token, CalDAV
  *                   password, OAuth tokens), exactly as on a server install
  *
  * Both are sealed with Electron's safeStorage, which uses the macOS Keychain,
@@ -13,7 +13,7 @@
  * A macOS build signed ad hoc keeps that plain file too. The Keychain lets
  * only the build that made its item read it without asking, and an ad-hoc
  * signature names one build: after every update macOS would ask for the login
- * password before Erwin could start, and Deny would keep it from starting at
+ * password before Sigwald could start, and Deny would keep it from starting at
  * all. The first signed build seals the file and removes it.
  *
  * Losing this file makes stored credentials unreadable: the app keeps working
@@ -31,7 +31,7 @@ import { isAdhocMacBuild } from "./build";
 
 export interface InstallKeys {
   nextauthSecret: string;
-  erwinSecretKey: string;
+  sigwaldSecretKey: string;
 }
 
 const SEALED = "keys.bin";
@@ -57,7 +57,7 @@ export function loadInstallKeys(userData: string): InstallKeys {
 
   const keys: InstallKeys = {
     nextauthSecret: crypto.randomBytes(32).toString("base64"),
-    erwinSecretKey: crypto.randomBytes(32).toString("base64"),
+    sigwaldSecretKey: crypto.randomBytes(32).toString("base64"),
   };
   if (canSeal()) {
     write(sealedPath, safeStorage.encryptString(JSON.stringify(keys)));
@@ -76,10 +76,10 @@ function canSeal(): boolean {
 
 function parse(text: string): InstallKeys {
   const value = JSON.parse(text) as Partial<InstallKeys>;
-  if (!value.nextauthSecret || !value.erwinSecretKey) {
+  if (!value.nextauthSecret || !value.sigwaldSecretKey) {
     throw new Error("The install keys file is damaged");
   }
-  return { nextauthSecret: value.nextauthSecret, erwinSecretKey: value.erwinSecretKey };
+  return { nextauthSecret: value.nextauthSecret, sigwaldSecretKey: value.sigwaldSecretKey };
 }
 
 function write(file: string, data: string | Buffer): void {

@@ -1,5 +1,5 @@
 /**
- * Feeds whose events can't be changed in Erwin. An iCal subscription mirrors a
+ * Feeds whose events can't be changed in Sigwald. An iCal subscription mirrors a
  * document someone else publishes, so an edit made here would be undone by the
  * next sync. The calendar store and the event routes both ask this, so the
  * rule lives in one place.

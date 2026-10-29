@@ -247,7 +247,7 @@ const MISSING_DETAIL: Record<string, string> = {
 
 /**
  * What changed for one assignment since the last sync. `prev` is undefined the
- * first time Erwin sees it.
+ * first time Sigwald sees it.
  */
 export function assignmentActivity(
   prev: StoredAssignment | undefined,

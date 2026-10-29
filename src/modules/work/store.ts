@@ -157,12 +157,12 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
       if (get().status === "idle") set({ status: "loading" });
       // What Focus and the task sheet show for a timesheet task is read from
       // the same data; a reload means it may have moved.
-      invalidateResources("/api/erwin/work/");
+      invalidateResources("/api/sigwald/work/");
       try {
         // The jobs first: reading them turns timesheet tasks ticked off
         // elsewhere into submitted hours, which the other lists then include.
         const active = await json<{ jobs: JobRow[] }>(
-          await fetch("/api/erwin/work/jobs")
+          await fetch("/api/sigwald/work/jobs")
         );
         const today = localDay(new Date());
         // Back to the start of a week, so the oldest week listed is whole.
@@ -172,21 +172,21 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
           to: startOf(shiftDay(today, DAYS_AHEAD)),
         });
         const [archived, shifts, periods, contacts] = await Promise.all([
-          fetch("/api/erwin/work/jobs?archived=1").then((r) =>
+          fetch("/api/sigwald/work/jobs?archived=1").then((r) =>
             json<{ jobs: JobRow[] }>(r)
           ),
-          fetch(`/api/erwin/work/shifts?${range}`).then((r) =>
+          fetch(`/api/sigwald/work/shifts?${range}`).then((r) =>
             json<{ shifts: ShiftRow[] }>(r)
           ),
           perJob(active.jobs, async (id) => {
             const body = await json<{ periods: PeriodRow[] }>(
-              await fetch(`/api/erwin/work/jobs/${id}/periods`)
+              await fetch(`/api/sigwald/work/jobs/${id}/periods`)
             );
             return body.periods;
           }),
           perJob(active.jobs, async (id) => {
             const body = await json<{ contacts: ContactRow[] }>(
-              await fetch(`/api/erwin/work/jobs/${id}/contacts`)
+              await fetch(`/api/sigwald/work/jobs/${id}/contacts`)
             );
             return body.contacts;
           }),
@@ -219,7 +219,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
       set({ nextFetchedAt: Date.now() });
       try {
         const { shift } = await json<{ shift: NextShift | null }>(
-          await fetch("/api/erwin/work/next")
+          await fetch("/api/sigwald/work/next")
         );
         set({ next: shift });
       } catch {
@@ -229,7 +229,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
 
     createJob: async (input) => {
       const out = await write<{ job: JobRow }>(
-        "/api/erwin/work/jobs",
+        "/api/sigwald/work/jobs",
         "POST",
         input
       );
@@ -240,21 +240,21 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
     updateJob: async (id, input) =>
       (
         await write<{ job: JobRow }>(
-          `/api/erwin/work/jobs/${id}`,
+          `/api/sigwald/work/jobs/${id}`,
           "PATCH",
           input
         )
       )?.job ?? null,
 
     deleteJob: async (id) => {
-      const ok = (await write(`/api/erwin/work/jobs/${id}`, "DELETE")) !== null;
+      const ok = (await write(`/api/sigwald/work/jobs/${id}`, "DELETE")) !== null;
       if (ok && get().selected === id) set({ selected: null });
       return ok;
     },
 
     addShift: async (jobId, input) => {
       const out = await write<{ shift: ShiftRow }>(
-        `/api/erwin/work/jobs/${jobId}/shifts`,
+        `/api/sigwald/work/jobs/${jobId}/shifts`,
         "POST",
         input
       );
@@ -265,7 +265,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
     updateShift: async (id, patch) =>
       (
         await write<{ shift: ShiftRow }>(
-          `/api/erwin/work/shifts/${id}`,
+          `/api/sigwald/work/shifts/${id}`,
           "PATCH",
           patch
         )
@@ -273,7 +273,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
 
     deleteShift: async (id) => {
       const ok =
-        (await write(`/api/erwin/work/shifts/${id}`, "DELETE")) !== null;
+        (await write(`/api/sigwald/work/shifts/${id}`, "DELETE")) !== null;
       if (ok && get().selected === id) set({ selected: null });
       return ok;
     },
@@ -281,7 +281,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
     submitPeriod: async (jobId, first) =>
       (
         await write<{ period: PeriodRow }>(
-          `/api/erwin/work/jobs/${jobId}/periods/${first}`,
+          `/api/sigwald/work/jobs/${jobId}/periods/${first}`,
           "POST"
         )
       )?.period ?? null,
@@ -289,14 +289,14 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
     reopenPeriod: async (jobId, first) =>
       (
         await write<{ period: PeriodRow }>(
-          `/api/erwin/work/jobs/${jobId}/periods/${first}`,
+          `/api/sigwald/work/jobs/${jobId}/periods/${first}`,
           "DELETE"
         )
       )?.period ?? null,
 
     addContact: async (jobId, input) => {
       const out = await write<{ contact: ContactRow }>(
-        `/api/erwin/work/jobs/${jobId}/contacts`,
+        `/api/sigwald/work/jobs/${jobId}/contacts`,
         "POST",
         input
       );
@@ -307,7 +307,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
     updateContact: async (id, input) =>
       (
         await write<{ contact: ContactRow }>(
-          `/api/erwin/work/contacts/${id}`,
+          `/api/sigwald/work/contacts/${id}`,
           "PATCH",
           input
         )
@@ -315,7 +315,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
 
     deleteContact: async (id) => {
       const ok =
-        (await write(`/api/erwin/work/contacts/${id}`, "DELETE")) !== null;
+        (await write(`/api/sigwald/work/contacts/${id}`, "DELETE")) !== null;
       if (ok && get().selected === id) set({ selected: null });
       return ok;
     },
@@ -330,7 +330,7 @@ export const useWorkStore = create<WorkStore>()((set, get) => {
           jobId,
         });
         const { shifts } = await json<{ shifts: ShiftRow[] }>(
-          await fetch(`/api/erwin/work/shifts?${range}`)
+          await fetch(`/api/sigwald/work/shifts?${range}`)
         );
         // A period counts the shifts that start in it.
         return shifts.filter((s) => s.day >= first && s.day <= last);

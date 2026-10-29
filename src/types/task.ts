@@ -56,7 +56,7 @@ export interface CourseTaskFacts {
   courseLabel?: string | null;
   /** Canvas's word on the submission: unsubmitted | missing | missed | submitted | pending_review | graded | excused. */
   submissionStatus?: string | null;
-  /** Where Erwin overrides Canvas for it, each with what Canvas said; null when Canvas stands. */
+  /** Where Sigwald overrides Canvas for it, each with what Canvas said; null when Canvas stands. */
   corrections?: { id: string; field: string; canvas: string | null; value: string | null; reason: string }[] | null;
   /** Roughly how much of the course grade it's worth, 0–100, to one decimal. */
   gradeWeightPercent?: number | null;
@@ -100,7 +100,7 @@ export interface Task extends CourseTaskFacts {
   externalListId?: string | null;
   lastSyncedAt?: Date | null;
 
-  // Erwin: what Focus ranks by (set by the module that owns the task)
+  // Sigwald: what Focus ranks by (set by the module that owns the task)
   lockAt?: Date | null;
   unlockAt?: Date | null;
   /** How much this task matters, 0–1; null when no module says. */
@@ -111,7 +111,7 @@ export interface Task extends CourseTaskFacts {
   lastSkippedAt?: Date | null;
   externalUrl?: string | null;
   category?: string | null;
-  /** Erwin v3: goal links (many-to-many); a task can serve several goals */
+  /** Sigwald v3: goal links (many-to-many); a task can serve several goals */
   goalLinks?: { goalId: string }[];
   /** Goal picked by hand; false = filed by the vault's goal rules. */
   goalsPinned?: boolean;

@@ -5,7 +5,7 @@ import {
   letterOutlook,
   letterFor,
   projectMissedAssignment,
-} from "../erwin/grade-projection";
+} from "../sigwald/grade-projection";
 
 const group = (id: string, weight: number | null, drops: Partial<GradebookGroup> = {}): GradebookGroup => ({
   id,
@@ -60,14 +60,14 @@ describe("coursePercent", () => {
 });
 
 describe("projectMissedAssignment", () => {
-  it("anchors on Canvas's current score and applies Erwin's drop", () => {
+  it("anchors on Canvas's current score and applies Sigwald's drop", () => {
     const groups = [group("hw", 50), group("exams", 50)];
     const entries = [entry("h1", "hw", 10, 10), entry("e1", "exams", 90), entry("e2", "exams", null)];
     const projection = projectMissedAssignment(
       { weighted: true, canvasCurrentScore: 94.5, scheme: null, entries, groups },
       "e2"
     );
-    // Erwin: current 95, if e2 is a zero the exam group falls to 45% → 72.5. Δ −22.5 from Canvas's 94.5.
+    // Sigwald: current 95, if e2 is a zero the exam group falls to 45% → 72.5. Δ −22.5 from Canvas's 94.5.
     expect(projection).toEqual({
       currentCourseGrade: 94.5,
       gradeIfMissed: 72,

@@ -1,5 +1,5 @@
 /**
- * The runtime process: Erwin's own server, inside the desktop app.
+ * The runtime process: Sigwald's own server, inside the desktop app.
  *
  * Runs in an Electron utility process (plain Node, no window). On `init` it:
  *   1. opens the database: PGlite, which is Postgres compiled to WebAssembly,
@@ -17,7 +17,7 @@
  *
  * It also keeps the backups: a copy before any migration that changes the
  * database, one a day while the app runs, and one whenever the person asks.
- * The Next server reaches them through `globalThis.erwinDesktopBackups`
+ * The Next server reaches them through `globalThis.sigwaldDesktopBackups`
  * (src/lib/desktop-backups.ts). A restore is a restart: the runtime marks the
  * copy, asks the main process to restart it, and the next start loads that
  * copy in place of the database, keeping the one it replaces beside it.
@@ -129,19 +129,19 @@ async function start(init: RuntimeInit): Promise<void> {
     NEXTAUTH_URL: origin,
     NEXT_PUBLIC_APP_URL: origin,
     NEXTAUTH_SECRET: init.secrets.nextauthSecret,
-    ERWIN_SECRET_KEY: init.secrets.erwinSecretKey,
-    ERWIN_DESKTOP_BOOT_TOKEN: init.secrets.bootToken,
-    ERWIN_RUNTIME: "desktop",
-    ERWIN_SCHEDULER: "inprocess",
-    ERWIN_DESKTOP_VERSION: init.appVersion,
-    ERWIN_DESKTOP_USER_NAME: init.machine.userName,
-    ERWIN_DESKTOP_TIME_ZONE: init.machine.timeZone,
-    ERWIN_DESKTOP_HOUR_CYCLE: init.machine.hourCycle,
-    ERWIN_DESKTOP_FIRST_DAY: init.machine.firstDay,
+    SIGWALD_SECRET_KEY: init.secrets.sigwaldSecretKey,
+    SIGWALD_DESKTOP_BOOT_TOKEN: init.secrets.bootToken,
+    SIGWALD_RUNTIME: "desktop",
+    SIGWALD_SCHEDULER: "inprocess",
+    SIGWALD_DESKTOP_VERSION: init.appVersion,
+    SIGWALD_DESKTOP_USER_NAME: init.machine.userName,
+    SIGWALD_DESKTOP_TIME_ZONE: init.machine.timeZone,
+    SIGWALD_DESKTOP_HOUR_CYCLE: init.machine.hourCycle,
+    SIGWALD_DESKTOP_FIRST_DAY: init.machine.firstDay,
   });
 
   const database = db;
-  (globalThis as { erwinDesktopBackups?: unknown }).erwinDesktopBackups = {
+  (globalThis as { sigwaldDesktopBackups?: unknown }).sigwaldDesktopBackups = {
     dir: backupsDir,
     list: () => listBackups(backupsDir),
     create: () => snapshot(database, backupsDir, "manual", "manual"),
@@ -239,7 +239,7 @@ async function backup(database: PGlite, backupsDir: string, before: string): Pro
 async function snapshot(database: PGlite, backupsDir: string, kind: BackupKind, label: string): Promise<BackupFile> {
   fs.mkdirSync(backupsDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const name = `erwin-${stamp}-${label}.tar.gz`;
+  const name = `sigwald-${stamp}-${label}.tar.gz`;
   const file = path.join(backupsDir, name);
   await database.exec("CHECKPOINT");
   const dump = await database.runExclusive(() => database.dumpDataDir("gzip"));
@@ -259,7 +259,7 @@ function listBackups(backupsDir: string): BackupFile[] {
   if (!fs.existsSync(backupsDir)) return [];
   return fs
     .readdirSync(backupsDir)
-    .filter((name) => name.startsWith("erwin-") && name.endsWith(".tar.gz"))
+    .filter((name) => name.startsWith("sigwald-") && name.endsWith(".tar.gz"))
     .sort()
     .reverse()
     .map((name) => {

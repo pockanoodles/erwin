@@ -259,7 +259,7 @@ END:VCALENDAR`;
     const elapsed = Date.now() - t0;
 
     const instances = expanded.filter((e) => !e.isMaster);
-    // Erwin refuses rules finer than daily outright (src/lib/ical-recurrence.ts):
+    // Sigwald refuses rules finer than daily outright (src/lib/ical-recurrence.ts):
     // no calendar app writes one, so it keeps its master and expands to nothing.
     expect(instances.length).toBe(0);
     expect(expanded.filter((e) => e.isMaster)).toHaveLength(1);
@@ -453,7 +453,7 @@ describe("fetchIcalEvents", () => {
   });
 });
 
-// Erwin's additions to the upstream port: a moved occurrence (RECURRENCE-ID)
+// Sigwald's additions to the upstream port: a moved occurrence (RECURRENCE-ID)
 // replaces the one it moves, and a VEVENT the converter can't read is dropped.
 
 // Weekly Mondays at 09:00 from 2026-01-05; the 2026-01-12 occurrence moved to

@@ -48,7 +48,7 @@ describe("planModuleItem", () => {
     expect(planned).toMatchObject({ htmlUrl: "https://example.com/reading", locked: true });
   });
 
-  it("skips item types Erwin doesn't mirror", () => {
+  it("skips item types Sigwald doesn't mirror", () => {
     expect(planModuleItem(item({ id: 5, type: "SomethingNew" }), maps)).toBeNull();
   });
 });

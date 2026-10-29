@@ -197,7 +197,7 @@ export function ActivitySheet({
                         ? error
                         : unseenOnly
                           ? "Nothing unseen. You're caught up."
-                          : "Nothing has changed in Canvas since Erwin started watching."}
+                          : "Nothing has changed in Canvas since Sigwald started watching."}
                   </td>
                 </tr>
               ) : (
@@ -361,14 +361,14 @@ function Gone({ what }: { what: string }) {
 }
 
 function NewsTarget({ courseId, id }: { courseId: string; id: string }) {
-  const { data, loading, error } = useResource<NewsItem[]>(`/api/erwin/news?courseId=${courseId}`);
+  const { data, loading, error } = useResource<NewsItem[]>(`/api/sigwald/news?courseId=${courseId}`);
   if (!data) return <p className="p-4 text-[13px] text-muted-foreground">{error ?? (loading ? "Loading…" : null)}</p>;
   const news = data.find((n) => n.id === id);
   return news ? <NewsPreview item={news} /> : <Gone what="This post" />;
 }
 
 function GradebookTarget({ courseId, assignmentId }: { courseId: string; assignmentId: string }) {
-  const { data, loading, error } = useResource<GradebookCourse[]>(`/api/erwin/grades?courseId=${courseId}`);
+  const { data, loading, error } = useResource<GradebookCourse[]>(`/api/sigwald/grades?courseId=${courseId}`);
   const a = data?.[0]?.assignments.find((x) => x.id === assignmentId);
   if (!data) return <p className="p-4 text-[13px] text-muted-foreground">{error ?? (loading ? "Loading…" : null)}</p>;
   if (!a) return <Gone what="This assignment" />;

@@ -12,8 +12,8 @@ import { FirstRun } from "@/components/today/FirstRun";
 import { Button } from "@/components/ui/button";
 import { SwipeableRow } from "@/components/ui/swipeable-row";
 
-import { isDueToday } from "@/lib/erwin/due";
-import { type FocusQueueTask, primaryLadderGoal } from "@/lib/erwin/parse-task";
+import { isDueToday } from "@/lib/sigwald/due";
+import { type FocusQueueTask, primaryLadderGoal } from "@/lib/sigwald/parse-task";
 import { cn } from "@/lib/utils";
 
 import { CLIENT_MODULES } from "@/modules/client";
@@ -21,15 +21,15 @@ import { CLIENT_MODULES } from "@/modules/client";
 import {
   countDanger,
   countDueToday,
-  useErwinStatusStore,
-} from "@/store/erwinStatus";
+  useSigwaldStatusStore,
+} from "@/store/sigwaldStatus";
 import { useModuleOn, useOnModules } from "@/store/modules";
 
 // Tier idiom, mirrored from FocusDesk so the whole app reads danger/urgency
 // the same way: DANGER = red, HIGH-and-due-today = amber, else quiet.
 function tierRowAccent(task: FocusQueueTask): string {
-  const tier = task.erwin?.urgencyTier;
-  if (task.erwin?.danger || tier === "DANGER") {
+  const tier = task.sigwald?.urgencyTier;
+  if (task.sigwald?.danger || tier === "DANGER") {
     return "border-l-2 border-l-destructive bg-destructive/10";
   }
   if (tier === "HIGH") {
@@ -47,8 +47,8 @@ function plainTitle(s: string): string {
 function tierBadge(
   task: FocusQueueTask
 ): { label: string; className: string } | null {
-  const tier = task.erwin?.urgencyTier;
-  if (task.erwin?.danger || tier === "DANGER") {
+  const tier = task.sigwald?.urgencyTier;
+  if (task.sigwald?.danger || tier === "DANGER") {
     return { label: "DANGER", className: "text-destructive" };
   }
   if (tier === "HIGH" && isDueToday(task)) {
@@ -58,14 +58,14 @@ function tierBadge(
 }
 
 export function CommandDashboard() {
-  // The queue is shared with the top bar's status strip (store/erwinStatus.ts)
+  // The queue is shared with the top bar's status strip (store/sigwaldStatus.ts)
   // — this page used to own it, which is why the counts could only be seen
   // while standing on /today.
-  const tasks = useErwinStatusStore((s) => s.tasks);
-  const status = useErwinStatusStore((s) => s.status);
+  const tasks = useSigwaldStatusStore((s) => s.tasks);
+  const status = useSigwaldStatusStore((s) => s.status);
   const ladderOn = useModuleOn("ladder");
-  const load = useErwinStatusStore((s) => s.load);
-  const removeTask = useErwinStatusStore((s) => s.removeTask);
+  const load = useSigwaldStatusStore((s) => s.load);
+  const removeTask = useSigwaldStatusStore((s) => s.removeTask);
   const router = useRouter();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -91,7 +91,7 @@ export function CommandDashboard() {
       setSelectedId(next[Math.min(idx, next.length - 1)]?.id ?? null);
       toast("Task completed");
       try {
-        await fetch("/api/erwin/focus/interact", {
+        await fetch("/api/sigwald/focus/interact", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -111,7 +111,7 @@ export function CommandDashboard() {
   const openTaskInFocus = useCallback(
     (id: string) => {
       if (typeof window !== "undefined") {
-        sessionStorage.setItem("erwin-focus-boost", id);
+        sessionStorage.setItem("sigwald-focus-boost", id);
       }
       router.push("/focus");
     },
@@ -216,8 +216,8 @@ export function CommandDashboard() {
                           </span>
                         </span>
                         <span className="mt-0.5 flex items-center gap-1.5 truncate text-xs text-muted-foreground">
-                          {task.erwin?.countdownHuman && (
-                            <span>{task.erwin.countdownHuman}</span>
+                          {task.sigwald?.countdownHuman && (
+                            <span>{task.sigwald.countdownHuman}</span>
                           )}
                           {task.courseName && <span>· {task.courseName}</span>}
                           {goal && (
@@ -237,17 +237,17 @@ export function CommandDashboard() {
                         tierRowAccent(task)
                       )}
                     >
-                      {(task.erwin?.effortEstimate ||
+                      {(task.sigwald?.effortEstimate ||
                         (gi != null && gi > 0) ||
                         goal?.whyItMatters) && (
                         <div className="mb-2.5 space-y-1 text-xs text-muted-foreground">
-                          {(task.erwin?.effortEstimate ||
+                          {(task.sigwald?.effortEstimate ||
                             (gi != null && gi > 0)) && (
                             <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono">
-                              {task.erwin?.effortEstimate ? (
-                                <span>{task.erwin.effortEstimate}</span>
+                              {task.sigwald?.effortEstimate ? (
+                                <span>{task.sigwald.effortEstimate}</span>
                               ) : null}
-                              {task.erwin?.effortEstimate &&
+                              {task.sigwald?.effortEstimate &&
                               gi != null &&
                               gi > 0 ? (
                                 <span aria-hidden>·</span>
@@ -336,13 +336,13 @@ function LadderPanel({
           {plainTitle(task.title)}
         </h2>
         <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          {task.erwin?.countdownHuman && (
-            <span>{task.erwin.countdownHuman}</span>
+          {task.sigwald?.countdownHuman && (
+            <span>{task.sigwald.countdownHuman}</span>
           )}
-          {task.erwin?.effortEstimate && (
+          {task.sigwald?.effortEstimate && (
             <>
               <span aria-hidden>·</span>
-              <span>{task.erwin.effortEstimate}</span>
+              <span>{task.sigwald.effortEstimate}</span>
             </>
           )}
           {task.courseName && (

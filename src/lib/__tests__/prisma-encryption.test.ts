@@ -19,12 +19,12 @@ import { isEncrypted, resetKeyCache } from "@/lib/crypto/secret-box";
 const KEY = Buffer.alloc(32, 5).toString("base64");
 
 beforeAll(() => {
-  process.env.ERWIN_SECRET_KEY = KEY;
+  process.env.SIGWALD_SECRET_KEY = KEY;
   resetKeyCache();
 });
 
 afterAll(() => {
-  delete process.env.ERWIN_SECRET_KEY;
+  delete process.env.SIGWALD_SECRET_KEY;
   resetKeyCache();
 });
 

@@ -204,7 +204,7 @@ function MarkSubmitted({
   if (!period.tracked) {
     return (
       <p className="text-[13px] text-muted-foreground">
-        From before Erwin counted this job&apos;s timesheets, so there&apos;s
+        From before Sigwald counted this job&apos;s timesheets, so there&apos;s
         nothing to submit here.
       </p>
     );

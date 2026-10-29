@@ -1,6 +1,6 @@
 "use client";
 
-import { STAT_ABBREV, STAT_MEANINGS, STAT_NAMES } from "@/lib/erwin/stats";
+import { STAT_ABBREV, STAT_MEANINGS, STAT_NAMES } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import { useLadderStore } from "@/store/ladder";

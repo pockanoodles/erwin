@@ -12,9 +12,9 @@ const OTHER_KEY = Buffer.alloc(32, 9).toString("base64");
 
 function withKey(value: string | undefined) {
   if (value === undefined) {
-    delete process.env.ERWIN_SECRET_KEY;
+    delete process.env.SIGWALD_SECRET_KEY;
   } else {
-    process.env.ERWIN_SECRET_KEY = value;
+    process.env.SIGWALD_SECRET_KEY = value;
   }
   resetKeyCache();
 }
@@ -42,7 +42,7 @@ describe("secret-box", () => {
     expect(isEncrypted(encryptSecret("tok"))).toBe(true);
     expect(isEncrypted("tok")).toBe(false);
     // A value that merely starts with the prefix is not a valid envelope.
-    expect(isEncrypted("erwin_v1.only-two-parts")).toBe(false);
+    expect(isEncrypted("sigwald_v1.only-two-parts")).toBe(false);
   });
 
   it("is idempotent on encrypt, so a re-run cannot double-encrypt", () => {
@@ -77,7 +77,7 @@ describe("secret-box", () => {
 
   it("explains itself when the key is missing", () => {
     withKey(undefined);
-    expect(() => encryptSecret("tok")).toThrow(/ERWIN_SECRET_KEY is not set/);
+    expect(() => encryptSecret("tok")).toThrow(/SIGWALD_SECRET_KEY is not set/);
   });
 
   it("rejects a key that is not 32 bytes", () => {

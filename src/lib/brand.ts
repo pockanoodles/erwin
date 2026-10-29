@@ -9,19 +9,19 @@
  * that existing installs already hold.
  */
 export const brand = {
-  name: "Erwin",
+  name: "Sigwald",
   /** Lowercase, safe in filenames and storage keys. */
-  slug: "erwin",
+  slug: "sigwald",
   description:
     "Your calendar, your tasks and the modules you choose, and the one thing to do next.",
-  siteUrl: "https://kaitosoeno.com/erwin",
-  repoUrl: "https://github.com/pockanoodles/erwin",
-  issuesUrl: "https://github.com/pockanoodles/erwin/issues",
+  siteUrl: "https://kaitosoeno.com/sigwald",
+  repoUrl: "https://github.com/pockanoodles/sigwald",
+  issuesUrl: "https://github.com/pockanoodles/sigwald/issues",
   privacyUrl: "https://kaitosoeno.com/privacy",
   supportEmail: "soenokaito1@gmail.com",
 } as const;
 
-/** "Settings | Erwin" for a page, plain "Erwin" for none. */
+/** "Settings | Sigwald" for a page, plain "Sigwald" for none. */
 export function pageTitle(page?: string): string {
   return page ? `${page} | ${brand.name}` : brand.name;
 }

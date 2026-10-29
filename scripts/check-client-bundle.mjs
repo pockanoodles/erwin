@@ -19,7 +19,7 @@ import path from "node:path";
 
 const CHUNK_DIR = path.resolve(
   process.cwd(),
-  process.env.ERWIN_DIST_DIR ||
+  process.env.SIGWALD_DIST_DIR ||
     (process.env.NODE_ENV === "development" ? ".next-dev" : ".next"),
   "static/chunks"
 );
@@ -28,7 +28,7 @@ const CHUNK_DIR = path.resolve(
 const FORBIDDEN = [
   { marker: "PrismaClient", why: "the Prisma client" },
   { marker: "credential-encryption", why: "the credential-encryption extension" },
-  { marker: "erwin_v1.", why: "the credential encryption envelope" },
+  { marker: "sigwald_v1.", why: "the credential encryption envelope" },
   { marker: "api.resend.com", why: "the Resend SDK" },
   { marker: "Failed to write batch logs", why: "the database-backed ServerLogger" },
 ];

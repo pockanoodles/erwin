@@ -14,7 +14,7 @@ import {
   pickTopTaskStage1,
   skipPenalty,
   visibilityBoost,
-} from "../erwin/rank-stage1";
+} from "../sigwald/rank-stage1";
 
 const NOW = new Date("2026-06-01T12:00:00.000Z");
 const HOUR = 3_600_000;

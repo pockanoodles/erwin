@@ -14,7 +14,7 @@ import { StatSheet } from "./StatSheet";
 import { XpLog } from "./XpLog";
 
 /**
- * Stats (the Ladder module): the RPG layer over Erwin, kept to one page. It
+ * Stats (the Ladder module): the RPG layer over Sigwald, kept to one page. It
  * never decides what to do next (Today and Focus do that); it reads the work
  * already done as a character sheet for the hex, the two-month block it was
  * done in.

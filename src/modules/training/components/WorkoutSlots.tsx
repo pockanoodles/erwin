@@ -3,7 +3,7 @@
 import Link from "next/link";
 
 import { localDay } from "@/lib/date-utils";
-import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+import type { FocusQueueTask } from "@/lib/sigwald/parse-task";
 import { cn } from "@/lib/utils";
 
 import { cadenceLabel, lastLabel } from "@/modules/training/cadence";
@@ -12,7 +12,7 @@ import type { RoutineRow, WorkoutRow } from "@/modules/training/types";
 
 import { useResource } from "@/hooks/use-resource";
 
-/** GET /api/erwin/training/tasks/:id */
+/** GET /api/sigwald/training/tasks/:id */
 interface TaskRoutine {
   routine: RoutineRow;
   workouts: WorkoutRow[];
@@ -24,7 +24,7 @@ interface TaskRoutine {
  * where to log it.
  */
 function useTaskRoutine(taskId: string) {
-  return useResource<TaskRoutine>(`/api/erwin/training/tasks/${taskId}`);
+  return useResource<TaskRoutine>(`/api/sigwald/training/tasks/${taskId}`);
 }
 
 function RoutineCard({

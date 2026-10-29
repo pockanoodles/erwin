@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { StatKey } from "@/lib/erwin/stats";
+import type { StatKey } from "@/lib/sigwald/stats";
 import type { HexRef, LadderPayload } from "@/types/ladder";
 
 /**
@@ -50,7 +50,7 @@ export const useLadderStore = create<LadderState>()((set, get) => ({
     set((s) => ({ status: s.data ? s.status : "loading" }));
     try {
       const res = await fetch(
-        hex ? `/api/erwin/ladder?year=${hex.year}&index=${hex.index}` : "/api/erwin/ladder"
+        hex ? `/api/sigwald/ladder?year=${hex.year}&index=${hex.index}` : "/api/sigwald/ladder"
       );
       if (!res.ok) throw new Error(`The Ladder couldn't load (${res.status})`);
       const data = (await res.json()) as LadderPayload;

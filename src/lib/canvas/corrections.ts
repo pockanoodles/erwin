@@ -158,7 +158,7 @@ function correctedValue(
 }
 
 /**
- * The assignment as Erwin should see it: Canvas's plan with every live
+ * The assignment as Sigwald should see it: Canvas's plan with every live
  * correction that matches laid on top. Course rules go first and corrections
  * for one assignment after, so the specific one wins; within each, oldest
  * first. Dates go before state: a corrected date can change what the state

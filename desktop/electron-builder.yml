@@ -1,17 +1,17 @@
-# Packaging for every channel Erwin ships on. CI drives it per OS
+# Packaging for every channel Sigwald ships on. CI drives it per OS
 # (.github/workflows/release.yml); locally: `npm run build:desktop` at the
 # repo root, then `npm run dist -- --mac --dir` here for an unpacked app.
-appId: com.kaitosoeno.erwin
-productName: Erwin
+appId: com.kaitosoeno.sigwald
+productName: Sigwald
 copyright: Copyright © 2026 Kaito Soeno
-artifactName: "Erwin-${version}-${os}-${arch}.${ext}"
+artifactName: "Sigwald-${version}-${os}-${arch}.${ext}"
 
 directories:
   output: release
   buildResources: build
 
 # The shell itself: compiled main/runtime/preload, the boot screen, and the
-# PGlite packages. PGlite's optional Postgres extensions are left out; Erwin
+# PGlite packages. PGlite's optional Postgres extensions are left out; Sigwald
 # loads none of them.
 files:
   - dist/**
@@ -23,7 +23,7 @@ asarUnpack:
   - node_modules/@electric-sql/**
 npmRebuild: false
 
-# Erwin's server, staged by scripts/desktop/stage.mjs, is kept outside the
+# Sigwald's server, staged by scripts/desktop/stage.mjs, is kept outside the
 # asar, since Next reads its build from disk and Prisma loads a native query
 # engine. The migrations go in as extraResources; the server goes in through
 # build/after-pack.cjs, because extraResources would drop its node_modules.
@@ -35,7 +35,7 @@ afterPack: build/after-pack.cjs
 publish:
   provider: github
   owner: pockanoodles
-  repo: erwin
+  repo: sigwald
   releaseType: draft
 
 mac:
@@ -77,27 +77,27 @@ nsis:
 # Identity values come from Partner Center once the app name is reserved.
 # CI overrides them (-c.appx.identityName=… -c.appx.publisher=…).
 appx:
-  applicationId: Erwin
-  identityName: KaitoSoeno.Erwin
+  applicationId: Sigwald
+  identityName: KaitoSoeno.Sigwald
   publisher: CN={{MS_STORE_PUBLISHER_ID}}
   publisherDisplayName: Kaito Soeno
-  displayName: Erwin
+  displayName: Sigwald
   backgroundColor: "#14130d"
   languages: [en-US, ja-JP]
 
 linux:
-  executableName: erwin
+  executableName: sigwald
   category: Office
   synopsis: Your calendar, your tasks and the one thing to do next
   description: >-
-    Erwin reads your calendar, your tasks and the modules you turn on, then
+    Sigwald reads your calendar, your tasks and the modules you turn on, then
     tells you the one thing to do next. Local-first: your data stays in a
     database on your own machine.
   maintainer: Kaito Soeno <contact@kaitosoeno.com>
   vendor: Kaito Soeno
   desktop:
     entry:
-      StartupWMClass: Erwin
+      StartupWMClass: Sigwald
       Keywords: tasks;calendar;canvas;planner;focus;todo;
   target:
     - target: AppImage

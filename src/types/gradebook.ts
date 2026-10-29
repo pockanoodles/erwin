@@ -1,4 +1,4 @@
-/** Client shapes for GET /api/erwin/grades (src/lib/erwin/gradebook.ts). */
+/** Client shapes for GET /api/sigwald/grades (src/lib/sigwald/gradebook.ts). */
 
 import type { RubricCriterion } from "@/types/course-materials";
 
@@ -35,7 +35,7 @@ export interface ScoreStatistics {
   upper_q?: number;
 }
 
-/** A correction sync laid over Canvas for this assignment: Canvas said `canvas`, Erwin uses `value`. */
+/** A correction sync laid over Canvas for this assignment: Canvas said `canvas`, Sigwald uses `value`. */
 export interface AppliedCorrection {
   id: string;
   field: string;
@@ -80,7 +80,7 @@ export interface GradebookAssignment {
     lockdownBrowser: boolean;
   } | null;
   task: { id: string; status: string } | null;
-  /** Where Erwin overrides Canvas for this assignment; null when Canvas stands. */
+  /** Where Sigwald overrides Canvas for this assignment; null when Canvas stands. */
   corrections: AppliedCorrection[] | null;
   /** An unseen grade, feedback or missing notice points here. */
   unseen: boolean;
@@ -110,7 +110,7 @@ export interface GradebookCourse {
   finalScore: number | null;
   finalGrade: string | null;
   applyGroupWeights: boolean;
-  /** Erwin's own current percentage from the same rows — the stand-in when Canvas hides the total. */
+  /** Sigwald's own current percentage from the same rows — the stand-in when Canvas hides the total. */
   estimate: number | null;
   /** Letter for `estimate`, on the course's scheme when it has one. */
   estimateLetter: string | null;

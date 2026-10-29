@@ -146,10 +146,10 @@ jobs:
         with:
           name: manifests
           path: |
-            packaging/homebrew/erwin.rb
+            packaging/homebrew/sigwald.rb
             packaging/winget/*.yaml
-            packaging/aur/erwin-bin/PKGBUILD
-            packaging/aur/erwin-bin/.SRCINFO
+            packaging/aur/sigwald-bin/PKGBUILD
+            packaging/aur/sigwald-bin/.SRCINFO
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 90
@@ -187,16 +187,16 @@ jobs:
           set -euo pipefail
           git clone --depth 1 git@github.com:pockanoodles/homebrew-tap.git tap
           mkdir -p tap/Casks
-          cp manifests/homebrew/erwin.rb tap/Casks/erwin.rb
+          cp manifests/homebrew/sigwald.rb tap/Casks/sigwald.rb
           cd tap
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Casks/erwin.rb
+          git add Casks/sigwald.rb
           if git diff --cached --quiet; then
-            echo "The tap already has erwin $VERSION."
+            echo "The tap already has sigwald $VERSION."
             exit 0
           fi
-          git commit -m "erwin $VERSION"
+          git commit -m "sigwald $VERSION"
           git push origin HEAD
 
   aur:
@@ -239,17 +239,17 @@ jobs:
           GIT_SSH_COMMAND: ssh -i ~/.ssh/aur_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes
         run: |
           set -euo pipefail
-          git clone ssh://aur@aur.archlinux.org/erwin-bin.git aur
-          cp manifests/aur/erwin-bin/PKGBUILD manifests/aur/erwin-bin/.SRCINFO aur/
+          git clone ssh://aur@aur.archlinux.org/sigwald-bin.git aur
+          cp manifests/aur/sigwald-bin/PKGBUILD manifests/aur/sigwald-bin/.SRCINFO aur/
           cd aur
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add PKGBUILD .SRCINFO
           if git diff --cached --quiet; then
-            echo "The AUR already has erwin-bin $VERSION."
+            echo "The AUR already has sigwald-bin $VERSION."
             exit 0
           fi
-          git commit -m "erwin-bin $VERSION"
+          git commit -m "sigwald-bin $VERSION"
           git push origin HEAD:master
 
   winget:
@@ -290,18 +290,18 @@ jobs:
           VERSION: ${{ needs.plan.outputs.version }}
         run: |
           $PSNativeCommandUseErrorActionPreference = $false
-          gh api "repos/microsoft/winget-pkgs/contents/manifests/k/KaitoSoeno/Erwin/$env:VERSION" --silent 2>$null
+          gh api "repos/microsoft/winget-pkgs/contents/manifests/k/KaitoSoeno/Sigwald/$env:VERSION" --silent 2>$null
           if ($LASTEXITCODE -eq 0) {
-            "winget-pkgs already has KaitoSoeno.Erwin $env:VERSION."
+            "winget-pkgs already has KaitoSoeno.Sigwald $env:VERSION."
             exit 0
           }
-          $open = gh pr list -R microsoft/winget-pkgs --state open --search "KaitoSoeno.Erwin version $env:VERSION in:title" --json number --jq length
+          $open = gh pr list -R microsoft/winget-pkgs --state open --search "KaitoSoeno.Sigwald version $env:VERSION in:title" --json number --jq length
           if ($LASTEXITCODE -ne 0) { throw "gh pr list exited $LASTEXITCODE" }
           if ($open -ne "0") {
-            "A pull request for KaitoSoeno.Erwin $env:VERSION is already open."
+            "A pull request for KaitoSoeno.Sigwald $env:VERSION is already open."
             exit 0
           }
-          ./wingetcreate.exe submit --no-open --prtitle "KaitoSoeno.Erwin version $env:VERSION" manifests/winget
+          ./wingetcreate.exe submit --no-open --prtitle "KaitoSoeno.Sigwald version $env:VERSION" manifests/winget
           if ($LASTEXITCODE -ne 0) { throw "wingetcreate exited $LASTEXITCODE" }
 
   # release.yml uploads every tagged build's snap to edge, pre-releases
@@ -324,11 +324,11 @@ jobs:
           set -euo pipefail
           sudo snap install snapcraft --classic
           # Columns: Rev., Uploaded, Arches, Version, Channels. Newest first.
-          revisions="$(snapcraft list-revisions erwin)"
+          revisions="$(snapcraft list-revisions sigwald)"
           echo "$revisions"
           rev="$(awk -v v="$VERSION" 'NR > 1 && $3 == "amd64" && $4 == v { print $1; exit }' <<< "$revisions")"
           if [ -z "$rev" ]; then
-            echo "::error::No amd64 revision of erwin has version $VERSION"
+            echo "::error::No amd64 revision of sigwald has version $VERSION"
             exit 1
           fi
-          snapcraft release erwin "$rev" stable
+          snapcraft release sigwald "$rev" stable
