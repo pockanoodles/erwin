@@ -57,7 +57,7 @@ const en: Dict = {
     steps: [
       {
         title: "It reads what you already use.",
-        body: "It connects to Google, Outlook and CalDAV calendars, and modules add the rest, such as your Canvas courses, your goals and your workouts.",
+        body: "It reads Google, Outlook and Apple calendars by their iCal links, and it connects to CalDAV calendars too. Modules add the rest, such as your Canvas courses, your goals and your workouts.",
       },
       {
         title: "It ranks by what is at stake.",
@@ -143,7 +143,7 @@ const ja: Dict = {
     steps: [
       {
         title: "いつものツールを読み取ります。",
-        body: "Google・Outlook・CalDAV のカレンダーにつながり、Canvas の授業や目標、トレーニングなどはモジュールで加えられます。",
+        body: "Google・Outlook・Apple のカレンダーを iCal リンクで読み込み、CalDAV のカレンダーにもつながります。Canvas の授業や目標、トレーニングなどはモジュールで加えられます。",
       },
       {
         title: "かかっているものの大きさで並べます。",
