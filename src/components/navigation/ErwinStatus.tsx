@@ -84,8 +84,10 @@ export function ErwinStatus() {
           ) : null}
         </Link>
       ) : null}
-      {/* The modules' counts give way before the core's. */}
-      <span className="flex min-w-0 shrink items-center gap-x-1.5 overflow-hidden">
+      {/* The modules' counts give way before the core's, a whole one at a
+          time: one that doesn't fit wraps to a second line this one-line strip
+          never shows, rather than being cut off mid-word. */}
+      <span className="flex h-4 min-w-0 shrink flex-wrap items-center gap-x-1.5 overflow-hidden">
         {modules.map((m) => {
           const Status = CLIENT_MODULES[m.id].Status;
           return Status ? <Status key={m.id} /> : null;

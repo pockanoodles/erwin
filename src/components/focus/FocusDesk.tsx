@@ -129,7 +129,9 @@ export function FocusDesk({
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[280px_minmax(0,1fr)_300px] md:overflow-visible">
+      {/* The side columns narrow below xl, so the work in the middle keeps
+          room for its buttons in a laptop-sized window. */}
+      <div className="min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[220px_minmax(0,1fr)_240px] md:overflow-visible xl:grid-cols-[280px_minmax(0,1fr)_300px]">
         <section className="hidden border-t border-border px-4 py-4 md:block md:overflow-y-auto md:border-r md:border-t-0 md:px-5">
           {label("Context")}
           <div className="mt-3">
@@ -326,7 +328,7 @@ export function FocusDesk({
             </div>
           </details>
 
-          <div className="mt-auto hidden gap-2 pt-6 md:flex">
+          <div className="mt-auto hidden flex-wrap gap-2 pt-6 md:flex">
             <Button
               type="button"
               disabled={acting}
