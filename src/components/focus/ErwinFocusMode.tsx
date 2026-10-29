@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import Link from "next/link";
 import { v4 as uuidv4 } from "uuid";
+
+import { Button } from "@/components/ui/button";
 
 import { endOfDay, newDate } from "@/lib/date-utils";
 import { type FocusQueueTask, parseTaskFromApi } from "@/lib/erwin/parse-task";
@@ -376,21 +379,27 @@ export function ErwinFocusMode() {
     );
   }
 
+  // An empty day has nothing to brief: it goes straight to the empty state,
+  // which says how to give Focus something, instead of a full-screen
+  // "Let's go" over nothing.
+  const emptyDay = briefingData?.totalPendingTasks === 0;
+  const fullBriefing = showFullBriefing && !emptyDay;
+
   return (
     <div className="flex h-full min-h-0 flex-col">
-      {showFullBriefing && briefingLoading ? (
+      {fullBriefing && briefingLoading ? (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background">
           <p className="text-muted-foreground">Loading briefing…</p>
         </div>
       ) : null}
-      {showFullBriefing && briefingData && !briefingLoading ? (
+      {fullBriefing && briefingData && !briefingLoading ? (
         <DailyBriefing
           data={briefingData}
           onContinue={dismissBriefingAndPersist}
         />
       ) : null}
 
-      {!showFullBriefing ? (
+      {!fullBriefing ? (
         <CompactBriefing
           data={briefingData}
           summaryLine={summaryLine || "Briefing"}
@@ -417,14 +426,23 @@ export function ErwinFocusMode() {
           <p className="px-6 py-8 text-[13px] text-muted-foreground">
             Loading your next task...
           </p>
-        ) : briefingData && briefingData.totalPendingTasks === 0 ? (
+        ) : emptyDay ? (
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
             <p className="text-[15px] font-medium text-foreground">
-              No tasks pending.
+              Nothing to focus on yet.
             </p>
             <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
-              Connect Canvas to auto-import assignments, or tap + to add a task.
+              Focus shows the top of Today one task at a time. Add a task, or
+              turn on a module on Today that brings its own work.
             </p>
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Button variant="outline" onClick={() => setAddOpen(true)}>
+                Add a task
+              </Button>
+              <Button asChild variant="quiet">
+                <Link href="/today">Back to Today</Link>
+              </Button>
+            </div>
           </div>
         ) : !top ? (
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
