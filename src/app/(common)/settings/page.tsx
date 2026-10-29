@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { AccountManager } from "@/components/settings/AccountManager";
+import {
+  AccountManager,
+  type IntegrationStatus,
+} from "@/components/settings/AccountManager";
 import { AutoScheduleSettings } from "@/components/settings/AutoScheduleSettings";
 import { CalendarSettings } from "@/components/settings/CalendarSettings";
 import { ImportExportSettings } from "@/components/settings/ImportExportSettings";
 import { LogViewer } from "@/components/settings/LogViewer";
-import { NotificationSettings } from "@/components/settings/NotificationSettings";
 import { SystemSettings } from "@/components/settings/SystemSettings";
 import { TaskSyncSettings } from "@/components/settings/TaskSyncSettings";
 import { UserManagement } from "@/components/settings/UserManagement";
@@ -16,6 +18,7 @@ import { UserSettings } from "@/components/settings/UserSettings";
 import { cn } from "@/lib/utils";
 
 import { useAdmin } from "@/hooks/use-admin";
+import { useResource } from "@/hooks/use-resource";
 
 import { useSettingsStore } from "@/store/settings";
 
@@ -28,8 +31,7 @@ type SettingsTab =
   | "task-sync"
   | "logs"
   | "user-management"
-  | "import-export"
-  | "notifications";
+  | "import-export";
 
 /** Settings as a normal page: a quiet side index and one section at a time,
  *  using the same plate grammar as the rest of the app. */
@@ -37,6 +39,13 @@ export default function SettingsPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
   const { initializeSettings } = useSettingsStore();
+  // The desktop app has one local user: System holds only the Google and
+  // Outlook OAuth apps (which can't sign in there) and the signed-out
+  // homepage, Task Sync only takes Google and Outlook accounts, and Users
+  // manages other people. All three stay off its index.
+  const desktop =
+    useResource<IntegrationStatus>("/api/integration-status").data?.desktop ??
+    false;
 
   useEffect(() => {
     initializeSettings();
@@ -49,9 +58,13 @@ export default function SettingsPage() {
       { id: "calendar", label: "Calendar" },
       { id: "auto-schedule", label: "Auto-Schedule" },
       { id: "task-sync", label: "Task Sync" },
-      { id: "notifications", label: "Notifications" },
       { id: "import-export", label: "Import / Export" },
     ] as const;
+
+    if (desktop) {
+      const local = baseTabs.filter((tab) => tab.id !== "task-sync");
+      return isAdmin ? [...local, { id: "logs", label: "Logs" } as const] : local;
+    }
 
     if (isAdmin) {
       const adminTabs = [
@@ -64,7 +77,7 @@ export default function SettingsPage() {
     }
 
     return baseTabs;
-  }, [isAdmin]);
+  }, [isAdmin, desktop]);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("accounts");
 
@@ -82,7 +95,6 @@ export default function SettingsPage() {
         "logs",
         "user-management",
         "import-export",
-        "notifications",
       ];
 
       if (allPossibleTabIds.includes(hash)) {
@@ -146,8 +158,6 @@ export default function SettingsPage() {
         return <AutoScheduleSettings />;
       case "task-sync":
         return <TaskSyncSettings />;
-      case "notifications":
-        return <NotificationSettings />;
       case "system":
         return <SystemSettings />;
       case "logs":
