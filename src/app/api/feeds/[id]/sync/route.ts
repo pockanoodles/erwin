@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { isReadOnlyFeedType } from "@/lib/feed-types";
 import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -40,6 +41,16 @@ export async function POST(
 
     if (!feed) {
       return NextResponse.json({ error: "Feed not found" }, { status: 404 });
+    }
+
+    // This route replaces a feed's events with whatever the caller sends. An
+    // iCal feed is synced by the server from its URL, so taking a body here
+    // would let a caller wipe or forge it. Refuse before anything is deleted.
+    if (isReadOnlyFeedType(feed.type)) {
+      return NextResponse.json(
+        { error: "This calendar is read-only" },
+        { status: 403 }
+      );
     }
 
     // Start a transaction to ensure data consistency

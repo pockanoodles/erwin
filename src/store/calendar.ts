@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
 import { newDate, normalizeAllDayDate } from "@/lib/date-utils";
+import { isReadOnlyFeedType } from "@/lib/feed-types";
 import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 import { DEFAULT_TASK_COLOR } from "@/lib/task-utils";
 
@@ -95,7 +96,7 @@ interface CalendarStore extends CalendarState {
   addFeed: (
     name: string,
     url: string,
-    type: "GOOGLE" | "OUTLOOK" | "CALDAV",
+    type: "GOOGLE" | "OUTLOOK" | "CALDAV" | "ICAL",
     color?: string
   ) => Promise<void>;
   removeFeed: (id: string) => Promise<void>;
@@ -289,6 +290,19 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
       // Sync the feed's events
       if (url) {
         await get().syncFeed(id);
+
+        // A subscription whose first sync fails (an address that doesn't
+        // answer, isn't public, or isn't a calendar) holds nothing, so it isn't
+        // kept: syncFeed records the error instead of throwing, so roll the
+        // feed back here and hand the reason to the form.
+        if (type === "ICAL") {
+          const synced = get().feeds.find((f) => f.id === id);
+          if (synced?.error) {
+            const message = synced.error;
+            await get().removeFeed(id);
+            throw new Error(message);
+          }
+        }
       }
     } catch (error) {
       console.error("Failed to add feed:", error);
@@ -619,6 +633,10 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
         if (!response.ok) {
           throw new Error("Failed to delete event from CalDAV Calendar");
         }
+      } else if (isReadOnlyFeedType(feed.type)) {
+        // An iCal subscription mirrors someone else's document, and the next
+        // sync would bring a deleted event back.
+        throw new Error("iCal subscriptions are read-only");
       } else {
         // For other calendars, use the existing API
         const response = await fetch(`/api/events/${id}`, {
@@ -679,6 +697,15 @@ export const useCalendarStore = create<CalendarStore>()((set, get) => ({
 
         if (!response.ok) {
           throw new Error("Failed to sync CalDAV Calendar");
+        }
+      } else if (feed.type === "ICAL") {
+        const response = await fetch(`/api/feeds/${id}/ical-sync`, {
+          method: "PUT",
+        });
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to sync iCal Calendar");
         }
       }
 

@@ -1,11 +1,12 @@
 /**
- * One tick of background sync (`sync-loop.ts`): CalDAV feeds, then each
- * module's jobs for everyone who has that module on.
+ * One tick of background sync (`sync-loop.ts`): CalDAV feeds, iCal
+ * subscriptions, then each module's jobs for everyone who has that module on.
  */
 
 import { CalDAVCalendarService } from "@/lib/caldav-calendar";
 import { newDate } from "@/lib/date-utils";
 import { isDue } from "@/lib/erwin/sync-interval";
+import { syncIcalFeed } from "@/lib/ical-feed";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
 
@@ -24,6 +25,7 @@ function caldavPollIntervalMs(): number {
   return mins * 60_000;
 }
 
+/** Counts for one tick of a feed sync (CalDAV or iCal). */
 export interface CaldavSyncRunStats {
   skipped: number;
   synced: number;
@@ -100,6 +102,58 @@ export async function runPeriodicCaldavSyncs(): Promise<CaldavSyncRunStats> {
 }
 
 /**
+ * Re-reads each enabled iCal subscription whose last sync is older than the
+ * CalDAV poll interval. `syncIcalFeed` writes a failure onto the feed and
+ * keeps its last good events, so a feed that's down just waits for the next
+ * tick.
+ */
+export async function runPeriodicIcalSyncs(): Promise<CaldavSyncRunStats> {
+  const now = newDate();
+  const pollMs = caldavPollIntervalMs();
+
+  const feeds = await prisma.calendarFeed.findMany({
+    where: {
+      type: "ICAL",
+      enabled: true,
+      url: { not: null },
+      userId: { not: null },
+    },
+  });
+
+  let skipped = 0;
+  let synced = 0;
+  let failed = 0;
+
+  for (const feed of feeds) {
+    if (!feed.url || !feed.userId) {
+      skipped += 1;
+      continue;
+    }
+    if (!isDue(feed.lastSync, now, pollMs)) {
+      skipped += 1;
+      continue;
+    }
+    try {
+      await syncIcalFeed({ id: feed.id, userId: feed.userId, url: feed.url });
+      synced += 1;
+    } catch (error) {
+      failed += 1;
+      logger.error(
+        "iCal periodic sync failed",
+        {
+          feedId: feed.id,
+          userId: feed.userId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+        LOG_SOURCE
+      );
+    }
+  }
+
+  return { skipped, synced, failed };
+}
+
+/**
  * Each module's jobs (src/modules/server.ts), for everyone who has that
  * module on. One person's failure is logged and doesn't stop the rest.
  */
@@ -133,14 +187,16 @@ export async function runModuleJobs(): Promise<{ ran: number; failed: number }> 
 }
 
 /**
- * One tick of the sync loop: CalDAV, then every module's jobs (Courses'
- * Canvas sync among them, src/modules/courses/server.ts).
+ * One tick of the sync loop: CalDAV, iCal subscriptions, then every module's
+ * jobs (Courses' Canvas sync among them, src/modules/courses/server.ts).
  */
 export async function runAllPeriodicErwinSyncs(): Promise<{
   caldav: CaldavSyncRunStats;
+  ical: CaldavSyncRunStats;
   modules: { ran: number; failed: number };
 }> {
   const caldav = await runPeriodicCaldavSyncs();
+  const ical = await runPeriodicIcalSyncs();
   const modules = await runModuleJobs();
   logger.info(
     "Erwin periodic sync tick complete",
@@ -148,10 +204,12 @@ export async function runAllPeriodicErwinSyncs(): Promise<{
       caldavSkipped: caldav.skipped,
       caldavSynced: caldav.synced,
       caldavFailed: caldav.failed,
+      icalSynced: ical.synced,
+      icalFailed: ical.failed,
       moduleJobsRan: modules.ran,
       moduleJobsFailed: modules.failed,
     },
     LOG_SOURCE
   );
-  return { caldav, modules };
+  return { caldav, ical, modules };
 }
