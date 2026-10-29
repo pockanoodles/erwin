@@ -24,10 +24,10 @@ const FETCH_TIMEOUT_MS = 15_000;
 // path, which only expands masters when explicitly asked.
 const MAX_EXPANDED_INSTANCES = 1000;
 
-// Steps all of a feed's series may take together (each one is also held to
-// MAX_SERIES_STEPS, src/lib/ical-recurrence.ts), which bounds a sync to about
-// a second whatever its rules.
-const MAX_FEED_STEPS = 200_000;
+// Time all of a feed's series may take to expand. Each one is bounded on its
+// own (src/lib/ical-recurrence.ts), but a 10 MB feed can hold thousands; past
+// this, the rest keep their masters only.
+const MAX_FEED_EXPANSION_MS = 5_000;
 
 // Feed-level cap on TOTAL materialized rows (masters + one-offs + every
 // expanded instance). The per-master cap alone is not enough: a single (byte-
@@ -65,9 +65,9 @@ export type ParsedIcalEvent = Omit<
   recurrenceId?: number;
   /**
    * Internal, non-persisted: a series' own VEVENT, which
-   * {@link expandIcalEvents} expands with ical.js, in the time zone of its
-   * DTSTART and with its EXDATEs and RDATEs, so a weekly 9:00 class stays at
-   * 9:00 across a daylight-saving change.
+   * {@link expandIcalEvents} expands in the time zone of its DTSTART and with
+   * its EXDATEs and RDATEs (src/lib/ical-recurrence.ts), so a weekly 9:00
+   * class stays at 9:00 across a daylight-saving change.
    */
   source?: ICAL.Component;
 };
@@ -377,8 +377,8 @@ const isCancelled = (event: ParsedIcalEvent) => event.status === "CANCELLED";
  * Rows are bounded per master (`MAX_EXPANDED_INSTANCES`) and across the whole
  * feed (`MAX_TOTAL_EXPANDED_EVENTS`), so a single byte-capped ICS with many
  * recurring masters cannot expand into an unbounded database write. The work
- * is bounded too, from each series' DTSTART (`MAX_SERIES_STEPS` in
- * ical-recurrence.ts, `MAX_FEED_STEPS`). Series expand with ical.js in their own time zone, and
+ * is bounded too: per series in ical-recurrence.ts, and per feed by
+ * `MAX_FEED_EXPANSION_MS`. Series expand in their own time zone, and
  * cancelled events, cancelled overrides included, are left out.
  *
  * @param events Parsed events (from `parseIcalEvents`)
@@ -393,7 +393,8 @@ export function expandIcalEvents(
 ): ParsedIcalEvent[] {
   const result: ParsedIcalEvent[] = [];
   let capped = false;
-  const budget = { steps: MAX_FEED_STEPS };
+  const deadline = Date.now() + MAX_FEED_EXPANSION_MS;
+  let outOfTime = false;
 
   // Occurrences replaced by an override, per series UID. A cancelled override
   // counts too: its occurrence goes, and nothing takes its place.
@@ -441,6 +442,10 @@ export function expandIcalEvents(
     // Keep the master row (preserves recurrence metadata; not rendered).
     result.push(stripInternal(event));
     if (!event.source) continue;
+    if (Date.now() > deadline) {
+      outOfTime = true;
+      continue;
+    }
 
     try {
       const start = newDate(event.start);
@@ -454,14 +459,16 @@ export function expandIcalEvents(
         ...(overridden.get(event.externalEventId ?? "") ?? []),
       ]);
 
-      const occurrences = seriesOccurrences(event.source, windowStart, windowEnd, {
-        maxInstances: MAX_EXPANDED_INSTANCES,
-        budget,
-      });
+      const occurrences = seriesOccurrences(
+        event.source,
+        windowStart,
+        windowEnd,
+        MAX_EXPANDED_INSTANCES
+      );
       if (!occurrences) {
         logger.warn(
-          "iCal series took too many steps to reach the window; kept its master only",
-          { recurrenceRule: event.recurrenceRule, start: start.toISOString() },
+          "iCal series repeats more often than every hour; kept its master only",
+          { recurrenceRule: event.recurrenceRule },
           LOG_SOURCE
         );
         continue;
@@ -499,6 +506,14 @@ export function expandIcalEvents(
         LOG_SOURCE
       );
     }
+  }
+
+  if (outOfTime) {
+    logger.warn(
+      "iCal feed took too long to expand; later series kept their masters only",
+      { limitMs: MAX_FEED_EXPANSION_MS },
+      LOG_SOURCE
+    );
   }
 
   if (capped) {
