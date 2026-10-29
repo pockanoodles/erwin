@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 
-import { BsArrowRepeat, BsGoogle, BsMicrosoft, BsTrash } from "react-icons/bs";
+import {
+  BsArrowRepeat,
+  BsCalendar2Week,
+  BsGoogle,
+  BsMicrosoft,
+  BsTrash,
+} from "react-icons/bs";
 
 import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 import { cn } from "@/lib/utils";
@@ -99,6 +105,14 @@ export function FeedManager() {
                 <BsMicrosoft
                   className="h-3 w-3 flex-none text-muted-foreground"
                   title={feed.url}
+                />
+              )}
+              {/* No URL on hover: a calendar's iCal address is often its
+                  secret link. */}
+              {feed.type === "ICAL" && (
+                <BsCalendar2Week
+                  className="h-3 w-3 flex-none text-muted-foreground"
+                  title="iCal subscription, read-only"
                 />
               )}
 

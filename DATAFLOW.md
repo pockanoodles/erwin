@@ -12,20 +12,21 @@ Last verified against the code on **2026-10-26**. For the privacy policy that si
 
 | Where | What Erwin sends | Can Erwin change anything there? | Why |
 | --- | --- | --- | --- |
-| **Canvas** (the address of your school's Canvas, which you enter), only while the Courses module is on | Your access token, and the address of each page or file it asks for | No, every request is a read | Mirror your courses: assignments, your grades and feedback, announcements, Inbox messages and course materials |
+| **Canvas** (the address of your school's Canvas, which you enter), only while the School module is on | Your access token, and the address of each page or file it asks for | No, every request is a read | Mirror your courses: assignments, your grades and feedback, announcements, Inbox messages and course materials |
 | **Google** (`accounts.google.com`, `oauth2.googleapis.com`, `www.googleapis.com`) | Event and task titles, notes, locations and times, plus the OAuth tokens that prove it is you | Yes | Two-way Google Calendar and Google Tasks sync |
 | **Microsoft** (`login.microsoftonline.com`, `graph.microsoft.com`) | Event and task titles, notes, locations and times, plus the OAuth tokens that prove it is you | Yes | Two-way Outlook Calendar and Microsoft To Do sync |
 | **A CalDAV server you choose** (Fastmail, iCloud, Nextcloud) | Event titles, descriptions, locations and times, plus your CalDAV username and password | Yes | Two-way calendar sync |
+| **The host of an iCal link you subscribe to** (Google, Outlook, Apple or anyone who publishes one) | A plain request for the link, which carries your IP address | No, it is only read | Show that calendar, read-only |
 | **Resend** (`api.resend.com`, self-hosted servers only) | Your email address and a one-time reset link | It sends one email | Password reset |
 | **GitHub Releases** (desktop downloads from GitHub only) | A request for the newest release, which carries the app's version, your platform and your IP address | No | Update check |
 
-The Ladder, People, Training, Nutrition and Work modules send nothing out of Erwin, so your goals, the people you keep in touch with, your workouts, what you eat, your shifts and the contacts you keep for each job stay in the database. Work takes a schedule or a contact roster that a script sends to it, and it never calls out to fetch one.
+The Stats, People, Training, Nutrition and Work modules send nothing out of Erwin, so your goals, the people you keep in touch with, your workouts, what you eat, your shifts and the contacts you keep for each job stay in the database. Work takes a schedule or a contact roster that a script sends to it, and it never calls out to fetch one.
 
 Erwin has no analytics, no crash reporting, no telemetry and no AI service. This is a fact about the code, because Erwin ships no analytics library and no language-model client, so nothing you type is sent to a model. The "assistant" behavior (the daily briefing, the focus queue and task ranking) is ordinary arithmetic that runs on your own machine.
 
 The landing page at kaitosoeno.com/erwin collects nothing, which is covered in [The landing page](#the-landing-page).
 
-Some of Erwin comes as modules you turn on or off at /modules, and each module's page there lists everything it sends out of Erwin. Of today's modules only Courses talks to an outside service (Canvas, below). Ladder and People keep everything in the local database.
+Some of Erwin comes as modules you turn on or off at /modules, and each module's page there lists everything it sends out of Erwin. Of today's modules only School talks to an outside service (Canvas, below). Stats and People keep everything in the local database.
 
 ---
 
@@ -37,9 +38,9 @@ Canvas cannot be changed by Erwin. The Canvas client only issues GET requests, s
 
 Course materials move toward you. Page text goes into the local database, and files are saved on this computer's disk, in `~/.erwin/materials` unless `ERWIN_MATERIALS_DIR` says otherwise. A file is downloaded from the signed link that Canvas hands back for it, and files over 100 MB (adjustable with `ERWIN_MATERIALS_MAX_FILE_MB`) are listed but not downloaded. When a course stops being current, its database rows are removed and its files stay on disk until you delete them.
 
-Each sync compares what Canvas returns with what it stored last time and records what changed (a new announcement or file, a moved due date, a posted grade, new feedback, work gone missing) as course activity in the local database. That feed is what the Courses page's Activity view shows. Erwin itself sends it nowhere. A tool you run on the same machine can read it through Erwin's API (`/api/erwin/activity`) and pass it on, for example to a chat app, and whatever it sends is that tool's data flow rather than Erwin's.
+Each sync compares what Canvas returns with what it stored last time and records what changed (a new announcement or file, a moved due date, a posted grade, new feedback, work gone missing) as course activity in the local database. That feed is what the School page's Activity view shows. Erwin itself sends it nowhere. A tool you run on the same machine can read it through Erwin's API (`/api/erwin/activity`) and pass it on, for example to a chat app, and whatever it sends is that tool's data flow rather than Erwin's.
 
-Canvas and CalDAV are also polled in the background, about every 15 minutes by default, and each poll makes the same kinds of requests. Canvas is reached only while the Courses module is on: turning it off stops every Canvas request, including the background poll, and keeps what was already mirrored in the local database until you delete it.
+Canvas and CalDAV are also polled in the background, about every 15 minutes by default, and each poll makes the same kinds of requests. Canvas is reached only while the School module is on: turning it off stops every Canvas request, including the background poll, and keeps what was already mirrored in the local database until you delete it.
 
 ## Google and Microsoft
 
@@ -56,6 +57,14 @@ Google and Microsoft require an OAuth app, and on a self-hosted server you regis
 CalDAV is the open standard behind Fastmail, iCloud Calendar and others. You supply the server address, a username and a password. Erwin reads your calendars and writes to them, and what travels is a standard calendar file with the event's title, description, location, times and repeat rules.
 
 CalDAV uses a username and password on every request instead of a revocable token, so that password is held on this machine and sent over HTTPS each time Erwin syncs. If you did not supply a separate username, Erwin falls back to your email address as the username, which means that address goes to the CalDAV provider you chose and already have an account with.
+
+## An iCal link
+
+A calendar's iCal link is a web address for one file that lists its events. Google, Outlook and Apple publish one for any calendar, and so do schools, teams and sports leagues. When you subscribe, Erwin requests that file, saves its events, and requests it again every 15 minutes. Nothing is sent back: the request carries no account, no token and none of your data, only what any request carries, such as your IP address. All of it goes through `src/lib/ical-feed.ts`.
+
+Erwin only requests public addresses. It refuses an address on your own machine or your local network, checks every redirect the same way, gives up after 15 seconds and stops reading past 10 MB, so a link can't make Erwin reach into a network it sits on.
+
+Google's "secret address" works like a password for reading that calendar: anyone who has it can read it. Erwin keeps the link in its database with the calendar's other details, which is not encrypted the way stored credentials are (see Known gaps).
 
 ## Resend
 
@@ -122,4 +131,5 @@ These are kept here so they are not rediscovered later.
 
 - **External calls do not all go through one module per service.** Canvas goes through `src/lib/canvas/canvas-client.ts` and CalDAV through `src/lib/caldav/client.ts`. Google reaches out from several places (`google-calendar.ts`, `google.ts`, the Google task provider, the token manager and the `calendar/google` routes), Microsoft the same way (`outlook-calendar.ts`, `outlook-sync.ts`, `outlook-utils.ts`, the Outlook task provider, the token manager and the Outlook route), and email from one module (`email-service.ts`). This makes "what exactly do we send?" harder to answer for those services than it should be, which is the reason the rule exists.
 - **Logging is disabled but the batch path writes anyway.** There is no settings row, so the configured level is "none". The single-entry path respects that, but the batch path, which is where logs sent from the browser land, writes every entry regardless. Logging is therefore not fully off.
+- **iCal links are stored unencrypted.** A Google secret address lets whoever has it read that calendar, so it is close to a credential, but it sits in `CalendarFeed.url` beside every other feed's address, and that column is not one of the encrypted fields. Encrypting it means encrypting the column for every feed type, with a backfill that ships with the reader.
 - **Dormant webhook fields.** The database has columns for registering a Google Calendar push channel, but no code registers one, so Google never calls in.

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
+import { isReadOnlyFeedType } from "@/lib/feed-types";
 import { getEvent } from "@/lib/calendar-db";
 import { logger } from "@/lib/logger";
 import { prisma } from "@/lib/prisma";
@@ -91,7 +92,32 @@ export async function PATCH(
       );
     }
 
-    const updates = await request.json();
+    if (isReadOnlyFeedType(existingEvent.feed.type)) {
+      return NextResponse.json(
+        { error: "This calendar is read-only" },
+        { status: 403 }
+      );
+    }
+
+    // Only the fields a person edits. Spreading the raw body would let a caller
+    // move the event into another feed with `feedId` (around the read-only
+    // check above) or overwrite `id` and `userId`.
+    const body = await request.json();
+    const allowedFields = [
+      "title",
+      "description",
+      "location",
+      "start",
+      "end",
+      "allDay",
+      "isRecurring",
+      "recurrenceRule",
+      "status",
+    ] as const;
+    const updates: Record<string, unknown> = {};
+    for (const field of allowedFields) {
+      if (field in body) updates[field] = body[field];
+    }
     const updated = await prisma.calendarEvent.update({
       where: { id },
       data: updates,
@@ -145,6 +171,13 @@ export async function DELETE(
       return NextResponse.json(
         { error: "Event not found or you don't have permission to delete it" },
         { status: 404 }
+      );
+    }
+
+    if (isReadOnlyFeedType(existingEvent.feed.type)) {
+      return NextResponse.json(
+        { error: "This calendar is read-only" },
+        { status: 403 }
       );
     }
 

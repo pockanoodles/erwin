@@ -26,7 +26,7 @@ Your week is spread across calendars, task lists and whatever else you keep trac
 
 - **It ranks by what is at stake.** Due dates, what each task is worth and how much its goal matters feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`). The order never changes for a reason you cannot read.
 - **It shows one thing at a time.** Focus puts the next task, what you need for it and its deadline on one screen, with done, skip and later on the D, S and L keys.
-- **It holds your week.** Google, Outlook and CalDAV calendars sit together in one view, and tasks drag into the open time or schedule themselves.
+- **It holds your week.** Google, Outlook and CalDAV calendars, and any calendar with an iCal link, sit together in one view, and tasks drag into the open time or schedule themselves.
 - **It holds only what you use.** [Modules](#modules) add your Canvas courses, goals in two-month cycles, the people you keep in touch with, your workouts, what you eat and the shifts you work. Turning one off hides it everywhere and deletes nothing.
 - **It keeps your data with you.** Everything sits in a database on your machine or your server, and Erwin has no analytics and no AI service ([Privacy](#privacy)).
 
@@ -108,6 +108,7 @@ flowchart LR
         G["Google Calendar and Tasks"]
         O["Outlook Calendar and To Do"]
         C["CalDAV (iCloud, Fastmail, Nextcloud)"]
+        I["iCal links (read only)"]
         M["Tasks you type"]
     end
     subgraph Mods["Modules you turn on"]
@@ -124,6 +125,7 @@ flowchart LR
     G <--> S
     O <--> S
     C <--> S
+    I --> S
     V --> S
     M --> DB
     L --> DB
@@ -133,13 +135,13 @@ flowchart LR
     DB --> K
 ```
 
-Google, Outlook and CalDAV sync in both directions, so an event you move in Erwin moves in the calendar it came from, and Canvas is read only. Google and Outlook sync when you use them in the app. Everything else syncs on a background timer, every 15 minutes by default.
+Google, Outlook and CalDAV sync in both directions, so an event you move in Erwin moves in the calendar it came from. Canvas and iCal links are read only. Google and Outlook sync when you use them in the app. Everything else syncs on a background timer, every 15 minutes by default.
 
 ```mermaid
 sequenceDiagram
     participant T as Timer
     participant S as Sync layer
-    participant X as CalDAV and Canvas
+    participant X as CalDAV, iCal links and Canvas
     participant DB as Local database
     participant R as Ranker
 
@@ -285,13 +287,21 @@ flowchart TB
     Server --> EXT
 ```
 
-Pick the desktop app if you want a download that works offline with no account. Pick the server if you want the same data on a phone and a laptop, or if you want Google and Outlook sign-in today.
+Pick the desktop app if you want a download that works offline with no account. Pick the server if you want the same data on a phone and a laptop, or two-way Google and Outlook sync. The desktop app reads Google and Outlook calendars by their iCal links.
 
 ## Connecting services
 
 **Canvas** comes with the School module. Turn on School in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
 
-**CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose Connect CalDAV Calendar, and enter the server URL with an app-specific password.
+**CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose CalDAV, and enter the server URL with an app-specific password.
+
+**An iCal link** works for any calendar that publishes one, with no account and no OAuth app, in the desktop app too. In Settings, open Accounts, choose iCal link, and paste the address. The calendar is read only, and Erwin reads it again every 15 minutes. A moved occurrence of a repeating event shows once, at its new time.
+
+- Google Calendar: Settings, the calendar, Integrate calendar, then Secret address in iCal format.
+- Outlook: Settings, Calendar, Shared calendars, Publish a calendar, then the ICS link.
+- Apple Calendar: share the calendar as a Public Calendar and copy its link.
+
+A secret address lets anyone who has it read that calendar, so treat it like a password. Erwin only fetches public addresses, never one on your machine or your local network.
 
 **Google Calendar** needs your own OAuth app.
 
@@ -307,7 +317,7 @@ Pick the desktop app if you want a download that works offline with no account. 
 3. Add the delegated Microsoft Graph permissions `Calendars.ReadWrite`, `Tasks.ReadWrite`, `User.Read` and `offline_access`.
 4. Create a client secret and enter the client ID, secret and tenant in Settings, under System.
 
-In the desktop app, Canvas and CalDAV connect today. Google and Outlook sign-in open in your browser, and finishing them inside the desktop app is the next piece of work, so connect those two from a self-hosted server for now.
+In the desktop app, Canvas, CalDAV and iCal links connect today. Google and Outlook sign-in can't finish inside it yet, so the desktop app reads those calendars by their iCal links, and two-way sync with them, Google Tasks and Microsoft To Do needs a self-hosted server for now.
 
 ## How the desktop app works
 

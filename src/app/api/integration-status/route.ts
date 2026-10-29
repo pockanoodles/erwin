@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
       outlook: {
         configured: hasOutlookFromSettings || hasOutlookFromEnv,
       },
+      // The desktop app and dev:local: one local user on a loopback server.
+      // Google and Outlook sign-in can't finish there (it opens in a browser
+      // without the app's session), and accounts for other people mean
+      // nothing, so Settings leaves both out.
+      desktop: process.env.ERWIN_RUNTIME === "desktop",
     });
   } catch (error) {
     logger.error(

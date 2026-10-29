@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { format } from "date-fns";
 import { AlertCircle } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,52 +10,59 @@ import { Button } from "@/components/ui/button";
 
 import { logger } from "@/lib/logger";
 
+import { useResource } from "@/hooks/use-resource";
+
+import { useCalendarStore } from "@/store/calendar";
 import { useSettingsStore } from "@/store/settings";
 
 import { AvailableCalendars } from "./AvailableCalendars";
 import { CalDAVAccountForm } from "./CalDAVAccountForm";
+import { ICalCalendarForm } from "./ICalCalendarForm";
 import { SettingRow, SettingsSection } from "./SettingsSection";
 
 const LOG_SOURCE = "AccountManager";
 
-interface IntegrationStatus {
+/** `/api/integration-status`; the Settings page reads it too. */
+export interface IntegrationStatus {
   google: { configured: boolean };
   outlook: { configured: boolean };
+  desktop: boolean;
 }
 
 /** Connected calendar accounts and the ways to add another. */
 export function AccountManager() {
   const { accounts, refreshAccounts, removeAccount } = useSettingsStore();
   const [showAvailableFor, setShowAvailableFor] = useState<string | null>(null);
-  const [showCalDAVForm, setShowCalDAVForm] = useState(false);
-  const [integrationStatus, setIntegrationStatus] = useState<IntegrationStatus>(
-    {
-      google: { configured: false },
-      outlook: { configured: false },
-    }
-  );
-  const [isLoading, setIsLoading] = useState(true);
+  const [showForm, setShowForm] = useState<"caldav" | "ical" | null>(null);
+  const status = useResource<IntegrationStatus>("/api/integration-status");
+  const isLoading = status.loading;
+  const desktop = status.data?.desktop ?? false;
+  const googleConfigured = status.data?.google.configured ?? false;
+  const outlookConfigured = status.data?.outlook.configured ?? false;
+
+  // iCal subscriptions are feeds, not accounts, so they list on their own.
+  const feeds = useCalendarStore((state) => state.feeds);
+  const refreshFeeds = useCalendarStore((state) => state.refreshFeeds);
+  const removeFeed = useCalendarStore((state) => state.removeFeed);
+  const subscriptions = feeds.filter((feed) => feed.type === "ICAL");
 
   useEffect(() => {
     refreshAccounts();
   }, [refreshAccounts]);
 
   useEffect(() => {
-    fetch("/api/integration-status")
-      .then((res) => res.json())
-      .then((data) => {
-        setIntegrationStatus(data);
-        setIsLoading(false);
-      })
-      .catch((error) => {
-        logger.error(
-          "Failed to fetch integration status",
-          { error: error instanceof Error ? error.message : "Unknown error" },
-          LOG_SOURCE
-        );
-        setIsLoading(false);
-      });
-  }, []);
+    void refreshFeeds();
+  }, [refreshFeeds]);
+
+  useEffect(() => {
+    if (status.error) {
+      logger.error(
+        "Failed to fetch integration status",
+        { error: status.error },
+        LOG_SOURCE
+      );
+    }
+  }, [status.error]);
 
   const handleConnect = (provider: "GOOGLE" | "OUTLOOK") => {
     if (provider === "GOOGLE") {
@@ -83,18 +91,34 @@ export function AccountManager() {
   }, []);
 
   const handleCalDAVSuccess = () => {
-    setShowCalDAVForm(false);
+    setShowForm(null);
     refreshAccounts();
   };
 
   return (
     <SettingsSection
       title="Accounts"
-      description="Connect Google, Outlook or CalDAV so Erwin can mirror your calendars locally."
+      description={
+        desktop
+          ? "Add a calendar by its iCal link, or connect a CalDAV account, and Erwin mirrors it locally."
+          : "Connect Google, Outlook or CalDAV, or subscribe by iCal link, so Erwin can mirror your calendars locally."
+      }
     >
+      {desktop ? (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Google and Outlook calendars come in by iCal link</AlertTitle>
+          <AlertDescription>
+            Both publish any calendar as an iCal link, which Erwin reads every
+            15 minutes. Changing their events from Erwin, and Google Tasks or
+            Microsoft To Do, needs a self-hosted Erwin for now.
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
       {/* A provider that is not set up is a choice, not an error, so these
-          read as notes. Every install brings its own OAuth app. */}
-      {!integrationStatus.google.configured ? (
+          read as notes. Every server brings its own OAuth app. */}
+      {!desktop && !isLoading && !googleConfigured ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Google Calendar is not set up</AlertTitle>
@@ -105,7 +129,7 @@ export function AccountManager() {
         </Alert>
       ) : null}
 
-      {!integrationStatus.outlook.configured ? (
+      {!desktop && !isLoading && !outlookConfigured ? (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Outlook is not set up</AlertTitle>
@@ -118,27 +142,38 @@ export function AccountManager() {
 
       <SettingRow
         label="Add a calendar"
-        description="Pick the service your calendar lives on. iCloud, Fastmail and Nextcloud connect over CalDAV."
+        description="Pick the service your calendar lives on. iCloud, Fastmail and Nextcloud connect over CalDAV, and any calendar with an iCal link subscribes read-only."
       >
         <div className="flex flex-wrap gap-2">
+          {!desktop ? (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => handleConnect("GOOGLE")}
+                disabled={!googleConfigured || isLoading}
+                className="font-mono text-[11px] uppercase tracking-[0.08em]"
+              >
+                Google
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => handleConnect("OUTLOOK")}
+                disabled={!outlookConfigured || isLoading}
+                className="font-mono text-[11px] uppercase tracking-[0.08em]"
+              >
+                Outlook
+              </Button>
+            </>
+          ) : null}
           <Button
-            variant="secondary"
-            onClick={() => handleConnect("GOOGLE")}
-            disabled={!integrationStatus.google.configured || isLoading}
+            onClick={() => setShowForm("ical")}
+            variant="outline"
             className="font-mono text-[11px] uppercase tracking-[0.08em]"
           >
-            Google
+            iCal link
           </Button>
           <Button
-            variant="secondary"
-            onClick={() => handleConnect("OUTLOOK")}
-            disabled={!integrationStatus.outlook.configured || isLoading}
-            className="font-mono text-[11px] uppercase tracking-[0.08em]"
-          >
-            Outlook
-          </Button>
-          <Button
-            onClick={() => setShowCalDAVForm(true)}
+            onClick={() => setShowForm("caldav")}
             variant="outline"
             className="font-mono text-[11px] uppercase tracking-[0.08em]"
           >
@@ -147,12 +182,65 @@ export function AccountManager() {
         </div>
       </SettingRow>
 
-      {showCalDAVForm ? (
+      {showForm === "caldav" ? (
         <div className="border border-border bg-raised p-4">
           <CalDAVAccountForm
             onSuccess={handleCalDAVSuccess}
-            onCancel={() => setShowCalDAVForm(false)}
+            onCancel={() => setShowForm(null)}
           />
+        </div>
+      ) : null}
+
+      {showForm === "ical" ? (
+        <div className="border border-border bg-raised p-4">
+          <ICalCalendarForm
+            onSuccess={() => setShowForm(null)}
+            onCancel={() => setShowForm(null)}
+          />
+        </div>
+      ) : null}
+
+      {subscriptions.length > 0 ? (
+        <div className="space-y-3">
+          <p className="er-label">Subscribed</p>
+          {subscriptions.map((feed) => (
+            <div
+              key={feed.id}
+              className="flex flex-wrap items-center justify-between gap-3 border border-border bg-surface/40 p-3"
+            >
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="er-bracketed font-mono text-[10px] uppercase tracking-[0.1em] text-muted-foreground">
+                    ical
+                  </span>
+                  <span className="truncate text-sm font-medium">
+                    {feed.name}
+                  </span>
+                </div>
+                <p
+                  className={
+                    feed.error
+                      ? "text-[12px] text-destructive"
+                      : "font-mono text-[11px] tabular-nums text-muted-foreground"
+                  }
+                >
+                  {feed.error
+                    ? `Last read failed: ${feed.error}`
+                    : feed.lastSync
+                      ? `Read ${format(new Date(feed.lastSync), "MMM d, h:mm a")}`
+                      : "Not read yet"}
+                </p>
+              </div>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => void removeFeed(feed.id)}
+                className="flex-none font-mono text-[11px] uppercase tracking-[0.08em]"
+              >
+                Remove
+              </Button>
+            </div>
+          ))}
         </div>
       ) : null}
 
