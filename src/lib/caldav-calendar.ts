@@ -20,6 +20,7 @@ import { prisma } from "@/lib/prisma";
 import { CalendarEventWithFeed } from "@/types/calendar";
 
 import { convertVEventToCalendarEvent } from "./caldav-helpers";
+import { seriesOccurrences } from "./ical-recurrence";
 import {
   CalDAVCalendarObject,
   CalendarEventInput,
@@ -96,6 +97,11 @@ function buildInstanceReference(
  */
 export class CalDAVCalendarService {
   private conn: CalDAVConnection | null = null;
+  /**
+   * Each series master's own VEVENT, from the sync that read it, so the series
+   * expands in its time zone (see expandMasterEvent).
+   */
+  private masterSources = new WeakMap<CalendarEvent, ICAL.Component>();
 
   /**
    * Creates a new CalDAV calendar service
@@ -147,18 +153,24 @@ export class CalDAVCalendarService {
       // Define the time range for expansion (1 year back to 1 year ahead)
       const timeRange = this.getTimeRange();
 
-      // Parse the recurrence rule
-      const options = RRule.parseString(masterEvent.recurrenceRule);
+      // A series read in this sync expands from its own VEVENT, in its time
+      // zone and without its EXDATEs. rrule anchored on the UTC start (the
+      // fallback, for a master with no VEVENT at hand) moves a weekly 9:00
+      // event to 8:00 once daylight saving ends, and ignores EXDATE.
+      const source = this.masterSources.get(masterEvent);
+      let expanded: Date[];
+      if (source) {
+        expanded =
+          seriesOccurrences(source, timeRange.start, timeRange.end, {
+            maxInstances: 5000,
+          }) ?? [];
+      } else {
+        const options = RRule.parseString(masterEvent.recurrenceRule);
+        options.dtstart = masterEvent.start;
+        expanded = new RRule(options).between(timeRange.start, timeRange.end, true);
+      }
 
-      // Set the start date from the master event
-      options.dtstart = masterEvent.start;
-
-      // Create the RRule instance
-      const rule = new RRule(options);
-
-      // Get all occurrences between the start and end dates
-      const occurrences = rule
-        .between(timeRange.start, timeRange.end, true)
+      const occurrences = expanded
         // The master row is persisted as a real event and already represents the
         // series' first occurrence (its start/end come straight from DTSTART/DTEND).
         // RRULE expansion is inclusive of DTSTART, so emitting that occurrence again
@@ -312,6 +324,7 @@ export class CalDAVCalendarService {
             hasRecurrenceId,
             processedUids
           );
+          if (event.isMaster) this.masterSources.set(event, vevent);
           events.push(event);
         }
       } catch (error) {
