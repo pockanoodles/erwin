@@ -481,6 +481,7 @@ export class TaskSyncManager {
                   title: internalTask.title || "Untitled Task",
                   description: internalTask.description,
                   status: internalTask.status || TaskStatus.TODO,
+                  completedAt: internalTask.completedAt,
                   dueDate: internalTask.dueDate,
                   startDate: internalTask.startDate,
                   duration: internalTask.duration,

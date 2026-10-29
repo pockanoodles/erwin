@@ -22,8 +22,8 @@
  * Next listens on loopback unless `--lan` is given, because the printed link
  * signs anyone who opens it in as the local admin: on campus or café Wi-Fi the
  * server should not be on the network at all. For the phone, `tailscale serve
- * <port>` is the better road: the server stays on loopback and the phone gets
- * HTTPS on the tailnet, which iOS needs to install Erwin as an app.
+ * <port>` is the better road: the server stays on loopback, only the tailnet
+ * can reach it, and the phone gets HTTPS.
  */
 
 import { spawn } from "node:child_process";

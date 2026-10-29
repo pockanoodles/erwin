@@ -33,10 +33,10 @@ It is how an arm64 snap would ship later. In that case add
    snapcraft register erwin
    ```
 
-3. Export a login that can only touch this snap and the edge channel:
+3. Export a login that can only touch this snap and its edge and stable channels:
 
    ```sh
-   snapcraft export-login --snaps=erwin --channels=edge \
+   snapcraft export-login --snaps=erwin --channels=edge,stable \
      --acls=package_access,package_push,package_update,package_release \
      --expires=2027-10-12T00:00:00 credentials.txt
    ```
@@ -52,8 +52,12 @@ The login expires on the date you set. Export a new one before then.
 
 ## Promoting to stable
 
-CI never releases past `edge`. Test the edge build with
-`sudo snap install erwin --edge`, then release the revision:
+A draft release only reaches `edge`. Test it with
+`sudo snap install erwin --edge`. Publishing the release runs
+`.github/workflows/channels.yml`, which releases the revision with that
+release's version to `stable`. Edge can hold a newer build, such as a
+pre-release, and that one stays on edge.
+By hand:
 
 ```sh
 snapcraft status erwin

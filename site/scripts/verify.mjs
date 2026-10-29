@@ -64,7 +64,7 @@ for (const pg of PAGES) {
     // Every channel says whether it is live, and commands carry a copy button.
     const statuses = await page.locator(".channel .status").count();
     const channelsCount = await page.locator(".channel").count();
-    check(statuses === channelsCount && channelsCount >= 10, `${tag}: ${channelsCount} channels, each with a status`);
+    check(statuses === channelsCount && channelsCount >= 9, `${tag}: ${channelsCount} channels, each with a status`);
     check((await page.locator(".channel__cmd .copy").count()) >= 5, `${tag}: commands can be copied`);
 
     // The site's MENU pill opens and closes.

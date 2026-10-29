@@ -42,7 +42,7 @@ export class GoogleFieldMapper extends FieldMapper {
       {
         internalField: "description",
         externalField: "notes",
-//        preserveLocalValue: true,
+        //        preserveLocalValue: true,
       },
       {
         internalField: "dueDate",
@@ -50,24 +50,34 @@ export class GoogleFieldMapper extends FieldMapper {
         preserveLocalValue: true,
         transformToExternal: (value: unknown) => {
           if (!value) return null;
-          return new Date(new Date(value as string | number | Date).toISOString());
+          return new Date(
+            new Date(value as string | number | Date).toISOString()
+          );
         },
         transformToInternal: (value: unknown) => {
           if (!value) return null;
-          return new Date(new Date(value as string | number | Date).toISOString());
+          return new Date(
+            new Date(value as string | number | Date).toISOString()
+          );
         },
       },
       {
+        // GoogleTaskProvider hands tasks over with `completed` already
+        // normalized to `completedDate`, and never sends it back to Google.
         internalField: "completedAt",
-        externalField: "completed",
+        externalField: "completedDate",
         preserveLocalValue: true,
         transformToExternal: (value: unknown) => {
           if (!value) return null;
-          return new Date(new Date(value as string | number | Date).toISOString());
+          return new Date(
+            new Date(value as string | number | Date).toISOString()
+          );
         },
         transformToInternal: (value: unknown) => {
           if (!value) return null;
-          return new Date(new Date(value as string | number | Date).toISOString());
+          return new Date(
+            new Date(value as string | number | Date).toISOString()
+          );
         },
       },
       // Priority isn't present in Google Tasks; preserve the local priority
