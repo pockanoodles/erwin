@@ -6,6 +6,8 @@
 #
 # Each platform builds on a runner of its own architecture and pushes by
 # digest. The last job joins the two digests into one multi-platform tag.
+# The published index carries a signed build provenance attestation in the
+# registry: gh attestation verify oci://ghcr.io/pockanoodles/erwin:latest -R pockanoodles/erwin
 # Packages start out private. After the first push, set the package to public
 # in its settings. See packaging/README.md.
 
@@ -107,6 +109,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+      id-token: write
+      attestations: write
     steps:
       - name: Download the digests
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -145,6 +149,19 @@ jobs:
             $(printf "${IMAGE}@sha256:%s " *)
 
       - name: Inspect
+        id: index
         env:
           VERSION: ${{ steps.meta.outputs.version }}
-        run: docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+        run: |
+          set -euo pipefail
+          docker buildx imagetools inspect "${IMAGE}:${VERSION}"
+          digest="$(docker buildx imagetools inspect "${IMAGE}:${VERSION}" --format '{{json .Manifest}}' | jq -r .digest)"
+          test -n "$digest" && test "$digest" != null
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-name: ${{ env.IMAGE }}
+          subject-digest: ${{ steps.index.outputs.digest }}
+          push-to-registry: true

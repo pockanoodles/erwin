@@ -1,21 +1,27 @@
 # Releasing Erwin
 
-One tag ships Erwin to every channel below. CI builds and uploads what it can.
-Three channels need you to push a manifest by hand: winget, the AUR and the
-Homebrew tap.
+A tag builds every package and drafts a GitHub Release. Publishing the draft
+ships it to every package manager below: `channels.yml` pushes the Homebrew
+cask, the AUR package and the winget manifests, and releases the snap to
+stable. Nothing is pushed by hand once each channel's secret is set.
+
+The Mac App Store and the Microsoft Store come later, if people ask for them.
+Their jobs stay in `release.yml` and do nothing until their secrets exist. The
+Apple and Windows signing certificates come later too, so for now the macOS
+app is ad-hoc signed and the Windows installer is unsigned (see "Unsigned
+builds").
 
 ## Channels
 
 | Channel | Install | How it updates |
 | --- | --- | --- |
-| GitHub Releases | Download from https://github.com/pockanoodles/erwin/releases | The macOS DMG and zip, the Windows installer and the AppImage update themselves from the release feed. deb, rpm and tar.gz do not. Download the new file. |
-| Mac App Store | Search for Erwin in the App Store | App Store |
-| Microsoft Store | Search for Erwin in the Microsoft Store | Microsoft Store |
+| GitHub Releases | Download from https://github.com/pockanoodles/erwin/releases | The Windows installer and the AppImage update themselves from the release feed, and so will the macOS DMG and zip once they are notarized. deb, rpm and tar.gz do not. Download the new file. |
 | winget | `winget install KaitoSoeno.Erwin` | `winget upgrade KaitoSoeno.Erwin`, or the in-app updater |
-| Homebrew | `brew install --cask pockanoodles/tap/erwin` | In-app updater, or `brew upgrade --cask --greedy erwin` |
+| Homebrew | `brew install --cask pockanoodles/tap/erwin` | `brew upgrade --cask erwin` |
 | Snap Store | `sudo snap install erwin` | snapd refreshes it |
 | AUR | `yay -S erwin-bin` | `yay -Syu` |
 | Docker (self-hosted server) | `docker pull ghcr.io/pockanoodles/erwin:latest` | Pull a newer tag |
+| Mac App Store, Microsoft Store | Later | Their store |
 
 The in-app updater is off in every build that a store or package manager
 updates (`desktop/src/updater.ts`).
@@ -28,9 +34,10 @@ updates (`desktop/src/updater.ts`).
    the version in `desktop/package.json`. The workflow stops if it does not.
 3. `release.yml` builds every package and drafts a GitHub Release with the
    files and `SHA256SUMS.txt`. `docker.yml` builds the server image.
-4. Download and test the draft. Publish it. The manifests below point at the
-   published files, so publish before you update them.
-5. Update the manifests and push them to the channels (see "Every release").
+4. Download and test the draft (the snap is on `edge`). Publish it.
+5. Publishing runs `channels.yml`. Its run summary lists which channels it
+   pushed. A channel without its secret is skipped. Push that one by hand with
+   the manifest script (see "Every release").
 
 A manual run of `release.yml` (Actions tab, Run workflow) builds everything and
 keeps the files as workflow artifacts. Tick `create_release` to also draft the
@@ -44,7 +51,7 @@ release and run the store jobs.
 | `build-macos` | Always, on `macos-15` | DMG and zip for arm64 and x64. Signed and notarized when the Apple secrets exist. Otherwise ad-hoc signed. electron-builder says such an app only runs on the machine that built it. |
 | `build-windows` | Always | NSIS installer. Signed when the `WIN_CSC_*` secrets exist. |
 | `build-linux` | Always, x64 and arm64 | AppImage, deb, rpm and tar.gz. The x64 job also builds the snap. |
-| `release` | Tag push, or a manual run with `create_release` | Draft release with every file and `SHA256SUMS.txt`. |
+| `release` | Tag push, or a manual run with `create_release` | Draft release with every file and `SHA256SUMS.txt`, and a signed build provenance attestation for each file. |
 | `snap` | `SNAPCRAFT_STORE_CREDENTIALS` exists | Uploads the snap to the `edge` channel. |
 | `mas` | Mac App Store secrets exist, stable version | Builds a signed universal `.pkg`, keeps it as the `store-mas` artifact, and uploads it to App Store Connect when the API key secrets exist. |
 | `msstore` | `MS_STORE_IDENTITY_NAME` and `MS_STORE_PUBLISHER` exist, stable version 1.0.0 or later | Builds the `.appx`, keeps it as the `store-appx` artifact, and uploads a draft submission when the Partner Center secrets exist. |
@@ -55,7 +62,51 @@ GitHub Release. Nobody can install them outside their store.
 
 `docker.yml` runs on its own. A push to `main` publishes `ghcr.io/pockanoodles/erwin:edge`.
 A tag publishes `:X.Y.Z`, `:X.Y` and `:latest`, and a pre-release tag publishes
-only its own version.
+only its own version. Every published image carries a provenance attestation
+in the registry.
+
+## What runs on publish
+
+`channels.yml` runs when a release is published, or by hand with a tag. It
+checks out the tag, renders the manifests from the release's
+`SHA256SUMS.txt`, keeps them as the `manifests` artifact, and then:
+
+| Job | Runs when this secret exists | Result |
+| --- | --- | --- |
+| `tap` | `TAP_DEPLOY_KEY` | Commits `Casks/erwin.rb` to `pockanoodles/homebrew-tap` |
+| `aur` | `AUR_SSH_PRIVATE_KEY` | Pushes `PKGBUILD` and `.SRCINFO` to `erwin-bin` on the AUR |
+| `winget` | `WINGET_CREATE_GITHUB_TOKEN` | Opens the pull request on `microsoft/winget-pkgs` with `wingetcreate submit`, unless the version is already there or has an open pull request |
+| `snap` | `SNAPCRAFT_STORE_CREDENTIALS` | Releases the revision with this release's version to `stable` |
+
+Pre-releases stop after the plan. A job that finds its version already there
+changes nothing, so a re-run is safe. The files in `packaging/` stay templates
+with `{{...}}` tokens, and nothing commits rendered manifests back to this
+repo.
+
+## Checking a download
+
+Every file in a release is in `SHA256SUMS.txt` and has a signed attestation
+that says which workflow run, commit and tag built it:
+
+```sh
+gh attestation verify Erwin-1.0.0-mac-arm64.dmg -R pockanoodles/erwin
+gh attestation verify oci://ghcr.io/pockanoodles/erwin:1.0.0 -R pockanoodles/erwin
+```
+
+## Unsigned builds
+
+Until there is an Apple Developer ID and a Windows certificate:
+
+- **macOS.** CI signs the app ad hoc and marks it `erwinBuild: adhoc`, which
+  turns the in-app updater off (`desktop/src/updater.ts`): Squirrel.Mac can't
+  update an ad-hoc signed app. Gatekeeper refuses the app while it carries the
+  quarantine flag. The cask clears the flag in `postflight` and leaves updates
+  to `brew upgrade`, and someone who downloads the DMG clears it with
+  `xattr -dr com.apple.quarantine /Applications/Erwin.app`. When notarization
+  lands, drop the `postflight` block, add `auto_updates true` back to the cask
+  and update the README's Install section.
+- **Windows.** SmartScreen asks once before the installer runs. winget
+  installs it without asking.
 
 Without any secrets the run still succeeds. You get unsigned packages and no
 store uploads.
@@ -78,15 +129,50 @@ store uploads.
 | Channel | Account | Cost | Where |
 | --- | --- | --- | --- |
 | GitHub Releases and GHCR | Your GitHub account | Free | The repo |
-| Apple (Developer ID, notarization, Mac App Store) | Apple Developer Program | US$99 a year | https://developer.apple.com/programs/enroll/ |
-| Microsoft Store | Partner Center individual account | No registration fee in the current sign-up flow. It checks a government ID and a selfie. | https://storedeveloper.microsoft.com |
-| Windows code signing (optional) | An OV or EV certificate, or Azure Artifact Signing | Paid. Check the current price and eligibility with the provider. | Without it, SmartScreen warns on first run |
+| Homebrew tap | A repo named `pockanoodles/homebrew-tap`, with a deploy key | Free | https://github.com/new |
+| AUR | AUR account with an SSH key for CI | Free | https://aur.archlinux.org/register |
+| winget | A classic GitHub token with `public_repo` | Free | https://github.com/settings/tokens |
 | Snap Store | Snapcraft account | Free | https://snapcraft.io/account |
-| AUR | AUR account with your SSH public key | Free | https://aur.archlinux.org/register |
-| winget | GitHub account and a fork of `microsoft/winget-pkgs` | Free | https://github.com/microsoft/winget-pkgs |
-| Homebrew tap | A repo named `pockanoodles/homebrew-tap` | Free | https://github.com/new |
+| Apple (Developer ID, notarization, Mac App Store), later | Apple Developer Program | US$99 a year | https://developer.apple.com/programs/enroll/ |
+| Windows code signing, later | An OV or EV certificate, or Azure Artifact Signing | Paid. Check the current price and eligibility with the provider. | Without it, SmartScreen warns on first run |
+| Microsoft Store, later | Partner Center individual account | No registration fee in the current sign-up flow. It checks a government ID and a selfie. | https://storedeveloper.microsoft.com |
 
-### Apple
+### Homebrew tap
+
+1. Create the empty repo `pockanoodles/homebrew-tap` on GitHub and push
+   `~/Projects/homebrew-tap` to it (see "First submission by hand"). CI clones
+   it, so it needs that first commit.
+2. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C erwin-ci -f tap_key`.
+3. In the tap's Settings, Deploy keys, add `tap_key.pub` with write access.
+4. `gh secret set TAP_DEPLOY_KEY -R pockanoodles/erwin < tap_key`, then delete
+   both files.
+
+The key can write to the tap and nothing else.
+
+### AUR
+
+1. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C erwin-ci -f aur_key`.
+2. Add `aur_key.pub` to your AUR account (My Account, SSH Public Key). The AUR
+   takes several keys, one per line.
+3. `gh secret set AUR_SSH_PRIVATE_KEY -R pockanoodles/erwin < aur_key`, then
+   delete both files.
+
+The first push creates `erwin-bin`. CI checks the AUR's host key against the
+ED25519 fingerprint it publishes on https://aur.archlinux.org.
+
+### winget
+
+1. Create a classic token with the `public_repo` scope, as
+   https://aka.ms/winget-create-token describes. wingetcreate forks
+   `microsoft/winget-pkgs` into the token's account and opens the pull request
+   from there.
+2. `gh secret set WINGET_CREATE_GITHUB_TOKEN -R pockanoodles/erwin`.
+
+The first pull request is a new package, and the winget reviewers check it by
+hand. Run the validation under "First submission by hand" on a Windows machine
+first.
+
+### Apple (later)
 
 1. Enroll in the Apple Developer Program.
 2. In Certificates, Identifiers & Profiles, create three certificates and
@@ -109,7 +195,7 @@ store uploads.
    `desktop/build/` carry no JIT entitlement, and PGlite runs WebAssembly.
    Install the first upload through TestFlight before you submit it for review.
 
-### Microsoft Store
+### Microsoft Store (later)
 
 1. Open the Partner Center account and reserve the name Erwin as a new MSIX app.
 2. Under Product management, Product identity, copy:
@@ -172,11 +258,17 @@ A job that lacks its secrets skips that step.
 | `MS_STORE_SELLER_ID` | Microsoft Store submission | Partner Center seller id |
 | `MS_STORE_CLIENT_ID` | Microsoft Store submission | Entra application id |
 | `MS_STORE_CLIENT_SECRET` | Microsoft Store submission | Entra client secret |
-| `SNAPCRAFT_STORE_CREDENTIALS` | Snap upload | Output of `snapcraft export-login` |
+| `SNAPCRAFT_STORE_CREDENTIALS` | Snap upload and promotion | Output of `snapcraft export-login` |
+| `TAP_DEPLOY_KEY` | Homebrew tap push | Private half of the tap's deploy key |
+| `AUR_SSH_PRIVATE_KEY` | AUR push | Private half of the CI key on your AUR account |
+| `WINGET_CREATE_GITHUB_TOKEN` | winget pull request | Classic token with `public_repo` |
 
 `GITHUB_TOKEN` is built in. It pushes the Docker image and drafts the release.
 
 ## First submission by hand
+
+CI can make every first submission. These are the checks to run before the
+first one, and the fallback when a channel has no secret.
 
 ### winget
 
@@ -224,21 +316,29 @@ empty repository, and the first push creates the package.
 
 ### Homebrew tap
 
+Once, before the first release:
+
 ```sh
 cd ~/Projects/homebrew-tap
 git remote add origin git@github.com:pockanoodles/homebrew-tap.git
-git add -A && git commit -m "erwin 1.0.0" && git push -u origin main
+git push -u origin main
+```
+
+After `channels.yml` has pushed the cask:
+
+```sh
 brew install --cask pockanoodles/tap/erwin
 brew audit --cask --online --strict pockanoodles/tap/erwin
 ```
 
-Create the empty GitHub repo `pockanoodles/homebrew-tap` first. The cask in the
-tap is a copy of `packaging/homebrew/erwin.rb`. The script writes both.
-
-A DMG that is not notarized fails Gatekeeper after `brew install`. Notarize
-before you publish the cask.
+The cask in the tap is a copy of `packaging/homebrew/erwin.rb`, and CI
+overwrites it on every release.
 
 ## Every release
+
+Publish the draft. `channels.yml` does the rest, and its run summary says which
+channels it pushed. For a channel it skipped, render the manifests and push
+them as in "First submission by hand":
 
 ```sh
 gh release download v1.0.0 -p SHA256SUMS.txt -D /tmp/erwin-release
@@ -247,13 +347,8 @@ node scripts/release/update-manifests.mjs 1.0.0 /tmp/erwin-release/SHA256SUMS.tx
 git diff packaging
 ```
 
-Then:
-
-- Commit the changes in this repo.
-- Commit and push the tap.
-- Copy `packaging/winget/*.yaml` into a new version folder in your
-  `winget-pkgs` fork and open the pull request.
-- Copy `PKGBUILD` and `.SRCINFO` into the AUR clone and push.
+Don't commit the rendered files. `packaging/` keeps the templates, and
+`git checkout packaging` puts them back.
 
 ### The manifest script
 

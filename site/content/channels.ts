@@ -2,6 +2,7 @@
 // `live` flips to true when a channel actually serves the app, and until then
 // the page labels it as coming soon rather than linking to something empty.
 // Commands and ids must match packaging/ (the release runbook lives there).
+// The Mac App Store and the Microsoft Store come later, if people ask for them.
 
 export type ChannelGroup = "mac" | "windows" | "linux" | "server";
 
@@ -19,10 +20,8 @@ export interface Channel {
 const RELEASES = "https://github.com/pockanoodles/erwin/releases/latest";
 
 export const channels: Channel[] = [
-  { id: "mas", group: "mac", name: "Mac App Store", live: false },
   { id: "brew", group: "mac", name: "Homebrew", command: "brew install --cask pockanoodles/tap/erwin", live: false },
   { id: "dmg", group: "mac", name: "Disk image (Apple silicon and Intel)", href: RELEASES, live: false },
-  { id: "msstore", group: "windows", name: "Microsoft Store", live: false },
   { id: "winget", group: "windows", name: "winget", command: "winget install KaitoSoeno.Erwin", live: false },
   { id: "exe", group: "windows", name: "Installer (.exe)", href: RELEASES, live: false },
   { id: "snap", group: "linux", name: "Snap Store", command: "sudo snap install erwin", live: false },

@@ -27,6 +27,9 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - **Phone layout:** a bottom bar on phones (Today, Focus, Calendar, Tasks, your first module, More), swipe a row right for Done and left for Later, Skip or Focus, Calendar opens on Day and swipes between periods, and Focus pins Done / Skip / Later under the thumb. Safe areas, 16px inputs so iOS doesn't zoom, and dialogs that fit a 393px screen.
 - **Landing page:** kaitosoeno.com/erwin in English and Japanese.
 - **Brand module:** the product name, URLs and support contact live in `src/lib/brand.ts`.
+- **CI:** every pull request and push to `main` runs the types, lint and unit tests, the desktop shell's types, and a production build with no secrets set (`.github/workflows/ci.yml`).
+- **Package managers publish themselves:** publishing a release pushes the Homebrew cask, the AUR package and the winget manifests, and releases that version's snap from edge to stable (`.github/workflows/channels.yml`). Each channel waits for its secret.
+- **Build provenance:** every release file and every server image carries a signed attestation of the workflow run that built it (`gh attestation verify`).
 
 ### Changed
 
@@ -48,6 +51,8 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - A goal the projection leaves out is set aside (`dropped`) instead of deleted, so its finished work keeps its XP and it returns if the vault brings it back. A goal that is done or set aside files no new work and no longer lifts its tasks in Focus, while its finished tasks keep their links. Tasks and the Ladder leave set-aside goals out, unless the Ladder's hex shows XP they earned.
 - Goals from the vault can't be edited or deleted through `PUT`/`DELETE /api/erwin/goals/[id]` (409), since the next projection would undo it.
 - The goal projection (`POST /api/erwin/goals/project`) can carry the Build. The running hex then takes it and shows it read-only, a change to it through `PUT /api/erwin/cycles/[id]` answers 409, and the hex's theme still edits in Erwin. A projection without one makes the Build editable again. Migration `20261024230000_projected_build`.
+- The Mac App Store and the Microsoft Store are off the install list until people ask for them. Their release jobs stay and wait for their secrets.
+- An ad-hoc signed macOS build turns its in-app updater off, because Squirrel.Mac can't update it. The Homebrew cask clears the quarantine flag on the app it checked and leaves updates to `brew upgrade` until releases are notarized.
 
 ### Fixed
 
@@ -56,6 +61,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - BullMQ's job scheduler could stop scheduling for good after a worker restart that landed within one interval of the last run, which ended background sync without an error.
 - Unit tests used the database named in `.env`, and the logger wrote test errors into its `Log` table. `jest.setup.js` now points Prisma at no database and stubs the logger.
 - Part of a Canvas sync could fail while the sync looked healthy: a course's materials pass, the announcements or Inbox read, or a course's submissions or quiz list. The materials failure was only logged, and the rest only as warnings, which the default log level drops. Each now lands in the Canvas provider's error, which the Courses top bar shows and a health check can watch. A page a course hides from students (Canvas's 404 "disabled for this course") doesn't count, and a failed submissions or quiz read no longer blanks the feedback and quiz rules already stored.
+- A task done in Google Tasks came into Erwin with no `completedAt`: the field mapper read `completed` while the provider hands tasks over as `completedDate`, and a new task's import left the field out. The provider tests that expected Google's `due` to land in `startDate` described a policy upstream dropped, and now test `due` as the due date.
 
 ### Removed
 

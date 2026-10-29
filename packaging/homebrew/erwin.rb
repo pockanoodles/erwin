@@ -16,10 +16,19 @@ cask "erwin" do
     strategy :github_latest
   end
 
-  auto_updates true
   depends_on macos: :monterey
 
   app "Erwin.app"
+
+  # Releases are ad-hoc signed until there is an Apple Developer ID
+  # (packaging/README.md). Gatekeeper refuses such an app while it carries the
+  # quarantine flag, so the cask clears it on the app it just checked against
+  # sha256 above. Such a build can't update itself either, so `brew upgrade`
+  # updates it. With notarization: drop this block and add `auto_updates true`.
+  postflight do
+    system_command "/usr/bin/xattr",
+                   args: ["-dr", "com.apple.quarantine", "#{appdir}/Erwin.app"]
+  end
 
   zap trash: [
     "~/Library/Application Support/Erwin",

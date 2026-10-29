@@ -204,18 +204,23 @@ Erwin has not had its first release yet. The channels below are set up in `packa
 
 | System | Channel | How |
 |---|---|---|
-| macOS | Mac App Store | Link at release |
 | macOS | Homebrew | `brew install --cask pockanoodles/tap/erwin` |
 | macOS | Disk image (Apple silicon, Intel) | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
-| Windows | Microsoft Store | Link at release |
 | Windows | winget | `winget install KaitoSoeno.Erwin` |
 | Windows | Installer (.exe) | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
 | Linux | Snap Store | `sudo snap install erwin` |
 | Linux | AUR | `yay -S erwin-bin` |
 | Linux | AppImage, .deb, .rpm | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
 | Server | Docker Compose | See [Self-host](#self-host) |
+| Phone | The web app from your server or your Mac | See [On a phone](#on-a-phone) |
 
-Store builds update through their store, Linux packages through their package manager, and the direct downloads update themselves.
+The Mac App Store and the Microsoft Store come later, if people ask for them.
+
+Homebrew, winget, the Snap Store and the AUR update Erwin through `brew upgrade`, `winget upgrade`, snapd and `yay -Syu`. The Windows installer and the AppImage update themselves.
+
+The builds are not signed by Apple or Microsoft yet. Homebrew takes care of macOS for you. If you download the disk image instead, macOS refuses to open the app until you clear the quarantine flag once: `xattr -dr com.apple.quarantine /Applications/Erwin.app`. That copy doesn't update itself, so download the next release when it comes out. On Windows, SmartScreen asks once before the installer runs (More info, then Run anyway).
+
+Every release file is listed in `SHA256SUMS.txt` and carries a signed record of the workflow run that built it, which you can check with the GitHub CLI: `gh attestation verify Erwin-1.0.0-mac-arm64.dmg -R pockanoodles/erwin`. The server image has one too (`oci://ghcr.io/pockanoodles/erwin:1.0.0`).
 
 ## Run from source
 
@@ -227,7 +232,7 @@ npm install
 npm run dev:local -- --seed demo
 ```
 
-`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on Courses, Training, Nutrition and Work. The `--reset` flag starts over with an empty database.
+`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on Courses, Training, Nutrition and Work. The `--reset` flag starts over with an empty database. It listens on your machine only, and `--lan` opens it to a phone (see [On a phone](#on-a-phone)).
 
 ## Self-host
 
@@ -245,6 +250,16 @@ Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. I
 Password reset email needs `RESEND_API_KEY` and `EMAIL_FROM`, an address on a domain you have verified in Resend. Without `EMAIL_FROM` the server logs an error and sends nothing. The desktop app sends no email.
 
 Background sync runs on a timer in the `worker` service, every 15 minutes by default (`ERWIN_BACKGROUND_SYNC_INTERVAL_MS`). A single container can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same loop inside the app. Run one or the other, because running both syncs everything twice.
+
+## On a phone
+
+On a phone, Erwin is the same web app with a layout for small screens and a bottom bar. Open it in the browser and add it to your home screen (in Safari, Share, then Add to Home Screen).
+
+- **From a self-hosted server.** Put it behind HTTPS, with a reverse proxy or with `tailscale serve 3000` on the server, and set `NEXTAUTH_URL` to that address. Add the same address to your Google and Outlook redirect URIs.
+- **From your Mac over Tailscale.** Run `npm run dev:local`, then `tailscale serve 3000` on the Mac. On the phone, open the printed sign-in link with `http://localhost:3000` replaced by the Mac's `https://<name>.<tailnet>.ts.net` address. The server stays on the Mac's loopback interface, and only your tailnet can reach it.
+- **From your Mac on the same Wi-Fi.** Run `npm run dev:local -- --lan` and open the Phone link it prints. That puts the server on the network for anyone on it, so use it on a network you trust.
+
+The sign-in link signs whoever opens it in as you, and a new one is made at every start. Don't share it.
 
 ## Deployment modes
 
