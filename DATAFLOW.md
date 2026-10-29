@@ -106,7 +106,7 @@ All credentials live in the local database, and each is encrypted before it is w
 
 This protects a copy of the database, such as a `pg_dump`, a Time Machine snapshot or a stray backup, which is the realistic way these values would escape. It does not protect against anything running as you on this machine, because that process can read the key from the environment as easily as the database. On a server install, closing that gap means moving the key into the operating system's secret store, which is not done yet.
 
-In the desktop app, the credential key and the session signing key are generated randomly on first launch and sealed with Electron's safeStorage, which uses the macOS Keychain, Windows DPAPI or the Linux secret service. On a Linux desktop with no secret service, they are written to a file in the app's data folder that only your user can read.
+In the desktop app, the credential key and the session signing key are generated randomly on first launch and sealed with Electron's safeStorage, which uses the macOS Keychain, Windows DPAPI or the Linux secret service. On a Linux desktop with no secret service, and in the macOS builds that Apple hasn't signed yet, they are written to a file in the app's data folder that only your user can read. The first signed macOS build moves them into the Keychain.
 
 If you lose the key, every stored credential becomes unreadable and you have to reconnect each integration. If you change the key, the stored values have to be re-encrypted while the old key is still available (`npm run credentials:encrypt`).
 

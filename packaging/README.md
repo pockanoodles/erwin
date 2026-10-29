@@ -105,6 +105,11 @@ Until there is an Apple Developer ID and a Windows certificate:
   `xattr -dr com.apple.quarantine /Applications/Erwin.app`. When notarization
   lands, drop the `postflight` block, add `auto_updates true` back to the cask
   and update the README's Install section.
+  The same flag keeps the install keys out of the Keychain
+  (`desktop/src/secrets.ts`). The Keychain trusts only the build that made an
+  item, so every update would ask for the login password before the app could
+  start. The keys stay in a file only the user can read, and the first signed
+  build moves them into the Keychain by itself.
 - **Windows.** SmartScreen asks once before the installer runs. winget
   installs it without asking.
 
