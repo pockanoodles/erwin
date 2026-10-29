@@ -852,3 +852,32 @@ END:VEVENT`)
     expect(expanded.filter((e) => !e.isMaster)).toHaveLength(1000);
   });
 });
+
+it("counts the instance cap after EXDATEs, so a series with many keeps its later occurrences", () => {
+  const exdates = Array.from({ length: 100 }, (_, k) => {
+    const d = new Date(Date.UTC(2026, 0, 1 + k));
+    return `EXDATE:${d.toISOString().slice(0, 10).replace(/-/g, "")}T000000Z`;
+  }).join("\n");
+  const expanded = expandIcalEvents(
+    parseIcalEvents(`BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//test//EN
+BEGIN:VEVENT
+UID:many-exdates@example.com
+SUMMARY:Daily
+DTSTART:20260101T000000Z
+DTEND:20260101T003000Z
+RRULE:FREQ=DAILY
+${exdates}
+END:VEVENT
+END:VCALENDAR`),
+    new Date("2026-01-01T00:00:00.000Z"),
+    new Date("2029-01-01T00:00:00.000Z")
+  );
+  const rendered = expanded.filter((e) => !e.isMaster);
+  // 1,097 days from January 1, 2026 through January 1, 2029, less 100 EXDATEs.
+  expect(rendered).toHaveLength(997);
+  expect(new Date(rendered[rendered.length - 1].start).toISOString()).toBe(
+    "2029-01-01T00:00:00.000Z"
+  );
+});

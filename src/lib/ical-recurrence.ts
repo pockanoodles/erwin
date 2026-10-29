@@ -145,23 +145,27 @@ export function seriesOccurrences(
 
   // The window in floating terms is off by at most a day of UTC offset, so a
   // day each side, then the exact window once each occurrence is an instant.
-  // The callback stops generation once the window holds enough: without it,
-  // between() collects every occurrence before returning any.
-  const walls = new RRule(options).between(
+  // The callback stops generation once the window holds enough, counting only
+  // occurrences that stay: inside the window and not removed by an EXDATE.
+  // Without it, between() collects every occurrence before returning any.
+  const excluded = new Set(dateList(vevent, "exdate").map((d) => d.getTime()));
+  const starts = new Map<number, Date>();
+  const keep = (date: Date) => {
+    const ms = date.getTime();
+    if (date < windowStart || date > windowEnd || excluded.has(ms)) return;
+    starts.set(ms, date);
+  };
+  new RRule(options).between(
     shiftYears(new Date(windowStart.getTime() - DAY_MS), shift),
     shiftYears(horizon, shift),
     true,
-    (_date, i) => i < maxInstances + 2
+    (wall) => {
+      keep(instant(shiftYears(wall, -shift), dtstart));
+      return starts.size < maxInstances;
+    }
   );
+  for (const date of dateList(vevent, "rdate")) keep(date);
 
-  const excluded = new Set(dateList(vevent, "exdate").map((d) => d.getTime()));
-  const starts = new Map<number, Date>();
-  const occurrences = walls.map((wall) => instant(shiftYears(wall, -shift), dtstart));
-  for (const date of [...occurrences, ...dateList(vevent, "rdate")]) {
-    const ms = date.getTime();
-    if (date < windowStart || date > windowEnd || excluded.has(ms)) continue;
-    starts.set(ms, date);
-  }
   return [...starts.values()]
     .sort((a, b) => a.getTime() - b.getTime())
     .slice(0, maxInstances);
