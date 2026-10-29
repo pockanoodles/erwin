@@ -91,20 +91,27 @@ const env = {
   PRISMA_HIDE_UPDATE_MESSAGE: "1",
 };
 
+// The CLIs run with this Node, by their files rather than through npx: on
+// Windows npx is npx.cmd, which spawn can't start without a shell.
+const cli = (pkg, file) => path.join(root, "node_modules", pkg, file);
+const node = (script, scriptArgs, overrides = {}) =>
+  spawn(process.execPath, [script, ...scriptArgs], { cwd: root, env: { ...env, ...overrides }, stdio: "inherit" });
+
 // Children are awaited, never run synchronously: the database socket lives in
 // this process, and a blocked event loop cannot answer it.
-function run(cmd, cmdArgs, overrides = {}) {
+function run(script, scriptArgs, overrides = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, cmdArgs, { cwd: root, env: { ...env, ...overrides }, stdio: "inherit" });
-    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} ${cmdArgs.join(" ")} exited ${code}`))));
+    const child = node(script, scriptArgs, overrides);
+    child.on("error", reject);
+    child.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${path.basename(script)} ${scriptArgs.join(" ")} exited ${code}`))));
   });
 }
 
-await run("npx", ["prisma", "migrate", "deploy"], { DATABASE_URL: dbOrigin });
-if (seed && fresh) await run("npx", ["tsx", "scripts/demo/seed.ts", seed]);
+await run(cli("prisma", "build/index.js"), ["migrate", "deploy"], { DATABASE_URL: dbOrigin });
+if (seed && fresh) await run(cli("tsx", "dist/cli.mjs"), ["scripts/demo/seed.ts", seed]);
 
 const hostname = lanAccess ? "0.0.0.0" : "127.0.0.1";
-const next = spawn("npx", ["next", "dev", "--turbopack", "--hostname", hostname, "--port", String(port)], { cwd: root, env, stdio: "inherit" });
+const next = node(cli("next", "dist/bin/next"), ["dev", "--turbopack", "--hostname", hostname, "--port", String(port)]);
 
 function isTailscaleIp(ip) {
   const parts = ip.split(".").map(Number);
