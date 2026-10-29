@@ -23,7 +23,8 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 - **Calendar and tasks:** Google, Outlook and CalDAV calendars, task sync with Outlook and Google Tasks, auto-scheduling, subtasks, and deferred tasks.
 - **Desktop app:** Electron around the same server, with an embedded database and no account or setup. It saves a copy of the database before any migration that changes it.
 - **Self-host:** Docker Compose with Postgres and a background sync worker, or a single container with the in-process scheduler.
-- **`npm run dev:local`:** the app on an embedded database with nothing else installed, and `--seed demo` for an example week.
+- **`npm run dev:local`:** the app on an embedded database with nothing else installed, and `--seed demo` for an example week. It listens on loopback only; `--lan` opens it to a phone on the same Wi-Fi or tailnet and prints the phone's sign-in link.
+- **Phone layout:** a bottom bar on phones (Today, Focus, Calendar, Tasks, your first module, More), swipe a row right for Done and left for Later, Skip or Focus, Calendar opens on Day and swipes between periods, and Focus pins Done / Skip / Later under the thumb. Safe areas, 16px inputs so iOS doesn't zoom, and dialogs that fit a 393px screen.
 - **Landing page:** kaitosoeno.com/erwin in English and Japanese.
 - **Brand module:** the product name, URLs and support contact live in `src/lib/brand.ts`.
 

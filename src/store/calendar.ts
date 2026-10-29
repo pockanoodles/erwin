@@ -3,8 +3,8 @@ import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 import { newDate, normalizeAllDayDate } from "@/lib/date-utils";
+import { ssrSafeJsonStorage } from "@/lib/storage/ssr-safe-json-storage";
 import { DEFAULT_TASK_COLOR } from "@/lib/task-utils";
 
 import { useTaskStore } from "@/store/task";
@@ -57,8 +57,10 @@ export const useViewStore = create<ViewStore>()(
 // Store for UI preferences that will be persisted in localStorage
 interface UIStore {
   isSidebarOpen: boolean;
+  isMobileDrawerOpen: boolean;
   isHydrated: boolean;
   setSidebarOpen: (isOpen: boolean) => void;
+  setMobileDrawerOpen: (isOpen: boolean) => void;
   setHydrated: (hydrated: boolean) => void;
 }
 
@@ -66,8 +68,10 @@ export const useCalendarUIStore = create<UIStore>()(
   persist(
     (set) => ({
       isSidebarOpen: true,
+      isMobileDrawerOpen: false,
       isHydrated: false,
       setSidebarOpen: (isOpen) => set({ isSidebarOpen: isOpen }),
+      setMobileDrawerOpen: (isOpen) => set({ isMobileDrawerOpen: isOpen }),
       setHydrated: (hydrated) => set({ isHydrated: hydrated }),
     }),
     {

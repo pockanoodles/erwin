@@ -46,7 +46,7 @@ export function Column({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex min-w-72 flex-1 flex-col border border-border bg-background",
+        "flex w-[84vw] max-w-xs flex-none snap-center flex-col border border-border bg-background md:w-auto md:min-w-72 md:max-w-none md:flex-1",
         isOver && "ring-1 ring-rust"
       )}
     >

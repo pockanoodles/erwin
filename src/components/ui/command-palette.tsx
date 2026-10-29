@@ -61,7 +61,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-stage/60" />
-        <Dialog.Content className="fixed left-1/2 top-[20%] z-50 w-full max-w-[640px] -translate-x-1/2">
+        <Dialog.Content className="fixed left-1/2 top-[8%] z-50 w-[calc(100vw-1.5rem)] max-w-[640px] -translate-x-1/2 sm:top-[20%] sm:w-full">
           <Dialog.Title className="sr-only">Command Menu</Dialog.Title>
           <Dialog.Description className="sr-only">
             Search commands and navigate the application

@@ -170,7 +170,7 @@ export function AppNav({ className }: AppNavProps) {
         />
         <div
           className={cn(
-            "fixed bottom-0 left-0 top-topbar z-50 w-64 border-r border-border bg-sidebar",
+            "fixed bottom-0 left-0 top-[calc(theme(spacing.topbar)+env(safe-area-inset-top,0px))] z-50 w-64 border-r border-border bg-sidebar pb-[calc(3.25rem+env(safe-area-inset-bottom,0px))]",
             "transition-transform duration-ui ease-field motion-reduce:transition-none",
             isDrawerOpen ? "translate-x-0" : "-translate-x-full",
             className

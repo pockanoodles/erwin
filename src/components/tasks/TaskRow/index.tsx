@@ -6,9 +6,12 @@ import { HiCheck, HiOutlineRefresh } from "react-icons/hi";
 import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
+import { SwipeableRow } from "@/components/ui/swipeable-row";
 
-import { newDate } from "@/lib/date-utils";
+import { endOfDay, newDate } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
+
+import { useTaskStore } from "@/store/task";
 
 import { Priority, type Task, TaskStatus } from "@/types/task";
 
@@ -112,6 +115,24 @@ export function TaskRow({
     });
   };
 
+  // Same as Focus's Later: out of today's lists until midnight.
+  const handleSwipeDefer = () => {
+    const previousDefer = task.postponedUntil ?? null;
+    void onPatch({ ...task, postponedUntil: endOfDay(newDate()) });
+    toast("Deferred until tomorrow", {
+      action: {
+        label: "Undo",
+        // From the store, not this render's task: an edit made while the
+        // toast was up must survive the undo, and onPatch sends every field.
+        onClick: () => {
+          const latest =
+            useTaskStore.getState().tasks.find((t) => t.id === task.id) ?? task;
+          void onPatch({ ...latest, postponedUntil: previousDefer });
+        },
+      },
+    });
+  };
+
   const meta = [
     due ? { key: "due", text: due.text, overdue: due.isOverdue } : null,
     deferred
@@ -138,98 +159,116 @@ export function TaskRow({
         expanded && "bg-rust/5"
       )}
     >
-      <div className="flex items-center">
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            void handleComplete();
-          }}
-          aria-label={isCompleted ? "Mark as todo" : "Mark complete"}
-          className="flex h-11 w-11 flex-none items-center justify-center"
-        >
-          <span
-            className={cn(
-              "flex h-5 w-5 items-center justify-center border transition-colors duration-150",
-              isCompleted
-                ? "border-foreground bg-foreground text-background"
-                : "border-muted-foreground/50"
-            )}
+      <SwipeableRow
+        disabled={expanded}
+        rightAction={{
+          label: isCompleted ? "Todo" : "Done",
+          tone: isCompleted ? "ink" : "ok",
+          onTrigger: () => void handleComplete(),
+        }}
+        leftAction={{
+          label: "Later",
+          tone: "rust",
+          onTrigger: handleSwipeDefer,
+        }}
+        contentClassName={cn(expanded && "bg-rust/5")}
+      >
+        <div className="flex items-center">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              void handleComplete();
+            }}
+            aria-label={isCompleted ? "Mark as todo" : "Mark complete"}
+            className="flex h-11 w-11 flex-none items-center justify-center"
           >
-            {isCompleted && <HiCheck className="h-3.5 w-3.5" />}
-          </span>
-        </button>
-
-        <div className="flex min-w-0 flex-1 items-center gap-3 py-2 pr-3">
-          {expanded ? (
-            <Input
-              ref={titleInputRef}
-              value={draftTitle}
-              onChange={(event) => setDraftTitle(event.target.value)}
-              onBlur={saveTitle}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  saveTitle();
-                  (event.target as HTMLInputElement).blur();
-                }
-                if (event.key === "Escape") {
-                  setDraftTitle(task.title);
-                }
-              }}
-              className="h-8 rounded-none border-0 px-0 shadow-none focus-visible:ring-0"
-            />
-          ) : (
-            <button
-              type="button"
-              onClick={() => toggle(task.id)}
-              className="min-w-0 flex-1 truncate text-left"
+            <span
+              className={cn(
+                "flex h-5 w-5 items-center justify-center border transition-colors duration-150",
+                isCompleted
+                  ? "border-foreground bg-foreground text-background"
+                  : "border-muted-foreground/50"
+              )}
             >
-              <span
-                className={cn(
-                  "text-sm leading-snug transition-colors duration-150",
-                  isCompleted
-                    ? "text-muted-foreground line-through"
-                    : "text-foreground group-hover:text-rust-text"
-                )}
-              >
-                {task.title}
-              </span>
-            </button>
-          )}
+              {isCompleted && <HiCheck className="h-3.5 w-3.5" />}
+            </span>
+          </button>
 
-          {/* Meta sits beside the title, not below it — a short title
+          <div className="flex min-w-0 flex-1 items-center gap-3 py-2 pr-3">
+            {expanded ? (
+              <Input
+                ref={titleInputRef}
+                value={draftTitle}
+                onChange={(event) => setDraftTitle(event.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    saveTitle();
+                    (event.target as HTMLInputElement).blur();
+                  }
+                  if (event.key === "Escape") {
+                    setDraftTitle(task.title);
+                  }
+                }}
+                className="h-8 rounded-none border-0 px-0 shadow-none focus-visible:ring-0"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => toggle(task.id)}
+                className="min-w-0 flex-1 truncate text-left"
+              >
+                <span
+                  className={cn(
+                    "text-sm leading-snug transition-colors duration-150",
+                    isCompleted
+                      ? "text-muted-foreground line-through"
+                      : "text-foreground group-hover:text-rust-text"
+                  )}
+                >
+                  {task.title}
+                </span>
+              </button>
+            )}
+
+            {/* Meta sits beside the title, not below it — a short title
               shouldn't leave the rest of the row's width blank, and every
               collapsed row stays the same height whether or not it has
               meta. Wraps only if the chips themselves overflow their own
               budget, never because the title asked for room. */}
-          {!expanded && (meta.length > 0 || task.isRecurring) && (
-            <button
-              type="button"
-              onClick={() => toggle(task.id)}
-              className="flex max-w-[60%] flex-none flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right font-mono text-[11px] uppercase tracking-wide"
-            >
-              {task.isRecurring && (
-                <HiOutlineRefresh
-                  className="h-3 w-3 text-muted-foreground"
-                  aria-label="Recurring"
-                />
-              )}
-              {meta.map((item) => (
-                <span
-                  key={item.key}
-                  className={cn(
-                    "whitespace-nowrap",
-                    item.overdue ? "text-destructive" : "text-muted-foreground"
-                  )}
-                >
-                  {item.text}
-                </span>
-              ))}
-            </button>
-          )}
+            {!expanded && (meta.length > 0 || task.isRecurring) && (
+              <button
+                type="button"
+                onClick={() => toggle(task.id)}
+                className="flex max-w-[42%] flex-none flex-wrap items-center justify-end gap-x-2 gap-y-0.5 text-right font-mono text-[11px] uppercase tracking-wide sm:max-w-[60%]"
+              >
+                {task.isRecurring && (
+                  <HiOutlineRefresh
+                    className="h-3 w-3 text-muted-foreground"
+                    aria-label="Recurring"
+                  />
+                )}
+                {meta.map((item) => (
+                  <span
+                    key={item.key}
+                    className={cn(
+                      "whitespace-nowrap",
+                      item.key.startsWith("module-") && "hidden sm:inline",
+                      item.overdue
+                        ? "text-destructive"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {item.text}
+                  </span>
+                ))}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      </SwipeableRow>
 
       {expanded && (
         <div className="motion-reduce:animate-none animate-in fade-in slide-in-from-top-1 duration-200 pl-11">

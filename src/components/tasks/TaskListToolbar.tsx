@@ -86,7 +86,7 @@ export function TaskListToolbar({
     <div className="flex h-11 flex-none items-center gap-2 border-b border-border px-2">
       <TaskListModeSwitch />
       <TaskFilterMenu view={view} />
-      <span className="flex-none px-1 font-mono text-xs tabular-nums text-muted-foreground">
+      <span className="hidden flex-none px-1 font-mono text-xs tabular-nums text-muted-foreground sm:inline">
         {count} task{count === 1 ? "" : "s"}
       </span>
 
