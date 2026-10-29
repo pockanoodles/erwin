@@ -576,3 +576,143 @@ describe("overrides and unreadable events", () => {
     expect(parsed.map((e) => e.title)).toEqual(["Fine"]);
   });
 });
+
+// From the review of the port: daylight-saving changes, rules that start long
+// before the window, and cancellations.
+const NY_VTIMEZONE = `BEGIN:VTIMEZONE
+TZID:America/New_York
+BEGIN:DAYLIGHT
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+TZNAME:EDT
+DTSTART:19700308T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+TZNAME:EST
+DTSTART:19701101T020000
+RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU
+END:STANDARD
+END:VTIMEZONE`;
+
+const calendar = (body: string) =>
+  `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\n${NY_VTIMEZONE}\n${body}\nEND:VCALENDAR`;
+
+describe("series expansion", () => {
+  it("keeps a weekly 9:00 class at 9:00 across the end of daylight saving", () => {
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:dst@example.com
+SUMMARY:CS 3500 lecture
+DTSTART;TZID=America/New_York:20261026T090000
+DTEND;TZID=America/New_York:20261026T100000
+RRULE:FREQ=WEEKLY;COUNT=3
+END:VEVENT`)
+      ),
+      new Date("2026-10-01T00:00:00.000Z"),
+      new Date("2026-12-01T00:00:00.000Z")
+    );
+    const starts = expanded
+      .filter((e) => !e.isMaster)
+      .map((e) => new Date(e.start).toISOString());
+    // 9:00 EDT is 13:00Z; after November 1, 9:00 EST is 14:00Z.
+    expect(starts).toEqual([
+      "2026-10-26T13:00:00.000Z",
+      "2026-11-02T14:00:00.000Z",
+      "2026-11-09T14:00:00.000Z",
+    ]);
+  });
+
+  it("bounds a high-frequency rule that starts years before the window", () => {
+    const started = Date.now();
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:secondly@example.com
+SUMMARY:Spam
+DTSTART:20200101T000000Z
+DTEND:20200101T000001Z
+RRULE:FREQ=SECONDLY
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2027-01-01T00:00:00.000Z")
+    );
+    expect(Date.now() - started).toBeLessThan(2000);
+    // It never reaches the window, so only the master row is kept.
+    expect(expanded.filter((e) => !e.isMaster)).toHaveLength(0);
+  });
+
+  it("honors RDATE extra dates", () => {
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:rdate@example.com
+SUMMARY:Review session
+DTSTART:20260105T090000Z
+DTEND:20260105T100000Z
+RRULE:FREQ=WEEKLY;COUNT=2
+RDATE:20260107T090000Z
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2026-02-01T00:00:00.000Z")
+    );
+    expect(
+      expanded.filter((e) => !e.isMaster).map((e) => new Date(e.start).toISOString())
+    ).toEqual([
+      "2026-01-05T09:00:00.000Z",
+      "2026-01-07T09:00:00.000Z",
+      "2026-01-12T09:00:00.000Z",
+    ]);
+  });
+
+  it("leaves cancelled events off, and a cancelled override removes its occurrence", () => {
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:series@example.com
+SUMMARY:Lab
+DTSTART:20260105T090000Z
+DTEND:20260105T100000Z
+RRULE:FREQ=WEEKLY;COUNT=3
+END:VEVENT
+BEGIN:VEVENT
+UID:series@example.com
+RECURRENCE-ID:20260112T090000Z
+SUMMARY:Lab
+STATUS:CANCELLED
+DTSTART:20260112T090000Z
+DTEND:20260112T100000Z
+END:VEVENT
+BEGIN:VEVENT
+UID:gone@example.com
+SUMMARY:Called off
+STATUS:CANCELLED
+DTSTART:20260110T090000Z
+DTEND:20260110T100000Z
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2026-02-01T00:00:00.000Z")
+    );
+    const rendered = expanded.filter((e) => !e.isMaster);
+    expect(rendered.map((e) => new Date(e.start).toISOString())).toEqual([
+      "2026-01-05T09:00:00.000Z",
+      "2026-01-19T09:00:00.000Z",
+    ]);
+    expect(rendered.some((e) => e.title === "Called off")).toBe(false);
+  });
+
+  it("persists no VEVENT source on any row", () => {
+    const expanded = expandIcalEvents(
+      parseIcalEvents(RECURRING_EVENT_ICS),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2026-02-28T00:00:00.000Z")
+    );
+    for (const event of expanded) expect(event).not.toHaveProperty("source");
+  });
+});
