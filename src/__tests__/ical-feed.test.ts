@@ -810,3 +810,45 @@ END:VCALENDAR`;
     "2026-11-09T14:00:00.000Z",
   ]);
 });
+
+const listUpTo = (n: number) => Array.from({ length: n }, (_, k) => k).join(",");
+
+describe("series expansion stays bounded on dense rules", () => {
+  it("refuses a daily rule that lists every hour, minute and second", () => {
+    const started = Date.now();
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:dense@example.com
+SUMMARY:Dense
+DTSTART:20260101T000000Z
+DTEND:20260101T000001Z
+RRULE:FREQ=DAILY;BYHOUR=${listUpTo(24)};BYMINUTE=${listUpTo(60)};BYSECOND=${listUpTo(60)}
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2029-01-01T00:00:00.000Z")
+    );
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(expanded.filter((e) => !e.isMaster)).toHaveLength(0);
+  });
+
+  it("expands a daily rule with every hour, stopping at the instance cap", () => {
+    const started = Date.now();
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:hourly-by-list@example.com
+SUMMARY:Every hour
+DTSTART:20260101T000000Z
+DTEND:20260101T000500Z
+RRULE:FREQ=DAILY;BYHOUR=${listUpTo(24)}
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2029-01-01T00:00:00.000Z")
+    );
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(expanded.filter((e) => !e.isMaster)).toHaveLength(1000);
+  });
+});

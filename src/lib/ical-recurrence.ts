@@ -24,6 +24,22 @@ const RRULE_MAX_YEAR = 9999;
 /** A series begun this long before the window is not expanded. */
 const MAX_YEARS_BEFORE_WINDOW = 400;
 
+/**
+ * BYHOUR x BYMINUTE x BYSECOND gives each matching day that many times. A
+ * daily rule listing every hour, minute and second is one occurrence a second.
+ * More than 24 a day is refused.
+ */
+const MAX_TIMES_A_DAY = 24;
+
+/**
+ * Days times the times-a-day rrule walks before the window: about a second of
+ * work. A series that needs more keeps its master only.
+ */
+const MAX_WORK_BEFORE_WINDOW = 2_000_000;
+
+const sizeOf = (values: number | number[] | null | undefined) =>
+  Array.isArray(values) ? Math.max(values.length, 1) : 1;
+
 function shiftYears(date: Date, years: number): Date {
   const shifted = new Date(date.getTime());
   shifted.setUTCFullYear(date.getUTCFullYear() + years);
@@ -89,9 +105,10 @@ function dateList(vevent: ICAL.Component, name: "exdate" | "rdate"): Date[] {
  * crashes on a period-valued RDATE.
  *
  * Returns null, and the series keeps its master only, for a rule finer than
- * daily or one begun over 400 years before the window. Otherwise the work is
- * a day-by-day walk from DTSTART to at most 400 years past the window (see
- * CYCLE_YEARS).
+ * daily, one with more than 24 times a day, or one whose walk from DTSTART to
+ * the window is too long. Otherwise the work is that walk, the window itself
+ * (stopped at `maxInstances`), and at most 400 years past it for a rule that
+ * never matches (see CYCLE_YEARS).
  */
 export function seriesOccurrences(
   vevent: ICAL.Component,
@@ -106,14 +123,17 @@ export function seriesOccurrences(
 
   const start = floating(dtstart);
   const horizon = new Date(windowEnd.getTime() + DAY_MS);
-  if (start.getUTCFullYear() < windowStart.getUTCFullYear() - MAX_YEARS_BEFORE_WINDOW) {
-    return null;
-  }
+  const yearsBefore = windowStart.getUTCFullYear() - start.getUTCFullYear();
+  if (yearsBefore > MAX_YEARS_BEFORE_WINDOW) return null;
   const shift =
     CYCLE_YEARS *
     Math.floor((RRULE_MAX_YEAR - horizon.getUTCFullYear()) / CYCLE_YEARS);
 
   const options = RRule.parseString(recur.toString());
+  const timesADay =
+    sizeOf(options.byhour) * sizeOf(options.byminute) * sizeOf(options.bysecond);
+  if (timesADay > MAX_TIMES_A_DAY) return null;
+  if (Math.max(yearsBefore, 0) * 366 * timesADay > MAX_WORK_BEFORE_WINDOW) return null;
   options.dtstart = shiftYears(start, shift);
   options.tzid = null;
   // UNTIL is an instant; in floating terms it's that instant's wall clock in
@@ -125,10 +145,13 @@ export function seriesOccurrences(
 
   // The window in floating terms is off by at most a day of UTC offset, so a
   // day each side, then the exact window once each occurrence is an instant.
+  // The callback stops generation once the window holds enough: without it,
+  // between() collects every occurrence before returning any.
   const walls = new RRule(options).between(
     shiftYears(new Date(windowStart.getTime() - DAY_MS), shift),
     shiftYears(horizon, shift),
-    true
+    true,
+    (_date, i) => i < maxInstances + 2
   );
 
   const excluded = new Set(dateList(vevent, "exdate").map((d) => d.getTime()));
