@@ -45,12 +45,12 @@ The top bar is the same strip on every page. It holds the page's own views and a
 
 ## Modules
 
-The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Erwin. Ladder starts on and the others start off, except that Courses comes on by itself for an install that already had Canvas connected.
+The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Erwin. Stats starts on and the others start off, except that School comes on by itself for an install that already had Canvas connected.
 
 | Module | What it adds | Sends data to |
 |---|---|---|
-| **Courses** | Canvas assignments ranked by their share of your grade, and a Courses page with activity, grades, news and course materials | Your school's Canvas, read only |
-| **Ladder** | Goals in two-month cycles that claim their work and lift it in the ranking, XP, and a Goal column with goal tabs on Tasks | Nothing |
+| **School** | Canvas assignments ranked by their share of your grade, and a School page with activity, grades, news and course materials | Your school's Canvas, read only |
+| **Stats** | Goals in two-month cycles that claim their work and lift it in the ranking, XP, and a Goal column with goal tabs on Tasks | Nothing |
 | **People** | The people you keep in touch with, and a reach-out task when someone is due a check-in | Nothing |
 | **Training** | The workouts you repeat, each due on its schedule and logged with its sets, reps and weights | Nothing |
 | **Nutrition** | What you eat against daily targets for calories, protein, carbs and fat, with the protein left today in the top bar | Nothing |
@@ -58,21 +58,21 @@ The core works on its own, and everything else is a module you turn on or off at
 
 Turning a module off hides its page and its tasks from every list and from the scheduler, stops its background work and keeps everything it stored. Its API answers 409 `module_off` while it is off, so a script that calls it fails loudly instead of writing into a module no one can see.
 
-### Courses
+### School
 
-Courses mirrors your Canvas courses. Erwin reads your current courses every 15 minutes and turns their assignments into tasks. Your scores, feedback and rubrics land under Grades, announcements and Inbox messages under News, and module pages and files under Library, stored locally so a task's materials open from the task. Canvas is only ever read, and nothing is written back.
+School mirrors your Canvas courses. Erwin reads your current courses every 15 minutes and turns their assignments into tasks. Your scores, feedback and rubrics land under Grades, announcements and Inbox messages under News, and module pages and files under Library, stored locally so a task's materials open from the task. Canvas is only ever read, and nothing is written back.
 
 An assignment's impact in the ranking is its share of your final course grade. A weighted course splits each group's weight across the group's points, an unweighted course divides an assignment's points by the course total, and work that doesn't count toward the grade gets none. The Activity view lists what changed since you last looked (an announcement, a new file, a moved due date, a posted grade, work gone missing), with an unseen count in the top bar on every page. In Focus and in the task sheet's pane, an assignment shows its instructions, rubric and materials.
 
-### Ladder
+### Stats
 
-Ladder holds your goals. The year is six fixed two-month cycles (January and February, March and April, and so on), and the current one always exists. A goal belongs to a cycle and carries an importance from 0 to 100 and a definition of done, and a goal's importance lifts the tasks that serve it in the ranking. That lift is why a personal goal can outrank coursework once the coursework is far enough from its deadline.
+Stats holds your goals. The year is six fixed two-month cycles, which the page calls hexes (January and February, March and April, and so on), and the current one always exists. A goal belongs to a cycle and carries an importance from 0 to 100 and a definition of done, and a goal's importance lifts the tasks that serve it in the ranking. That lift is why a personal goal can outrank coursework once the coursework is far enough from its deadline.
 
 A goal gets its work in two ways. It can claim where the work comes from, and every task from there files under it on its own, finished ones included. A claim can cover all of Canvas, one course, your Google or Outlook tasks, all reach-outs, all workouts, one Training routine or a project. You can also link a task to a goal by hand in the Goal column on the Tasks page, where each of the cycle's top goals gets a tab along the bottom.
 
 A boss is a dated milestone on a goal, and it can name its proof, which is a Canvas gradebook item or another task. Handing the work in, a grade or an excusal fells the boss, and the item's due date replaces the boss's. A boss with no proof is marked done by hand. A goal you set aside files nothing new but keeps the XP its finished work earned (`src/lib/erwin/goal-rules.ts`, `src/lib/erwin/boss-proof.ts`).
 
-The Ladder page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled boss earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/erwin/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A tool that keeps your goals somewhere else can send them, with the Build, through `POST /api/erwin/goals/project`, and `GET /api/erwin/xp` reports the same XP over any span of days.
+The Stats page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled boss earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/erwin/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A tool that keeps your goals somewhere else can send them, with the Build, through `POST /api/erwin/goals/project`, and `GET /api/erwin/xp` reports the same XP over any span of days.
 
 ### People
 
@@ -111,8 +111,8 @@ flowchart LR
         M["Tasks you type"]
     end
     subgraph Mods["Modules you turn on"]
-        V["Courses (Canvas)"]
-        L["Ladder, People, Training, Nutrition, Work"]
+        V["School (Canvas)"]
+        L["Stats, People, Training, Nutrition, Work"]
     end
 
     S["Sync layer"]
@@ -144,7 +144,7 @@ sequenceDiagram
     participant R as Ranker
 
     T->>S: tick (every 15 minutes by default)
-    S->>X: read calendars, and courses while Courses is on
+    S->>X: read calendars, and courses while School is on
     X-->>S: current data
     S->>DB: upsert events and tasks
     S->>DB: run each module's job (log reach-outs and workouts ticked off elsewhere)
@@ -174,7 +174,7 @@ flowchart LR
 
 | Input | How it is computed |
 |---|---|
-| **Impact (0.35)** | The larger of the task's own impact and the importance of the goal it serves (0 to 100, divided by 100), then divided by the largest value in the current pool so coursework and goal-driven tasks compete on one 0 to 1 scale. A task's own impact comes from the module that owns it, and today only Courses sets one (an assignment's share of the final grade). It falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
+| **Impact (0.35)** | The larger of the task's own impact and the importance of the goal it serves (0 to 100, divided by 100), then divided by the largest value in the current pool so coursework and goal-driven tasks compete on one 0 to 1 scale. A task's own impact comes from the module that owns it, and today only School sets one (an assignment's share of the final grade). It falls by 10% for each day a task is late (to a floor of 0.05, and to half after the lock date). |
 | **Deadline pressure (0.45)** | A sigmoid of the hours left, `1 / (1 + e^(0.15 × (hours - 48)))`, which is 0.5 at 48 hours out, rises toward 1 as the due date nears, and stays at 1 once a task is overdue. A task with no due date scores 0. |
 | **Effort fit (0.20)** | How well the task's estimate (30 minutes when none is set) matches the open slot (240 minutes when no slot is known), as `1 - abs(estimate - slot) / max(estimate, slot)`. |
 | **Visibility boost (+0.15)** | Added to a task due in more than 7 days whose stakes sit above the 80th percentile of its group's open work, so a large far-off assignment is not invisible until it is urgent. For Canvas the stakes are an assignment's share of the grade and the group is its course. |
@@ -232,7 +232,7 @@ npm install
 npm run dev:local -- --seed demo
 ```
 
-`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on Courses, Training, Nutrition and Work. The `--reset` flag starts over with an empty database. It listens on your machine only, and `--lan` opens it to a phone (see [On a phone](#on-a-phone)).
+`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on School, Training, Nutrition and Work. The `--reset` flag starts over with an empty database. It listens on your machine only, and `--lan` opens it to a phone (see [On a phone](#on-a-phone)).
 
 ## Self-host
 
@@ -289,7 +289,7 @@ Pick the desktop app if you want a download that works offline with no account. 
 
 ## Connecting services
 
-**Canvas** comes with the Courses module. Turn on Courses in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
+**Canvas** comes with the School module. Turn on School in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
 
 **CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose Connect CalDAV Calendar, and enter the server URL with an app-specific password.
 
@@ -331,7 +331,7 @@ The repository holds the app (`src/`, with each module under `src/modules/`, and
 
 ## Privacy
 
-Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Ladder, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Stats, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
 
 ## Credits
 
