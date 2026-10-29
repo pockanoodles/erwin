@@ -5,7 +5,11 @@ const ladder: ModuleManifest = {
   name: "Stats",
   summary:
     "Goals for each two-month block, and the XP your finished work earns toward them.",
-  defaultOn: true,
+  // Off for a new install since 1.0: as the first thing a stranger sees, a
+  // character sheet of hexes and levels reads as strange before it reads as
+  // useful. Everyone with an account before then keeps it on (migration
+  // 20261029150000_stats_off_by_default).
+  defaultOn: false,
   page: {
     href: "/goals",
     keywords: [
