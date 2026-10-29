@@ -15,6 +15,13 @@
  *      Same queries, same credential encryption, no second data layer;
  *   4. starts the Next standalone server on 127.0.0.1 and reports the port.
  *
+ * It also keeps the backups: a copy before any migration that changes the
+ * database, one a day while the app runs, and one whenever the person asks.
+ * The Next server reaches them through `globalThis.erwinDesktopBackups`
+ * (src/lib/desktop-backups.ts). A restore is a restart: the runtime marks the
+ * copy, asks the main process to restart it, and the next start loads that
+ * copy in place of the database, keeping the one it replaces beside it.
+ *
  * On `shutdown` it closes the socket and the database cleanly before exiting,
  * so a quit never leaves the data directory mid-write.
  */
@@ -48,7 +55,23 @@ const parentPort = (process as unknown as { parentPort: ParentPort }).parentPort
  */
 const DATABASE_PARAMS = "connection_limit=1&pgbouncer=true";
 const SOCKET_MAX_CONNECTIONS = 2;
-const BACKUPS_KEPT = 5;
+
+/** How many backups of each kind are kept; the oldest go first. */
+const BACKUPS_KEPT = { before: 5, daily: 14, manual: 10 } as const;
+type BackupKind = keyof typeof BACKUPS_KEPT;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Written by a restore request, read and removed by the next start. */
+const RESTORE_MARKER = "restore-pending.json";
+/** Databases a restore replaced, kept beside the live one. */
+const REPLACED_KEPT = 2;
+
+/** One file in the backups folder, as the Settings page lists it. */
+interface BackupFile {
+  name: string;
+  kind: BackupKind;
+  createdAt: string;
+  bytes: number;
+}
 
 let db: PGlite | null = null;
 let dbServer: { stop(): Promise<void> } | null = null;
@@ -78,11 +101,15 @@ process.on("uncaughtException", (error) => {
 async function start(init: RuntimeInit): Promise<void> {
   send({ type: "progress", step: "database" });
   const { PGlite } = await import("@electric-sql/pglite");
-  fs.mkdirSync(init.dataDir, { recursive: true });
-  db = await PGlite.create(init.dataDir);
+  const backupsDir = path.join(path.dirname(init.dataDir), "backups");
+  db = await restorePending(init.dataDir, backupsDir);
+  if (!db) {
+    fs.mkdirSync(init.dataDir, { recursive: true });
+    db = await PGlite.create(init.dataDir);
+  }
 
   send({ type: "progress", step: "migrations" });
-  await migrate(db, init.migrationsDir, path.join(path.dirname(init.dataDir), "backups"));
+  await migrate(db, init.migrationsDir, backupsDir);
 
   const databaseUrl = await serveDatabase(db, init.socketDir);
   const port = await choosePort(init.port);
@@ -113,12 +140,21 @@ async function start(init: RuntimeInit): Promise<void> {
     ERWIN_DESKTOP_FIRST_DAY: init.machine.firstDay,
   });
 
+  const database = db;
+  (globalThis as { erwinDesktopBackups?: unknown }).erwinDesktopBackups = {
+    dir: backupsDir,
+    list: () => listBackups(backupsDir),
+    create: () => snapshot(database, backupsDir, "manual", "manual"),
+    restore: (name: string) => requestRestore(path.dirname(init.dataDir), backupsDir, name),
+  };
+
   send({ type: "progress", step: "server" });
   // server.js is Next's standalone entry: it chdirs to its own folder and
   // listens on HOSTNAME:PORT.
   require(path.join(init.serverDir, "server.js"));
   await waitForServer(port, 90_000);
   send({ type: "ready", port });
+  scheduleDailyBackups(database, backupsDir);
 }
 
 async function stop(): Promise<void> {
@@ -188,20 +224,126 @@ async function migrate(database: PGlite, migrationsDir: string, backupsDir: stri
 }
 
 async function backup(database: PGlite, backupsDir: string, before: string): Promise<void> {
+  await snapshot(database, backupsDir, "before", `before-${before}`);
+}
+
+// ── Backups ─────────────────────────────────────────────────────────────
+
+/**
+ * Writes a gzipped copy of the data folder, then keeps the newest of its kind.
+ * dumpDataDir copies the folder file by file and takes no lock of its own,
+ * so while the server runs, the copy holds the query lock, after a checkpoint
+ * that puts committed work in the data files. It is written under a temporary
+ * name and renamed, so a half-written copy never lists as a backup.
+ */
+async function snapshot(database: PGlite, backupsDir: string, kind: BackupKind, label: string): Promise<BackupFile> {
   fs.mkdirSync(backupsDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const file = path.join(backupsDir, `erwin-${stamp}-before-${before}.tar.gz`);
-  const dump = await database.dumpDataDir("gzip");
-  fs.writeFileSync(file, Buffer.from(await dump.arrayBuffer()));
+  const name = `erwin-${stamp}-${label}.tar.gz`;
+  const file = path.join(backupsDir, name);
+  await database.exec("CHECKPOINT");
+  const dump = await database.runExclusive(() => database.dumpDataDir("gzip"));
+  const bytes = Buffer.from(await dump.arrayBuffer());
+  fs.writeFileSync(`${file}.partial`, bytes);
+  fs.renameSync(`${file}.partial`, file);
   console.log(`[runtime] saved ${file}`);
 
-  const old = fs
+  for (const old of listBackups(backupsDir).filter((b) => b.kind === kind).slice(BACKUPS_KEPT[kind])) {
+    fs.rmSync(path.join(backupsDir, old.name), { force: true });
+  }
+  return { name, kind, createdAt: new Date().toISOString(), bytes: bytes.length };
+}
+
+/** Every backup, newest first. */
+function listBackups(backupsDir: string): BackupFile[] {
+  if (!fs.existsSync(backupsDir)) return [];
+  return fs
     .readdirSync(backupsDir)
     .filter((name) => name.startsWith("erwin-") && name.endsWith(".tar.gz"))
     .sort()
     .reverse()
-    .slice(BACKUPS_KEPT);
-  for (const name of old) fs.rmSync(path.join(backupsDir, name), { force: true });
+    .map((name) => {
+      const stat = fs.statSync(path.join(backupsDir, name));
+      const kind: BackupKind = name.includes("-before-") ? "before" : name.endsWith("-daily.tar.gz") ? "daily" : "manual";
+      return { name, kind, createdAt: stat.mtime.toISOString(), bytes: stat.size };
+    });
+}
+
+/**
+ * One copy a day while the app is open: a few minutes after it starts if the
+ * last daily copy is a day old, then checked every hour.
+ */
+function scheduleDailyBackups(database: PGlite, backupsDir: string): void {
+  const tick = async () => {
+    if (stopping) return;
+    const newest = listBackups(backupsDir).find((b) => b.kind === "daily");
+    if (newest && Date.now() - Date.parse(newest.createdAt) < DAY_MS - 60 * 60 * 1000) return;
+    try {
+      await snapshot(database, backupsDir, "daily", "daily");
+    } catch (error) {
+      console.error("[runtime] daily backup failed", error);
+    }
+  };
+  setTimeout(() => void tick(), 3 * 60 * 1000).unref();
+  setInterval(() => void tick(), 60 * 60 * 1000).unref();
+}
+
+/**
+ * Marks a backup to load on the next start and asks the main process for that
+ * restart. The name must be one the backups folder lists, so nothing outside
+ * it can be loaded. The answer goes out before the restart does.
+ */
+function requestRestore(userData: string, backupsDir: string, name: string): void {
+  if (!listBackups(backupsDir).some((b) => b.name === name)) {
+    throw new Error(`No backup named ${name}`);
+  }
+  fs.writeFileSync(path.join(userData, RESTORE_MARKER), JSON.stringify({ name }));
+  setTimeout(() => send({ type: "restart" }), 500);
+}
+
+/**
+ * Loads a marked backup in place of the database, before anything opens it.
+ * The database it replaces moves aside as `database-replaced-<time>` (the
+ * newest two are kept), so a restore never loses what was there. The marker
+ * goes first: a copy that can't load puts the old database back and is not
+ * tried again.
+ */
+async function restorePending(dataDir: string, backupsDir: string): Promise<PGlite | null> {
+  const marker = path.join(path.dirname(dataDir), RESTORE_MARKER);
+  if (!fs.existsSync(marker)) return null;
+  let name: string;
+  try {
+    name = path.basename(String((JSON.parse(fs.readFileSync(marker, "utf8")) as { name?: unknown }).name ?? ""));
+  } finally {
+    fs.rmSync(marker, { force: true });
+  }
+  const file = path.join(backupsDir, name);
+  if (!name || !fs.existsSync(file)) {
+    console.error(`[runtime] restore skipped: no backup ${name}`);
+    return null;
+  }
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const aside = `${dataDir}-replaced-${stamp}`;
+  if (fs.existsSync(dataDir)) fs.renameSync(dataDir, aside);
+  try {
+    const { PGlite } = await import("@electric-sql/pglite");
+    const database = await PGlite.create(dataDir, { loadDataDir: new Blob([fs.readFileSync(file)]) });
+    console.log(`[runtime] restored ${name}; the database it replaced is ${aside}`);
+    const replaced = fs
+      .readdirSync(path.dirname(dataDir))
+      .filter((entry) => entry.startsWith(`${path.basename(dataDir)}-replaced-`))
+      .sort()
+      .reverse()
+      .slice(REPLACED_KEPT);
+    for (const entry of replaced) fs.rmSync(path.join(path.dirname(dataDir), entry), { recursive: true, force: true });
+    return database;
+  } catch (error) {
+    console.error(`[runtime] restore of ${name} failed, keeping the database as it was`, error);
+    fs.rmSync(dataDir, { recursive: true, force: true });
+    if (fs.existsSync(aside)) fs.renameSync(aside, dataDir);
+    return null;
+  }
 }
 
 // ── Database socket ─────────────────────────────────────────────────────

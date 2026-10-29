@@ -94,6 +94,7 @@ Both run the same server code, and they differ in where it lives and what is swi
 | Where the encryption key comes from | Made on first launch and sealed by the operating system | `ERWIN_SECRET_KEY` in your environment |
 | Update check | Yes for GitHub downloads, none for store and package-manager builds | None, you update the image |
 | Password reset email | None | Through Resend, if you configure it |
+| Backups | Copies of the database in the app's data folder, made daily, before migrations and on request. They never leave the machine. | None of its own. Back up your Postgres yourself. |
 
 In the desktop app, the database never listens on the network. The app's server reaches it over a Unix socket in the data folder (readable only by your user) on macOS and Linux, and over the loopback interface on Windows. Before a schema update, the app saves a copy of the database in a `backups` folder beside it and keeps the last five.
 
