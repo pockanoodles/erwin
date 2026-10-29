@@ -1,44 +1,145 @@
 import ICAL from "ical.js";
+import { RRule } from "rrule";
 
 /**
- * Steps one series may take from its DTSTART. Expanding from DTSTART rather
- * than from the window is what keeps the work bounded: a years-old
- * FREQ=SECONDLY rule otherwise walks every second up to the window first.
- * 20,000 steps covers a daily series begun 54 years ago, and ical.js takes a
- * few microseconds a step.
+ * Frequencies finer than a day. Google, Outlook and Apple Calendar can't make
+ * them, and a series that has one is not expanded (its master row stays): its
+ * only effect would be making a sync enumerate millions of occurrences.
  */
-export const MAX_SERIES_STEPS = 20_000;
+const REFUSED_FREQUENCIES = new Set(["SECONDLY", "MINUTELY", "HOURLY"]);
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
- * A series' occurrence starts within a window, from ical.js's own recurrence
- * expansion of its VEVENT: in the time zone of its DTSTART (so a weekly 9:00
- * class stays at 9:00 across a daylight-saving change), without its EXDATEs
- * and with its RDATEs. rrule anchored on a UTC instant gets all three wrong.
+ * The Gregorian calendar repeats exactly every 400 years, weekdays and leap
+ * days included. rrule checks UNTIL only on a date that passes the rule's
+ * filters, so a rule that never matches (the 30th of February) searches day
+ * by day until the year 9999. Moving the whole computation forward by a
+ * multiple of 400 years puts the window just under 9999, so that search ends
+ * within 400 years of it: a few hundred milliseconds instead of seconds.
+ */
+const CYCLE_YEARS = 400;
+const RRULE_MAX_YEAR = 9999;
+
+/** A series begun this long before the window is not expanded. */
+const MAX_YEARS_BEFORE_WINDOW = 400;
+
+function shiftYears(date: Date, years: number): Date {
+  const shifted = new Date(date.getTime());
+  shifted.setUTCFullYear(date.getUTCFullYear() + years);
+  return shifted;
+}
+
+/**
+ * An ICAL.Time's wall-clock fields as a "floating" Date, one whose UTC fields
+ * read as that wall clock. rrule does its arithmetic in UTC, which has no
+ * daylight saving, so a rule run on floating dates repeats the wall-clock time.
+ */
+function floating(time: ICAL.Time): Date {
+  return new Date(
+    Date.UTC(time.year, time.month - 1, time.day, time.hour, time.minute, time.second)
+  );
+}
+
+/** A floating Date back to the instant its wall clock names in `like`'s zone. */
+function instant(wall: Date, like: ICAL.Time): Date {
+  return new ICAL.Time(
+    {
+      year: wall.getUTCFullYear(),
+      month: wall.getUTCMonth() + 1,
+      day: wall.getUTCDate(),
+      hour: wall.getUTCHours(),
+      minute: wall.getUTCMinutes(),
+      second: wall.getUTCSeconds(),
+      isDate: like.isDate,
+    },
+    like.zone
+  ).toJSDate();
+}
+
+/** The instants of a VEVENT's EXDATE or RDATE lines (a period counts by its start). */
+function dateList(vevent: ICAL.Component, name: "exdate" | "rdate"): Date[] {
+  const dates: Date[] = [];
+  for (const property of vevent.getAllProperties(name)) {
+    for (const value of property.getValues()) {
+      try {
+        const time =
+          value && typeof (value as ICAL.Time).toJSDate === "function"
+            ? (value as ICAL.Time)
+            : (value as ICAL.Period).start;
+        const date = time?.toJSDate();
+        if (date && !Number.isNaN(date.getTime())) dates.push(date);
+      } catch {
+        // One unreadable value doesn't cost the series its other dates.
+      }
+    }
+  }
+  return dates;
+}
+
+/**
+ * A series' occurrence starts within a window, from its VEVENT: in the time
+ * zone of its DTSTART, so a weekly 9:00 class stays at 9:00 across a
+ * daylight-saving change, without its EXDATEs and with its RDATEs.
  *
- * Every step from DTSTART counts, against `MAX_SERIES_STEPS` and, when given,
- * against `budget`, the steps left for a whole feed. Returns null when either
- * runs out before the window ends.
+ * rrule repeats the DTSTART's wall-clock time (see `floating`), and each
+ * occurrence goes back to an instant through the feed's own VTIMEZONE, which
+ * also covers the Windows zone names Outlook writes. ical.js's own recurrence
+ * iterator is not used: it loops forever on a rule that never matches and
+ * crashes on a period-valued RDATE.
+ *
+ * Returns null, and the series keeps its master only, for a rule finer than
+ * daily or one begun over 400 years before the window. Otherwise the work is
+ * a day-by-day walk from DTSTART to at most 400 years past the window (see
+ * CYCLE_YEARS).
  */
 export function seriesOccurrences(
-  source: ICAL.Component,
+  vevent: ICAL.Component,
   windowStart: Date,
   windowEnd: Date,
-  options: { maxInstances: number; budget?: { steps: number } }
+  maxInstances: number
 ): Date[] | null {
-  const iterator = new ICAL.Event(source).iterator();
-  const found: Date[] = [];
-  let steps = 0;
-  for (let next = iterator.next(); next; next = iterator.next()) {
-    steps += 1;
-    if (options.budget) options.budget.steps -= 1;
-    if (steps > MAX_SERIES_STEPS || (options.budget && options.budget.steps < 0)) {
-      return null;
-    }
-    const start = next.toJSDate();
-    if (start > windowEnd) break;
-    if (start < windowStart) continue;
-    found.push(start);
-    if (found.length >= options.maxInstances) break;
+  const recur = vevent.getFirstPropertyValue("rrule") as ICAL.Recur | null;
+  const dtstart = vevent.getFirstPropertyValue("dtstart") as ICAL.Time | null;
+  if (!recur || !dtstart || typeof dtstart.toJSDate !== "function") return [];
+  if (REFUSED_FREQUENCIES.has(String(recur.freq).toUpperCase())) return null;
+
+  const start = floating(dtstart);
+  const horizon = new Date(windowEnd.getTime() + DAY_MS);
+  if (start.getUTCFullYear() < windowStart.getUTCFullYear() - MAX_YEARS_BEFORE_WINDOW) {
+    return null;
   }
-  return found;
+  const shift =
+    CYCLE_YEARS *
+    Math.floor((RRULE_MAX_YEAR - horizon.getUTCFullYear()) / CYCLE_YEARS);
+
+  const options = RRule.parseString(recur.toString());
+  options.dtstart = shiftYears(start, shift);
+  options.tzid = null;
+  // UNTIL is an instant; in floating terms it's that instant's wall clock in
+  // the series' zone. Either way the rule stops a day past the window.
+  const until = recur.until
+    ? floating(recur.until.clone().convertToZone(dtstart.zone))
+    : null;
+  options.until = shiftYears(until && until < horizon ? until : horizon, shift);
+
+  // The window in floating terms is off by at most a day of UTC offset, so a
+  // day each side, then the exact window once each occurrence is an instant.
+  const walls = new RRule(options).between(
+    shiftYears(new Date(windowStart.getTime() - DAY_MS), shift),
+    shiftYears(horizon, shift),
+    true
+  );
+
+  const excluded = new Set(dateList(vevent, "exdate").map((d) => d.getTime()));
+  const starts = new Map<number, Date>();
+  const occurrences = walls.map((wall) => instant(shiftYears(wall, -shift), dtstart));
+  for (const date of [...occurrences, ...dateList(vevent, "rdate")]) {
+    const ms = date.getTime();
+    if (date < windowStart || date > windowEnd || excluded.has(ms)) continue;
+    starts.set(ms, date);
+  }
+  return [...starts.values()]
+    .sort((a, b) => a.getTime() - b.getTime())
+    .slice(0, maxInstances);
 }

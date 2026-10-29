@@ -57,7 +57,7 @@ Erwin reads your calendar, your Canvas courses and your goals, then tells you th
 
 ### Fixed
 
-- **Repeating CalDAV events across daylight saving:** a series expanded with rrule from its UTC start, so a weekly 9:00 event showed at 8:00 once daylight saving ended, and an EXDATE'd occurrence still showed. Series now expand from their own VEVENT with ical.js (`src/lib/ical-recurrence.ts`), shared with iCal links.
+- **Repeating CalDAV events across daylight saving:** a series expanded with rrule from its UTC start, so a weekly 9:00 event showed at 8:00 once daylight saving ended, and an EXDATE'd occurrence still showed. Series now expand from their own VEVENT in their own time zone (`src/lib/ical-recurrence.ts`), shared with iCal links.
 - The background worker resolved `@/` imports one directory too high after it moved to `src/worker`, so a fresh build crashed on start.
 - A 15-minute sync interval on a 15-minute tick skipped every other tick.
 - BullMQ's job scheduler could stop scheduling for good after a worker restart that landed within one interval of the last run, which ended background sync without an error.

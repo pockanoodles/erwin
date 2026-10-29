@@ -154,16 +154,14 @@ export class CalDAVCalendarService {
       const timeRange = this.getTimeRange();
 
       // A series read in this sync expands from its own VEVENT, in its time
-      // zone and without its EXDATEs. rrule anchored on the UTC start (the
-      // fallback, for a master with no VEVENT at hand) moves a weekly 9:00
-      // event to 8:00 once daylight saving ends, and ignores EXDATE.
+      // zone, without its EXDATEs and with its RDATEs. rrule anchored on the UTC
+      // start (the fallback, for a master with no VEVENT at hand) moves a
+      // weekly 9:00 event to 8:00 once daylight saving ends, and ignores EXDATE.
       const source = this.masterSources.get(masterEvent);
       let expanded: Date[];
       if (source) {
         expanded =
-          seriesOccurrences(source, timeRange.start, timeRange.end, {
-            maxInstances: 5000,
-          }) ?? [];
+          seriesOccurrences(source, timeRange.start, timeRange.end, 5000) ?? [];
       } else {
         const options = RRule.parseString(masterEvent.recurrenceRule);
         options.dtstart = masterEvent.start;

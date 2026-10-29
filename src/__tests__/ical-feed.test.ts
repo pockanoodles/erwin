@@ -259,9 +259,10 @@ END:VCALENDAR`;
     const elapsed = Date.now() - t0;
 
     const instances = expanded.filter((e) => !e.isMaster);
-    // Capped at MAX_EXPANDED_INSTANCES (1000) and generated, not enumerated.
-    expect(instances.length).toBeLessThanOrEqual(1000);
-    expect(instances.length).toBeGreaterThan(0);
+    // Erwin refuses rules finer than daily outright (src/lib/ical-recurrence.ts):
+    // no calendar app writes one, so it keeps its master and expands to nothing.
+    expect(instances.length).toBe(0);
+    expect(expanded.filter((e) => e.isMaster)).toHaveLength(1);
     // Bounded generation keeps this well under a second even on slow CI.
     expect(elapsed).toBeLessThan(5000);
   });
@@ -269,8 +270,8 @@ END:VCALENDAR`;
   it("caps total materialized rows across many recurring masters", () => {
     // 60 masters x up to 1000 instances each would be 60k rows; the feed-level
     // cap (50k) must stop expansion so a small-but-dense feed can't blow up the
-    // bulk insert. Each SECONDLY master is itself per-master bounded, so this
-    // stays fast.
+    // bulk insert. Daily series over three years give each master its full
+    // 1000 (finer rules aren't expanded at all).
     const masters = Array.from({ length: 60 }, (_, n) => {
       const min = String(n % 60).padStart(2, "0");
       return `BEGIN:VEVENT
@@ -278,7 +279,7 @@ UID:flood-${n}@example.com
 SUMMARY:Flood ${n}
 DTSTART:20260101T00${min}00Z
 DTEND:20260101T00${min}30Z
-RRULE:FREQ=SECONDLY
+RRULE:FREQ=DAILY
 END:VEVENT`;
     }).join("\n");
     const ics = `BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//test//EN\n${masters}\nEND:VCALENDAR`;
@@ -715,4 +716,97 @@ END:VEVENT`)
     );
     for (const event of expanded) expect(event).not.toHaveProperty("source");
   });
+});
+
+// From the second review: rules ical.js's own iterator can't survive.
+describe("series expansion stays bounded on hostile rules", () => {
+  const windowStart = new Date("2026-01-01T00:00:00.000Z");
+  const windowEnd = new Date("2028-01-01T00:00:00.000Z");
+  const series = (rule: string, extra = "") =>
+    calendar(`BEGIN:VEVENT
+UID:hostile@example.com
+SUMMARY:Hostile
+DTSTART:20251231T235959Z
+DTEND:20260101T000059Z
+RRULE:${rule}
+${extra}END:VEVENT`);
+
+  it.each([
+    ["a rule that never matches", "FREQ=DAILY;BYMONTH=2;BYMONTHDAY=30"],
+    ["an hourly rule that never matches", "FREQ=HOURLY;BYMONTH=2;BYMONTHDAY=30"],
+    ["a weekly rule that never matches", "FREQ=WEEKLY;BYMONTH=2;BYMONTHDAY=31"],
+    ["a daily rule with a position it never has", "FREQ=DAILY;BYSETPOS=5"],
+    ["a secondly rule that skips eleven months", "FREQ=SECONDLY;BYMONTH=12;COUNT=2"],
+    ["a minutely rule", "FREQ=MINUTELY"],
+  ])("finishes %s quickly", (_label, rule) => {
+    const started = Date.now();
+    const expanded = expandIcalEvents(parseIcalEvents(series(rule)), windowStart, windowEnd);
+    expect(Date.now() - started).toBeLessThan(1500);
+    expect(expanded.filter((e) => e.isMaster)).toHaveLength(1);
+  });
+
+  it("keeps the regular occurrences when an RDATE is a period, and adds its start", () => {
+    const expanded = expandIcalEvents(
+      parseIcalEvents(
+        calendar(`BEGIN:VEVENT
+UID:period@example.com
+SUMMARY:Review session
+DTSTART:20260105T090000Z
+DTEND:20260105T100000Z
+RRULE:FREQ=WEEKLY;COUNT=2
+RDATE;VALUE=PERIOD:20260107T090000Z/20260107T110000Z
+END:VEVENT`)
+      ),
+      new Date("2026-01-01T00:00:00.000Z"),
+      new Date("2026-02-01T00:00:00.000Z")
+    );
+    expect(
+      expanded.filter((e) => !e.isMaster).map((e) => new Date(e.start).toISOString())
+    ).toEqual([
+      "2026-01-05T09:00:00.000Z",
+      "2026-01-07T09:00:00.000Z",
+      "2026-01-12T09:00:00.000Z",
+    ]);
+  });
+});
+
+it("keeps the wall-clock time for Outlook's Windows zone names, through the feed's VTIMEZONE", () => {
+  const ics = `BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Microsoft Corporation//Outlook 16.0 MIMEDIR//EN
+BEGIN:VTIMEZONE
+TZID:Eastern Standard Time
+BEGIN:STANDARD
+DTSTART:16010101T020000
+TZOFFSETFROM:-0400
+TZOFFSETTO:-0500
+RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=1SU;BYMONTH=11
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:16010101T020000
+TZOFFSETFROM:-0500
+TZOFFSETTO:-0400
+RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=2SU;BYMONTH=3
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:outlook-series@example.com
+SUMMARY:Team sync
+DTSTART;TZID=Eastern Standard Time:20261026T090000
+DTEND;TZID=Eastern Standard Time:20261026T093000
+RRULE:FREQ=WEEKLY;COUNT=3
+END:VEVENT
+END:VCALENDAR`;
+  const starts = expandIcalEvents(
+    parseIcalEvents(ics),
+    new Date("2026-10-01T00:00:00.000Z"),
+    new Date("2026-12-01T00:00:00.000Z")
+  )
+    .filter((e) => !e.isMaster)
+    .map((e) => new Date(e.start).toISOString());
+  expect(starts).toEqual([
+    "2026-10-26T13:00:00.000Z",
+    "2026-11-02T14:00:00.000Z",
+    "2026-11-09T14:00:00.000Z",
+  ]);
 });
