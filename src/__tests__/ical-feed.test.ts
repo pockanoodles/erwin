@@ -741,7 +741,9 @@ ${extra}END:VEVENT`);
   ])("finishes %s quickly", (_label, rule) => {
     const started = Date.now();
     const expanded = expandIcalEvents(parseIcalEvents(series(rule)), windowStart, windowEnd);
-    expect(Date.now() - started).toBeLessThan(1500);
+    // A guard against hangs, not a benchmark: BYSETPOS=5 takes ~0.3 s here and
+    // over 1.5 s on a shared CI runner, while the iterator it replaced never returned.
+    expect(Date.now() - started).toBeLessThan(5000);
     expect(expanded.filter((e) => e.isMaster)).toHaveLength(1);
   });
 
