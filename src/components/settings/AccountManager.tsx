@@ -118,7 +118,7 @@ export function AccountManager() {
 
       <SettingRow
         label="Add a calendar"
-        description="Three equal choices. None is the screen's one rust action until you pick one."
+        description="Pick the service your calendar lives on. iCloud, Fastmail and Nextcloud connect over CalDAV."
       >
         <div className="flex flex-wrap gap-2">
           <Button
