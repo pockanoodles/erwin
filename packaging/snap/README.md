@@ -38,7 +38,7 @@ It is how an arm64 snap would ship later. In that case add
    ```sh
    snapcraft export-login --snaps=erwin --channels=edge,stable \
      --acls=package_access,package_push,package_update,package_release \
-     --expires=2027-10-12T00:00:00 credentials.txt
+     --expires=2027-10-29 credentials.txt
    ```
 
 4. Save the file contents as the `SNAPCRAFT_STORE_CREDENTIALS` repo secret, then
@@ -48,7 +48,9 @@ It is how an arm64 snap would ship later. In that case add
    gh secret set SNAPCRAFT_STORE_CREDENTIALS < credentials.txt
    ```
 
-The login expires on the date you set. Export a new one before then.
+The login expires on the date you set, written `YYYY-MM-DD` or
+`YYYY-MM-DDTHH:MM:SSZ` (snapcraft rejects a time without the `Z`). Export a new
+one before then.
 
 ## Promoting to stable
 
