@@ -14,6 +14,8 @@ import {
 
 import { logger } from "@/lib/logger";
 
+import { invalidateResources } from "@/hooks/use-resource";
+
 import { useSettingsStore } from "@/store/settings";
 
 import { SettingRow, SettingsSection } from "./SettingsSection";
@@ -61,6 +63,9 @@ export function SystemSettings() {
       });
       const data = await response.json();
       updateSystemSettings(data);
+      // Accounts reads whether Google and Outlook are set up from a cached
+      // answer; drop it so the next visit asks again.
+      invalidateResources("/api/integration-status");
     } catch (error) {
       logger.error(
         "Failed to update system settings",
