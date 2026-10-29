@@ -2,10 +2,10 @@ import { CalendarEvent } from "@prisma/client";
 import { lookup } from "dns/promises";
 import ICAL from "ical.js";
 import net from "net";
-import { RRule } from "rrule";
 
 import { convertVEventToCalendarEvent } from "./caldav-helpers";
 import { newDate } from "./date-utils";
+import { seriesOccurrences } from "./ical-recurrence";
 import { logger } from "./logger";
 import { prisma } from "./prisma";
 
@@ -23,6 +23,11 @@ const FETCH_TIMEOUT_MS = 15_000;
 // (like the Google provider stores instances) rather than relying on the render
 // path, which only expands masters when explicitly asked.
 const MAX_EXPANDED_INSTANCES = 1000;
+
+// Steps all of a feed's series may take together (each one is also held to
+// MAX_SERIES_STEPS, src/lib/ical-recurrence.ts), which bounds a sync to about
+// a second whatever its rules.
+const MAX_FEED_STEPS = 200_000;
 
 // Feed-level cap on TOTAL materialized rows (masters + one-offs + every
 // expanded instance). The per-master cap alone is not enough: a single (byte-
@@ -58,6 +63,13 @@ export type ParsedIcalEvent = Omit<
    * that occurrence of the series, so a moved class shows once, at its new time.
    */
   recurrenceId?: number;
+  /**
+   * Internal, non-persisted: a series' own VEVENT, which
+   * {@link expandIcalEvents} expands with ical.js, in the time zone of its
+   * DTSTART and with its EXDATEs and RDATEs, so a weekly 9:00 class stays at
+   * 9:00 across a daylight-saving change.
+   */
+  source?: ICAL.Component;
 };
 
 /**
@@ -287,6 +299,7 @@ export function parseIcalEvents(icsText: string): ParsedIcalEvent[] {
       recurringEventId: null,
       ...(exdates.length > 0 ? { exdates } : {}),
       ...(recurrenceId != null ? { recurrenceId } : {}),
+      ...(rest.isMaster && rest.recurrenceRule ? { source: vevent } : {}),
     });
   }
   return parsed;
@@ -329,17 +342,27 @@ function extractExdates(vevent: ICAL.Component): number[] {
 }
 
 /**
- * Drops the internal, non-persisted `exdates` and `recurrenceId` fields so the
- * row is safe to write to the database (Prisma `createMany` rejects unknown
- * columns).
+ * Drops the internal, non-persisted `exdates`, `recurrenceId` and `source`
+ * fields so the row is safe to write to the database (Prisma `createMany`
+ * rejects unknown columns).
  */
 function stripInternal(event: ParsedIcalEvent): ParsedIcalEvent {
-  if (!("exdates" in event) && !("recurrenceId" in event)) return event;
-  const { exdates: _exdates, recurrenceId: _recurrenceId, ...rest } = event;
+  if (!("exdates" in event) && !("recurrenceId" in event) && !("source" in event)) {
+    return event;
+  }
+  const {
+    exdates: _exdates,
+    recurrenceId: _recurrenceId,
+    source: _source,
+    ...rest
+  } = event;
   void _exdates;
   void _recurrenceId;
+  void _source;
   return rest;
 }
+
+const isCancelled = (event: ParsedIcalEvent) => event.status === "CANCELLED";
 
 /**
  * Materializes recurring masters into concrete occurrence rows within a window.
@@ -351,9 +374,12 @@ function stripInternal(event: ParsedIcalEvent): ParsedIcalEvent {
  * instance rows that actually render. Instances carry no `masterEventId` to
  * avoid a self-FK violation on a single-pass `createMany`.
  *
- * Generation is bounded both per master (`MAX_EXPANDED_INSTANCES`) and across
- * the whole feed (`MAX_TOTAL_EXPANDED_EVENTS`), so a single byte-capped ICS with
- * many recurring masters cannot expand into an unbounded database write.
+ * Rows are bounded per master (`MAX_EXPANDED_INSTANCES`) and across the whole
+ * feed (`MAX_TOTAL_EXPANDED_EVENTS`), so a single byte-capped ICS with many
+ * recurring masters cannot expand into an unbounded database write. The work
+ * is bounded too, from each series' DTSTART (`MAX_SERIES_STEPS` in
+ * ical-recurrence.ts, `MAX_FEED_STEPS`). Series expand with ical.js in their own time zone, and
+ * cancelled events, cancelled overrides included, are left out.
  *
  * @param events Parsed events (from `parseIcalEvents`)
  * @param windowStart Earliest occurrence to materialize
@@ -367,8 +393,10 @@ export function expandIcalEvents(
 ): ParsedIcalEvent[] {
   const result: ParsedIcalEvent[] = [];
   let capped = false;
+  const budget = { steps: MAX_FEED_STEPS };
 
-  // Occurrences replaced by an override, per series UID.
+  // Occurrences replaced by an override, per series UID. A cancelled override
+  // counts too: its occurrence goes, and nothing takes its place.
   const overridden = new Map<string, Set<number>>();
   for (const event of events) {
     if (event.recurrenceId == null || !event.externalEventId) continue;
@@ -382,6 +410,10 @@ export function expandIcalEvents(
       capped = true;
       break;
     }
+
+    // Cancelled events stay off the calendar: a read-only feed gives no other
+    // way to remove them.
+    if (isCancelled(event)) continue;
 
     if (event.recurrenceId != null) {
       // An override shares its series' UID, and its start can equal the
@@ -408,45 +440,38 @@ export function expandIcalEvents(
 
     // Keep the master row (preserves recurrence metadata; not rendered).
     result.push(stripInternal(event));
+    if (!event.source) continue;
 
     try {
       const start = newDate(event.start);
       const end = newDate(event.end);
       const duration = end.getTime() - start.getTime();
 
-      // Occurrences cancelled via EXDATE, or replaced by an override, must
-      // not be materialized.
-      //todo: also honor RDATE (extra dates).
+      // ical.js drops EXDATEs itself; occurrences an override replaces (or
+      // cancels) are dropped here.
       const excluded = new Set([
         ...(event.exdates ?? []),
         ...(overridden.get(event.externalEventId ?? "") ?? []),
       ]);
 
-      // The stored recurrenceRule is just the RRULE body (no DTSTART), so anchor
-      // it on the event's start - otherwise rrule has no origin and yields no
-      // occurrences.
-      const options = RRule.parseString(event.recurrenceRule);
-      options.dtstart = start;
-      const rule = new RRule(options);
+      const occurrences = seriesOccurrences(event.source, windowStart, windowEnd, {
+        maxInstances: MAX_EXPANDED_INSTANCES,
+        budget,
+      });
+      if (!occurrences) {
+        logger.warn(
+          "iCal series took too many steps to reach the window; kept its master only",
+          { recurrenceRule: event.recurrenceRule, start: start.toISOString() },
+          LOG_SOURCE
+        );
+        continue;
+      }
 
-      // Bound generation, not just the result. A hostile feed can carry a
-      // high-frequency rule (e.g. FREQ=SECONDLY) with no COUNT/UNTIL; calling
-      // `.between(...).slice(cap)` would still materialize every occurrence in
-      // the multi-year window first (CPU/memory DoS). The iterator callback
-      // stops rrule as soon as we hit the cap, so generation itself is bounded.
-      const occurrences = rule.between(
-        windowStart,
-        windowEnd,
-        true,
-        (_date, i) => i < MAX_EXPANDED_INSTANCES
-      );
-
-      for (const date of occurrences) {
+      for (const instanceStart of occurrences) {
         if (result.length >= MAX_TOTAL_EXPANDED_EVENTS) {
           capped = true;
           break;
         }
-        const instanceStart = newDate(date);
         if (excluded.has(instanceStart.getTime())) continue;
         result.push({
           ...stripInternal(event),
