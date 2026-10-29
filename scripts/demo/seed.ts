@@ -66,8 +66,10 @@ async function main() {
     courseRows.set(c.canvasId, row.id);
   }
   const [cs, math, engw] = courses;
-  // The demo is a student's week, so Courses is on; a fresh install starts with it off.
+  // The demo is a student's week with goals, so Courses and Stats are on; a
+  // fresh install starts with both off.
   await prisma.userModule.create({ data: { userId, moduleId: "courses", enabled: true, position: 0 } });
+  await prisma.userModule.create({ data: { userId, moduleId: "ladder", enabled: true, position: 1 } });
 
   // ── Coursework, shaped like Canvas sync output: a gradebook row per
   // assignment (Canvas's facts) backing the task Focus ranks ─────────────

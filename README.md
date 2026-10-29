@@ -45,7 +45,7 @@ The top bar is the same strip on every page. It holds the page's own views and a
 
 ## Modules
 
-The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Erwin. Stats starts on and the others start off, except that School comes on by itself for an install that already had Canvas connected.
+The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Erwin. Every module starts off, except that School comes on by itself for an install that already had Canvas connected.
 
 | Module | What it adds | Sends data to |
 |---|---|---|

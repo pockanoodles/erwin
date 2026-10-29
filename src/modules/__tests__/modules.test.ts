@@ -13,8 +13,8 @@ describe("resolveModuleStates", () => {
   it("gives a module nobody touched its default and its catalog place", () => {
     const states = resolveModuleStates([]);
     expect(states.map((s) => s.id)).toEqual(MODULES.map((m) => m.id));
-    expect(states.find((s) => s.id === "courses")?.on).toBe(false);
-    expect(states.find((s) => s.id === "ladder")?.on).toBe(true);
+    // A new install starts with every module off (Stats too, since 1.0).
+    expect(states.every((s) => !s.on)).toBe(true);
   });
 
   it("lets a row override the default and order the rail", () => {
