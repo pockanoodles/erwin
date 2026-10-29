@@ -306,6 +306,9 @@ function ModulePane({
               Down
             </Button>
           </div>
+          <p className="text-xs text-muted-foreground">
+            The #1 module also sits in the bottom bar on a phone.
+          </p>
         </PaneSection>
       ) : null}
 

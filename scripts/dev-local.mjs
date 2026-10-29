@@ -6,6 +6,8 @@
  *   npm run dev:local -- --port 3100
  *   npm run dev:local -- --seed demo  → first run fills in the example data
  *   npm run dev:local -- --reset      → start from an empty database
+ *   npm run dev:local -- --lan        → also reachable from a phone on the
+ *                                       same Wi-Fi or tailnet
  *
  * The database is PGlite, Postgres compiled to WebAssembly, in `.local/`. It
  * is served over the Postgres wire protocol, so `prisma migrate deploy` and the
@@ -16,11 +18,18 @@
  * Builds go to `.next-local`, so this never touches `.next` (a production
  * build) or `.next-dev` (`npm run dev`). Variables set here win over `.env`,
  * so a developer's real DATABASE_URL is never used.
+ *
+ * Next listens on loopback unless `--lan` is given, because the printed link
+ * signs anyone who opens it in as the local admin: on campus or café Wi-Fi the
+ * server should not be on the network at all. For the phone, `tailscale serve
+ * <port>` is the better road: the server stays on loopback and the phone gets
+ * HTTPS on the tailnet, which iOS needs to install Erwin as an app.
  */
 
 import { spawn } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -36,6 +45,7 @@ const option = (name, fallback) => {
 };
 
 const port = Number(option("port", "3000"));
+const lanAccess = flag("lan");
 const seed = option("seed", null);
 const local = path.join(root, ".local");
 const dataDir = path.join(local, "pgdata");
@@ -93,10 +103,45 @@ function run(cmd, cmdArgs, overrides = {}) {
 await run("npx", ["prisma", "migrate", "deploy"], { DATABASE_URL: dbOrigin });
 if (seed && fresh) await run("npx", ["tsx", "scripts/demo/seed.ts", seed]);
 
-const next = spawn("npx", ["next", "dev", "--turbopack", "--port", String(port)], { cwd: root, env, stdio: "inherit" });
+const hostname = lanAccess ? "0.0.0.0" : "127.0.0.1";
+const next = spawn("npx", ["next", "dev", "--turbopack", "--hostname", hostname, "--port", String(port)], { cwd: root, env, stdio: "inherit" });
 
+function isTailscaleIp(ip) {
+  const parts = ip.split(".").map(Number);
+  // Tailscale IPv4 addresses sit in 100.64.0.0/10 (100.64.x.x – 100.127.x.x).
+  return parts[0] === 100 && parts[1] >= 64 && parts[1] <= 127;
+}
+
+function networkEndpoints() {
+  const nets = os.networkInterfaces();
+  const tailscale = [];
+  const lan = [];
+  for (const entries of Object.values(nets)) {
+    for (const net of entries ?? []) {
+      if (net.family === "IPv4" && !net.internal) {
+        const url = `http://${net.address}:${port}`;
+        if (isTailscaleIp(net.address)) {
+          tailscale.push(url);
+        } else {
+          lan.push(url);
+        }
+      }
+    }
+  }
+  return { tailscale, lan };
+}
+
+const { tailscale, lan } = lanAccess ? networkEndpoints() : { tailscale: [], lan: [] };
 console.log(`\n  Erwin (local) · database ${path.relative(root, dataDir)}`);
-console.log(`  Open ${origin}/api/desktop/session?t=${bootToken}\n`);
+console.log(`  Mac:       ${origin}/api/desktop/session?t=${bootToken}`);
+for (const tsUrl of tailscale) {
+  console.log(`  Tailscale: ${tsUrl}/api/desktop/session?t=${bootToken}`);
+}
+for (const lanUrl of lan) {
+  console.log(`  Phone:     ${lanUrl}/api/desktop/session?t=${bootToken}`);
+}
+if (!lanAccess) console.log(`  Phone:     add --lan, or run \`tailscale serve ${port}\``);
+console.log("");
 
 const stop = async () => {
   next.kill("SIGTERM");

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { v4 as uuidv4 } from "uuid";
+
 import { endOfDay, newDate } from "@/lib/date-utils";
 import { type FocusQueueTask, parseTaskFromApi } from "@/lib/erwin/parse-task";
 
@@ -49,7 +51,7 @@ export function ErwinFocusMode() {
   const [newTitle, setNewTitle] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
 
-  const sessionId = useRef(crypto.randomUUID());
+  const sessionId = useRef(uuidv4());
   const surfaceLoggedRef = useRef<Set<string>>(new Set());
   const fetchTasks = useTaskStore((s) => s.fetchTasks);
 
@@ -290,11 +292,7 @@ export function ErwinFocusMode() {
       }
       const el = e.target as HTMLElement | null;
       const tag = el?.tagName;
-      if (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        el?.isContentEditable
-      ) {
+      if (tag === "INPUT" || tag === "TEXTAREA" || el?.isContentEditable) {
         return;
       }
       const key = e.key.toLowerCase();
@@ -425,13 +423,14 @@ export function ErwinFocusMode() {
               No tasks pending.
             </p>
             <p className="mt-2 max-w-sm text-[13px] text-muted-foreground">
-              Connect Canvas to auto-import assignments, or tap + to add a
-              task.
+              Connect Canvas to auto-import assignments, or tap + to add a task.
             </p>
           </div>
         ) : !top ? (
           <div className="flex flex-1 flex-col items-center justify-center p-8 text-center">
-            <p className="text-[15px] font-medium text-foreground">All clear.</p>
+            <p className="text-[15px] font-medium text-foreground">
+              All clear.
+            </p>
             <p className="mt-2 text-[13px] text-muted-foreground">
               0 tasks pending.
             </p>

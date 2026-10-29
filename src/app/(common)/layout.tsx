@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import { DndProvider } from "@/components/dnd/DndProvider";
+import { AppBottomBar } from "@/components/navigation/AppBottomBar";
 import { AppNav } from "@/components/navigation/AppNav";
 import { AppTopBar } from "@/components/navigation/AppTopBar";
 import { PrivacyProvider } from "@/components/providers/PrivacyProvider";
@@ -75,6 +76,7 @@ export default function RootLayout({
                 {children}
               </main>
             </div>
+            <AppBottomBar />
             <Toaster />
           </DndProvider>
         </PrivacyProvider>

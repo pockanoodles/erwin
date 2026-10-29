@@ -60,7 +60,7 @@ export function BoardView({
   return (
     <div className="flex h-full flex-col bg-background">
       <TaskListToolbar view={view} surface="board" />
-      <div className="flex flex-1 gap-6 overflow-auto p-6">
+      <div className="flex flex-1 snap-x snap-mandatory gap-3 overflow-auto p-3 md:snap-none md:gap-6 md:p-6">
         <DndContext onDragEnd={handleDragEnd}>
           {Object.values(TaskStatus).map((status) => (
             <Column

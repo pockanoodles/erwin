@@ -3,9 +3,10 @@
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { SwipeableRow } from "@/components/ui/swipeable-row";
 
 import { format } from "@/lib/date-utils";
-import { primaryLadderGoal, type FocusQueueTask } from "@/lib/erwin/parse-task";
+import { type FocusQueueTask, primaryLadderGoal } from "@/lib/erwin/parse-task";
 import { cn } from "@/lib/utils";
 
 import { useTaskModule } from "@/modules/client";
@@ -52,9 +53,7 @@ function linkify(text: string): ReactNode[] {
 }
 
 function label(text: string) {
-  return (
-    <div className="er-label mb-1.5">{text}</div>
-  );
+  return <div className="er-label mb-1.5">{text}</div>;
 }
 
 function fact(title: string, body: ReactNode) {
@@ -110,7 +109,11 @@ export function FocusDesk({
     (child) => child.status === TaskStatus.COMPLETED
   ).length;
   const windowLabel = clock(task);
-  const fit = [task.energyLevel, task.preferredTime, task.duration ? `${task.duration} min` : null]
+  const fit = [
+    task.energyLevel,
+    task.preferredTime,
+    task.duration ? `${task.duration} min` : null,
+  ]
     .filter(Boolean)
     .join(" · ");
 
@@ -126,8 +129,8 @@ export function FocusDesk({
         </span>
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)_300px]">
-        <section className="border-t border-border px-4 py-4 md:overflow-y-auto md:border-r md:border-t-0 md:px-5">
+      <div className="min-h-0 flex-1 overflow-y-auto md:grid md:grid-cols-[280px_minmax(0,1fr)_300px] md:overflow-visible">
+        <section className="hidden border-t border-border px-4 py-4 md:block md:overflow-y-auto md:border-r md:border-t-0 md:px-5">
           {label("Context")}
           <div className="mt-3">
             {fact(
@@ -140,7 +143,7 @@ export function FocusDesk({
                   </p>
                 </>
               ) : (
-                task.project?.name ?? task.category ?? null
+                (task.project?.name ?? task.category ?? null)
               )
             )}
             {fact(
@@ -162,7 +165,9 @@ export function FocusDesk({
               "Calendar",
               windowLabel || nextEvent ? (
                 <>
-                  {windowLabel ? <p className="tabular-nums">{windowLabel}</p> : null}
+                  {windowLabel ? (
+                    <p className="tabular-nums">{windowLabel}</p>
+                  ) : null}
                   {nextEvent ? (
                     <p className="mt-0.5 text-muted-foreground">
                       {nextEvent.title} {nextEvent.startsIn}
@@ -176,19 +181,50 @@ export function FocusDesk({
         </section>
 
         <section className="flex min-h-0 flex-col border-t border-border px-4 py-4 md:overflow-y-auto md:border-t-0 md:px-8 md:py-5">
-          <div className="er-label">
-            {[
-              task.submissionStatus?.replaceAll("_", " "),
-              task.erwin?.urgencyTier && task.erwin.urgencyTier !== "NONE"
-                ? task.erwin.urgencyTier.toLowerCase()
-                : null,
-            ]
-              .filter(Boolean)
-              .join(" · ") || "Now"}
-          </div>
-          <h1 className="mt-2 text-[28px] font-medium leading-[1.15] tracking-[-0.02em] text-foreground md:text-[32px]">
-            {task.title}
-          </h1>
+          <SwipeableRow
+            disabled={acting}
+            rightAction={{
+              label: "Done",
+              tone: "ok",
+              onTrigger: onDone,
+            }}
+            leftAction={{
+              label: "Skip",
+              tone: "rust",
+              onTrigger: onSkip,
+            }}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="er-label">
+                {[
+                  task.submissionStatus?.replaceAll("_", " "),
+                  task.erwin?.urgencyTier && task.erwin.urgencyTier !== "NONE"
+                    ? task.erwin.urgencyTier.toLowerCase()
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "Now"}
+              </div>
+              {/* Compact mobile dial readout so you don't need the 3rd column on a phone */}
+              <div className="font-mono text-xs font-semibold uppercase tracking-[0.06em] text-rust-text tabular-nums md:hidden">
+                {projection
+                  ? `${projection.letterCurrent} → ${projection.letterIfMissed} if missed`
+                  : (countdown ?? "No deadline")}
+              </div>
+            </div>
+            <h1 className="mt-2 text-[22px] font-medium leading-[1.18] tracking-[-0.02em] text-foreground md:text-[32px] md:leading-[1.15]">
+              {task.title}
+            </h1>
+
+            {/* One-line context summary on phone */}
+            <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground md:hidden">
+              {task.courseName ? <span>{task.courseName}</span> : null}
+              {weight != null ? <span>· {weight}% of course</span> : null}
+              {goal ? <span>· ↑ {goal.title}</span> : null}
+              {fit ? <span>· {fit}</span> : null}
+            </p>
+          </SwipeableRow>
+
           <div className="er-track mt-4 max-w-[62ch]" aria-hidden />
           {Body ? (
             <Body task={task} />
@@ -232,7 +268,9 @@ export function FocusDesk({
                           )}
                           aria-hidden
                         />
-                        <span className={cn(completed && "text-muted-foreground")}>
+                        <span
+                          className={cn(completed && "text-muted-foreground")}
+                        >
                           {child.title}
                         </span>
                       </button>
@@ -243,8 +281,58 @@ export function FocusDesk({
             </div>
           ) : null}
 
-          <div className="mt-auto flex gap-2 pt-6">
-            <Button type="button" disabled={acting} onClick={onDone} className="h-9 min-w-[108px]">
+          {/* Mobile progressive disclosure for Context & Book details */}
+          <details className="mt-6 border-t border-border pt-3 md:hidden">
+            <summary className="er-label cursor-pointer select-none py-1">
+              Context &amp; deadline details
+            </summary>
+            <div className="mt-3 space-y-2">
+              {Context ? <Context task={task} /> : null}
+              {fact("Because", goal?.whyItMatters)}
+              {fact(
+                "Due",
+                due ? (
+                  <span className="tabular-nums">
+                    {countdown ? `${countdown} · ` : ""}
+                    {format(due, "PPP p")}
+                  </span>
+                ) : null
+              )}
+              {fact(
+                "Calendar",
+                windowLabel || nextEvent ? (
+                  <>
+                    {windowLabel ? (
+                      <p className="tabular-nums">{windowLabel}</p>
+                    ) : null}
+                    {nextEvent ? (
+                      <p className="mt-0.5 text-muted-foreground">
+                        {nextEvent.title} {nextEvent.startsIn}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null
+              )}
+              {fact(
+                "Pressure",
+                (task.skipCount ?? 0) > 0
+                  ? `Skipped ${task.skipCount}×${
+                      task.erwin?.lastSkippedAgo
+                        ? `, ${task.erwin.lastSkippedAgo}`
+                        : ""
+                    }`
+                  : (task.erwin?.effortEstimate ?? null)
+              )}
+            </div>
+          </details>
+
+          <div className="mt-auto hidden gap-2 pt-6 md:flex">
+            <Button
+              type="button"
+              disabled={acting}
+              onClick={onDone}
+              className="h-9 min-w-[108px]"
+            >
               Done
             </Button>
             <Button
@@ -268,7 +356,7 @@ export function FocusDesk({
           </div>
         </section>
 
-        <section className="border-t border-border px-4 py-4 md:overflow-y-auto md:border-l md:border-t-0 md:px-5">
+        <section className="hidden border-t border-border px-4 py-4 md:block md:overflow-y-auto md:border-l md:border-t-0 md:px-5">
           {label("Book")}
           {projection ? (
             <>
@@ -284,7 +372,9 @@ export function FocusDesk({
               {countdown}
             </p>
           ) : (
-            <p className="mt-3 text-[14px] text-muted-foreground">No deadline</p>
+            <p className="mt-3 text-[14px] text-muted-foreground">
+              No deadline
+            </p>
           )}
           <div className="mt-4">
             {fact(
@@ -310,7 +400,7 @@ export function FocusDesk({
                       ? `, ${task.erwin.lastSkippedAgo}`
                       : ""
                   }`
-                : task.erwin?.effortEstimate ?? null
+                : (task.erwin?.effortEstimate ?? null)
             )}
           </div>
         </section>
@@ -318,14 +408,17 @@ export function FocusDesk({
 
       <div className="flex-none border-t border-border">
         {upNext.length === 0 ? (
-          <p className="px-4 py-3 text-[13px] text-muted-foreground md:px-6">
+          <p className="px-4 py-2 text-[13px] text-muted-foreground md:px-6 md:py-3">
             Nothing else ranked.
           </p>
         ) : (
           upNext.map((next, i) => (
             <div
               key={next.id}
-              className="grid grid-cols-[40px_minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-4 py-2.5 text-[14px] first:border-t-0 md:px-6"
+              className={cn(
+                "grid grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-2 border-t border-border px-4 py-2 text-[13px] first:border-t-0 md:grid-cols-[40px_minmax(0,1fr)_auto] md:gap-3 md:px-6 md:py-2.5 md:text-[14px]",
+                i > 0 && "hidden md:grid"
+              )}
             >
               <span className="text-[12px] tabular-nums text-muted-foreground">
                 {String(i + 2).padStart(2, "0")}
@@ -345,6 +438,36 @@ export function FocusDesk({
             </div>
           ))
         )}
+      </div>
+
+      {/* Pinned thumb-zone action bar on phones (< md) */}
+      <div className="flex flex-none gap-2 border-t border-border bg-background px-4 py-2.5 md:hidden">
+        <Button
+          type="button"
+          disabled={acting}
+          onClick={onDone}
+          className="h-10 flex-1"
+        >
+          Done
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={acting}
+          onClick={onSkip}
+          className="h-10 flex-1"
+        >
+          Skip
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={acting}
+          onClick={onLater}
+          className="h-10 flex-1"
+        >
+          Later
+        </Button>
       </div>
     </div>
   );

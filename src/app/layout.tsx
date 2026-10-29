@@ -2,6 +2,7 @@ import type { Viewport } from "next";
 import { Chivo, Chivo_Mono, Michroma } from "next/font/google";
 
 import { Providers } from "@/components/providers";
+
 import { metadata as baseMetadata } from "./metadata";
 
 /**
@@ -30,6 +31,9 @@ export const metadata = baseMetadata;
 
 /** The browser chrome follows the theme: khaki by day, the field at night. */
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8f6ee" },
     { media: "(prefers-color-scheme: dark)", color: "#14130d" },

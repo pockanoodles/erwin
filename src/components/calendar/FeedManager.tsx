@@ -2,13 +2,13 @@ import { useCallback, useState } from "react";
 
 import { BsArrowRepeat, BsGoogle, BsMicrosoft, BsTrash } from "react-icons/bs";
 
+import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 import { cn } from "@/lib/utils";
 
 import { useCalendarStore } from "@/store/calendar";
 import { useViewStore } from "@/store/calendar";
 
 import { MiniCalendar } from "./MiniCalendar";
-import { DEFAULT_FEED_COLOR } from "@/lib/calendar-colors";
 
 export function FeedManager() {
   const [syncingFeeds, setSyncingFeeds] = useState<Set<string>>(new Set());
@@ -59,7 +59,7 @@ export function FeedManager() {
           return (
             <div
               key={feed.id}
-              className="group flex h-8 items-center gap-1 pl-1 pr-0.5 transition-colors duration-150 hover:bg-muted/50"
+              className="group flex h-10 items-center gap-1 pl-1 pr-0.5 transition-colors duration-150 hover:bg-muted/50 md:h-8"
             >
               {/* The colour swatch is the toggle, as in Apple's source list —
                   a separate checkbox plus a colour dot said the same thing
@@ -102,13 +102,13 @@ export function FeedManager() {
                 />
               )}
 
-              {/* Row actions stay out of the way until the row is hovered or
-                  keyboard-focused; they were competing with the names. */}
+              {/* Row actions stay out of the way on desktop until the row is
+                  hovered or keyboard-focused; on touch screens they stay visible. */}
               <div
                 className={cn(
-                  "flex flex-none items-center opacity-0 transition-opacity duration-150",
-                  "focus-within:opacity-100 group-hover:opacity-100",
-                  isSyncing && "opacity-100"
+                  "flex flex-none items-center opacity-100 transition-opacity duration-150 md:opacity-0",
+                  "md:focus-within:opacity-100 md:group-hover:opacity-100",
+                  isSyncing && "md:opacity-100"
                 )}
               >
                 <button

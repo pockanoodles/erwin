@@ -29,6 +29,8 @@
     [role="tab"]
   ) {
     @apply transition-colors duration-150;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   @media (prefers-reduced-motion: reduce) {
     *,
@@ -38,6 +40,10 @@
       animation-duration: 0.01ms !important;
       animation-iteration-count: 1 !important;
     }
+  }
+  html,
+  body {
+    overscroll-behavior-y: none;
   }
   body {
     @apply bg-background font-sans text-foreground;
@@ -221,7 +227,7 @@
 [cmdk-input] {
   border: none;
   width: 100%;
-  font-size: 14px;
+  font-size: 16px;
   padding: 12px;
   outline: none;
   background: transparent;
@@ -229,6 +235,12 @@
   border: none;
   margin: 0;
   border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  [cmdk-input] {
+    font-size: 14px;
+  }
 }
 
 [cmdk-input]:focus {
@@ -407,11 +419,17 @@
   @apply bg-muted font-medium;
 }
 
-/* ── Desktop window ───────────────────────────────────────────────────────
+/* ── Desktop & iOS safe-area window chrome ────────────────────────────────
    Inside the Electron shell (desktop/src/preload.ts sets data-desktop to the
    platform) the top bar is the window's title bar. On macOS it makes room for
    the inset traffic lights, which keeps every control in the bar at one fixed
-   x on every route, and the bar drags the window while its controls click. */
+   x on every route, and the bar drags the window while its controls click.
+   On iOS standalone PWA (Dynamic Island / notch), the top bar pads for the
+   top safe-area inset so controls never sit under the status bar. */
+.app-titlebar {
+  padding-top: env(safe-area-inset-top, 0px);
+  height: calc(theme(spacing.topbar) + env(safe-area-inset-top, 0px));
+}
 :root[data-desktop="darwin"] .app-titlebar {
   padding-left: 76px;
 }

@@ -10,15 +10,15 @@ import {
   IoTimeOutline,
 } from "react-icons/io5";
 
-import { format, isFutureDate, newDate } from "@/lib/date-utils";
-import { isTaskOverdue } from "@/lib/task-utils";
-import { cn } from "@/lib/utils";
-
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+
+import { format, isFutureDate, newDate } from "@/lib/date-utils";
+import { isTaskOverdue } from "@/lib/task-utils";
+import { cn } from "@/lib/utils";
 
 import { AttendeeStatus, CalendarEvent } from "@/types/calendar";
 import { Priority, Task, TaskStatus } from "@/types/task";
@@ -33,11 +33,11 @@ interface EventQuickViewProps {
   isOpen: boolean;
   onClose: () => void;
   item:
-  | (CalendarEvent & {
-    attendees?: Attendee[];
-    extendedProps?: { isTask?: boolean };
-  })
-  | (Task & { project?: { name: string; color?: string | null } | null });
+    | (CalendarEvent & {
+        attendees?: Attendee[];
+        extendedProps?: { isTask?: boolean };
+      })
+    | (Task & { project?: { name: string; color?: string | null } | null });
   onEdit: () => void;
   onDelete: () => void;
   isTask: boolean;
@@ -92,16 +92,21 @@ export function EventQuickView({
         <div
           className="w-0 h-0 opacity-0 pointer-events-none"
           style={{
-            position: 'fixed',
-            left: referenceElement ? referenceElement.getBoundingClientRect().left : 0,
-            top: referenceElement ? referenceElement.getBoundingClientRect().top : 0,
+            position: "fixed",
+            left: referenceElement
+              ? referenceElement.getBoundingClientRect().left
+              : 0,
+            top: referenceElement
+              ? referenceElement.getBoundingClientRect().top
+              : 0,
           }}
         />
       </PopoverTrigger>
       <PopoverContent
-        className="z-[10000] w-80 rounded-lg border border-border bg-background p-4 shadow-lg"
+        className="z-[10000] w-[min(20rem,calc(100vw-1.5rem))] rounded-lg border border-border bg-background p-4 shadow-lg"
         align="start"
-        sideOffset={24}
+        sideOffset={12}
+        collisionPadding={12}
         onOpenAutoFocus={(e) => e.preventDefault()}
         forceMount
       >
@@ -237,10 +242,9 @@ export function EventQuickView({
                   {taskItem.dueDate ? (
                     <span
                       className={cn(
-                        isOverdue &&
-                        "text-destructive font-medium",
+                        isOverdue && "text-destructive font-medium",
                         isFutureDate(taskItem.dueDate) &&
-                        "text-primary font-medium"
+                          "text-primary font-medium"
                       )}
                     >
                       Due {format(newDate(taskItem.dueDate), "PPp")}
@@ -271,7 +275,7 @@ export function EventQuickView({
                   <span
                     className={cn(
                       isFutureDate(taskItem.startDate) &&
-                      "text-primary font-medium"
+                        "text-primary font-medium"
                     )}
                   >
                     Starts {format(newDate(taskItem.startDate), "PPp")}
@@ -284,10 +288,7 @@ export function EventQuickView({
                 <div className="flex items-center gap-2">
                   <IoFlagOutline className="h-4 w-4 flex-shrink-0" />
                   <span
-                    className={cn(
-                      "text-sm",
-                      priorityColors[taskItem.priority]
-                    )}
+                    className={cn("text-sm", priorityColors[taskItem.priority])}
                   >
                     {taskItem.priority.charAt(0).toUpperCase() +
                       taskItem.priority.slice(1)}{" "}

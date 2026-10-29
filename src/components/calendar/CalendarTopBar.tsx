@@ -12,8 +12,8 @@ import {
   BarButton,
   BarDivider,
   BarIconButton,
-  BarSegmented,
   type BarSegment,
+  BarSegmented,
 } from "@/components/navigation/top-bar-parts";
 
 import { addDays, newDate, subDays } from "@/lib/date-utils";
@@ -60,7 +60,19 @@ function formatShortHeading(date: Date, view: CalendarView): string {
 
 export function CalendarTopBarViews() {
   const { date, setDate, view, setView } = useViewStore();
-  const { isSidebarOpen, setSidebarOpen } = useCalendarUIStore();
+  const isMobile = useIsMobile();
+  const {
+    isSidebarOpen,
+    isMobileDrawerOpen,
+    setSidebarOpen,
+    setMobileDrawerOpen,
+  } = useCalendarUIStore();
+
+  const sidebarOpen = isMobile ? isMobileDrawerOpen : isSidebarOpen;
+  const toggleSidebar = () =>
+    isMobile
+      ? setMobileDrawerOpen(!isMobileDrawerOpen)
+      : setSidebarOpen(!isSidebarOpen);
 
   const step = (direction: -1 | 1) => {
     if (view === "month" || view === "multiMonth") {
@@ -78,11 +90,11 @@ export function CalendarTopBarViews() {
       {/* Layers, not a second hamburger: on a phone it sits right beside the
           app menu's. */}
       <BarIconButton
-        onClick={() => setSidebarOpen(!isSidebarOpen)}
+        onClick={toggleSidebar}
         icon={IoLayersOutline}
         label="Toggle calendar list"
         title="Toggle calendar list (b)"
-        pressed={isSidebarOpen}
+        pressed={sidebarOpen}
       />
       <span className="hidden md:flex">
         <BarDivider />
@@ -137,5 +149,7 @@ export function CalendarTopBarActions() {
   // A desk action, as on Tasks: a phone's bar needs the room for the
   // period and the view. Still reachable from ⌘K.
   if (isMobile) return null;
-  return <BarButton onClick={() => scheduleAllTasks()}>Auto Schedule</BarButton>;
+  return (
+    <BarButton onClick={() => scheduleAllTasks()}>Auto Schedule</BarButton>
+  );
 }

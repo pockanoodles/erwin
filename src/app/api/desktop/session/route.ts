@@ -1,7 +1,7 @@
-import { timingSafeEqual } from "node:crypto";
-
 import { encode } from "next-auth/jwt";
 import { NextRequest, NextResponse } from "next/server";
+
+import { timingSafeEqual } from "node:crypto";
 
 import { ensureDesktopUser } from "@/lib/desktop/bootstrap";
 import { logger } from "@/lib/logger";
@@ -20,7 +20,8 @@ export const dynamic = "force-dynamic";
  * inside the Electron shell (`ERWIN_RUNTIME=desktop`); everywhere else it is a
  * 404. The shell generates a fresh random token on every launch and hands it
  * to this process over IPC, never through argv or the spawn environment, so it
- * does not show up in `ps`. The server listens on the loopback interface only.
+ * does not show up in `ps`. The server listens on the loopback interface only;
+ * `npm run dev:local -- --lan` is the one deliberate exception, for a phone.
  *
  * The session is the same next-auth JWT a password sign-in produces, so every
  * other route authenticates it the ordinary way.
@@ -54,20 +55,28 @@ export async function GET(request: NextRequest) {
     maxAge: SESSION_MAX_AGE,
   });
 
-  // Relative to the origin the shell loads, not to request.url, which Next's
-  // standalone server reports on a host of its own choosing.
-  const response = NextResponse.redirect(
-    new URL(
-      safeNext(request.nextUrl.searchParams.get("next")),
-      process.env.NEXTAUTH_URL || request.url
-    )
-  );
-  response.cookies.set("next-auth.session-token", token, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
+  // A relative Location, so the browser stays on whatever origin it reached:
+  // localhost in the shell, the Mac's LAN or tailnet address from a phone.
+  // Next's standalone server reports a host of its own choosing in
+  // request.url, and the Host header is the client's to set.
+  const response = new NextResponse(null, {
+    status: 307,
+    headers: { Location: safeNext(request.nextUrl.searchParams.get("next")) },
   });
+  // next-auth reads the __Secure- name exactly when NEXTAUTH_URL is https
+  // (behind an HTTPS proxy); a plain cookie still rides `tailscale serve`.
+  const secure = process.env.NEXTAUTH_URL?.startsWith("https://") ?? false;
+  response.cookies.set(
+    secure ? "__Secure-next-auth.session-token" : "next-auth.session-token",
+    token,
+    {
+      httpOnly: true,
+      secure,
+      sameSite: "lax",
+      path: "/",
+      maxAge: SESSION_MAX_AGE,
+    }
+  );
   return response;
 }
 
@@ -77,9 +86,10 @@ function tokensMatch(a: string, b: string): boolean {
   return x.length === y.length && timingSafeEqual(x, y);
 }
 
-/** Only same-origin paths; anything else lands on the home route. */
+/** Only same-origin paths; anything else lands on the home route. Browsers
+ *  read a backslash as a slash, so `/\host` is as foreign as `//host`. */
 function safeNext(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//")) {
+  if (!next || !next.startsWith("/") || /^\/[/\\]/.test(next)) {
     return "/";
   }
   return next;

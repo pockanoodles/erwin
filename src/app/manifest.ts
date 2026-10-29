@@ -1,5 +1,6 @@
-import { brand } from "@/lib/brand";
 import type { MetadataRoute } from "next";
+
+import { brand } from "@/lib/brand";
 
 // PWA manifest so erwin installs as a standalone app (macOS "Add to Dock",
 // iOS/Android home screen) with no browser chrome. One colour pair only, so
@@ -9,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: brand.name,
     short_name: brand.name,
     description: brand.description,
-    start_url: "/focus",
+    start_url: "/today",
     display: "standalone",
     background_color: "#0e0d08",
     theme_color: "#14130d",

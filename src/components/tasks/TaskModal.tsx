@@ -137,6 +137,7 @@ export function TaskModal({
   );
   const [goalId, setGoalId] = useState<string | null>(null);
   const [goals, setGoals] = useState<{ id: string; title: string }[]>([]);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const ladderOn = useModuleOn("ladder");
   const titleInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,6 +163,7 @@ export function TaskModal({
     setScheduledEnd("");
     setPriority(null);
     setGoalId(initialGoalId ?? null);
+    setShowAdvanced(false);
   }, [initialProjectId, initialGoalId]);
 
   // Goals in the active cycle, for the optional goal link (Ladder's, so only
@@ -220,6 +222,18 @@ export function TaskModal({
       setScheduledEnd(toDateTimeInput(task.scheduledEnd));
       setPriority(task.priority || null);
       setGoalId(task.goalLinks?.[0]?.goalId ?? null);
+      setShowAdvanced(
+        Boolean(
+          task.description ||
+            task.startDate ||
+            task.postponedUntil ||
+            task.energyLevel ||
+            task.preferredTime ||
+            task.scheduledStart ||
+            task.tags.length > 0 ||
+            task.isRecurring
+        )
+      );
     } else if (!task && isOpen) {
       resetForm();
     }
@@ -312,7 +326,7 @@ export function TaskModal({
             />
           </div>
 
-          <div>
+          <div className={cn(!showAdvanced && "hidden sm:block")}>
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
@@ -324,68 +338,12 @@ export function TaskModal({
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={status}
-                onValueChange={(value) => setStatus(value as TaskStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue>{formatEnumValue(status)}</SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(TaskStatus).map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {formatEnumValue(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <Label htmlFor="dueDate">Due Date</Label>
               <Input
                 type="date"
                 id="dueDate"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                type="date"
-                id="startDate"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional: Task won&apos;t be scheduled before this date
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="postponedUntil">Defer until</Label>
-              <Input
-                type="datetime-local"
-                id="postponedUntil"
-                value={postponedUntil}
-                onChange={(e) => setPostponedUntil(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Hidden from Focus and Tasks until this time
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                type="number"
-                id="duration"
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                min="0"
               />
             </div>
 
@@ -411,6 +369,62 @@ export function TaskModal({
             </div>
 
             <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                type="number"
+                id="duration"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+                min="0"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={status}
+                onValueChange={(value) => setStatus(value as TaskStatus)}
+              >
+                <SelectTrigger>
+                  <SelectValue>{formatEnumValue(status)}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.values(TaskStatus).map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {formatEnumValue(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className={cn(!showAdvanced && "hidden sm:block")}>
+              <Label htmlFor="startDate">Start Date</Label>
+              <Input
+                type="date"
+                id="startDate"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Optional: Task won&apos;t be scheduled before this date
+              </p>
+            </div>
+
+            <div className={cn(!showAdvanced && "hidden sm:block")}>
+              <Label htmlFor="postponedUntil">Defer until</Label>
+              <Input
+                type="datetime-local"
+                id="postponedUntil"
+                value={postponedUntil}
+                onChange={(e) => setPostponedUntil(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Hidden from Focus and Tasks until this time
+              </p>
+            </div>
+
+            <div className={cn(!showAdvanced && "hidden sm:block")}>
               <Label htmlFor="energyLevel">Energy Level</Label>
               <Select
                 value={energyLevel || "none"}
@@ -434,7 +448,7 @@ export function TaskModal({
               </Select>
             </div>
 
-            <div>
+            <div className={cn(!showAdvanced && "hidden sm:block")}>
               <Label htmlFor="preferredTime">Preferred Time</Label>
               <Select
                 value={preferredTime || "none"}
@@ -461,7 +475,22 @@ export function TaskModal({
             </div>
           </div>
 
-          <div className="space-y-4 border-t pt-2">
+          {!showAdvanced ? (
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(true)}
+              className="er-slash font-mono text-xs font-semibold uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+            >
+              More options (notes, schedule, tags, repeat)
+            </button>
+          ) : null}
+
+          <div
+            className={cn(
+              "space-y-4 border-t pt-2",
+              !showAdvanced && "hidden sm:block"
+            )}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <Label>Auto-Schedule</Label>
@@ -617,7 +646,7 @@ export function TaskModal({
             </div>
           )}
 
-          <div>
+          <div className={cn(!showAdvanced && "hidden sm:block")}>
             <Label>Tags</Label>
             <div className="mt-2 flex flex-wrap gap-2">
               {tags.map((tag) => (
@@ -675,7 +704,7 @@ export function TaskModal({
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className={cn("space-y-2", !showAdvanced && "hidden sm:block")}>
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="recurring"

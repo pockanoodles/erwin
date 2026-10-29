@@ -5,7 +5,10 @@ import { PropsWithChildren, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 
+import { useIsMobile } from "@/hooks/use-media-query";
+
 export function TanstackQueryProvider({ children }: PropsWithChildren) {
+  const isMobile = useIsMobile();
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -26,7 +29,7 @@ export function TanstackQueryProvider({ children }: PropsWithChildren) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      {process.env.NODE_ENV === "development" && (
+      {process.env.NODE_ENV === "development" && !isMobile && (
         <ReactQueryDevtools initialIsOpen={false} />
       )}
     </QueryClientProvider>
