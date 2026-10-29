@@ -1,7 +1,6 @@
-import fs from "node:fs";
-import path from "node:path";
-
 import { app } from "electron";
+
+import { isAdhocMacBuild } from "./build";
 
 /**
  * Self-update, only where nothing else delivers updates.
@@ -37,18 +36,6 @@ function updatesHandledElsewhere(): boolean {
   if (!app.isPackaged) return true;
   if (process.mas || process.windowsStore) return true;
   if (process.platform === "linux" && !process.env.APPIMAGE) return true;
-  if (process.platform === "darwin" && buildKind() === "adhoc") return true;
+  if (isAdhocMacBuild()) return true;
   return false;
-}
-
-/** `erwinBuild` in the packed package.json; release.yml sets it with -c.extraMetadata. */
-function buildKind(): string | undefined {
-  try {
-    const pkg = JSON.parse(fs.readFileSync(path.join(app.getAppPath(), "package.json"), "utf8")) as {
-      erwinBuild?: unknown;
-    };
-    return typeof pkg.erwinBuild === "string" ? pkg.erwinBuild : undefined;
-  } catch {
-    return undefined;
-  }
 }

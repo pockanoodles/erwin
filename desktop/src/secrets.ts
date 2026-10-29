@@ -10,6 +10,12 @@
  * (some minimal Linux desktops) safeStorage cannot encrypt, so the file is
  * written as plain JSON readable only by this user, and the log says so.
  *
+ * A macOS build signed ad hoc keeps that plain file too. The Keychain lets
+ * only the build that made its item read it without asking, and an ad-hoc
+ * signature names one build: after every update macOS would ask for the login
+ * password before Erwin could start, and Deny would keep it from starting at
+ * all. The first signed build seals the file and removes it.
+ *
  * Losing this file makes stored credentials unreadable: the app keeps working
  * but every integration has to be connected again. It lives next to the
  * database in the user-data folder, so the two are always backed up together.
@@ -20,6 +26,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 import { safeStorage } from "electron";
+
+import { isAdhocMacBuild } from "./build";
 
 export interface InstallKeys {
   nextauthSecret: string;
@@ -38,8 +46,9 @@ export function loadInstallKeys(userData: string): InstallKeys {
   }
   if (fs.existsSync(plainPath)) {
     const keys = parse(fs.readFileSync(plainPath, "utf8"));
-    // A secret service may have appeared since first launch: seal and move.
-    if (safeStorage.isEncryptionAvailable()) {
+    // A secret service, or a signed build, may have appeared since first
+    // launch: seal and move.
+    if (canSeal()) {
       write(sealedPath, safeStorage.encryptString(JSON.stringify(keys)));
       fs.rmSync(plainPath, { force: true });
     }
@@ -50,13 +59,19 @@ export function loadInstallKeys(userData: string): InstallKeys {
     nextauthSecret: crypto.randomBytes(32).toString("base64"),
     erwinSecretKey: crypto.randomBytes(32).toString("base64"),
   };
-  if (safeStorage.isEncryptionAvailable()) {
+  if (canSeal()) {
     write(sealedPath, safeStorage.encryptString(JSON.stringify(keys)));
   } else {
-    console.warn("[keys] no OS secret service; storing install keys as a user-only file");
+    console.warn("[keys] no OS secret service, or an ad-hoc signed build; storing install keys as a user-only file");
     write(plainPath, JSON.stringify(keys));
   }
   return keys;
+}
+
+// The build check comes first: on macOS, asking whether encryption is
+// available already reads the Keychain item.
+function canSeal(): boolean {
+  return !isAdhocMacBuild() && safeStorage.isEncryptionAvailable();
 }
 
 function parse(text: string): InstallKeys {
