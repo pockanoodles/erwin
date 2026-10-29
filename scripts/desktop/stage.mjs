@@ -24,9 +24,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", ".
 const distDir = ".next-desktop";
 const stage = path.join(root, "desktop", ".stage");
 
-function run(cmd, args, env) {
-  execFileSync(cmd, args, { cwd: root, stdio: "inherit", env: { ...process.env, ...env } });
+// Runs a script with this Node. The CLIs are called by their files, not through
+// npx: on Windows npx is npx.cmd, which execFileSync can't start without a shell.
+function run(script, args, env) {
+  execFileSync(process.execPath, [script, ...args], { cwd: root, stdio: "inherit", env: { ...process.env, ...env } });
 }
+const cli = (pkg, file) => path.join(root, "node_modules", pkg, file);
 
 const buildEnv = {
   NODE_ENV: "production",
@@ -39,9 +42,9 @@ const buildEnv = {
 };
 
 if (!process.argv.includes("--skip-build")) {
-  run("npx", ["prisma", "generate"], buildEnv);
-  run("npx", ["next", "build"], buildEnv);
-  run("node", ["scripts/check-client-bundle.mjs"], buildEnv);
+  run(cli("prisma", "build/index.js"), ["generate"], buildEnv);
+  run(cli("next", "dist/bin/next"), ["build"], buildEnv);
+  run("scripts/check-client-bundle.mjs", [], buildEnv);
 }
 
 const standalone = path.join(root, distDir, "standalone");
