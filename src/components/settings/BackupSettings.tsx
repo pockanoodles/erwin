@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 
 import type { DesktopBackup, DesktopBackupKind } from "@/lib/desktop/backups";
 
+import { useResource } from "@/hooks/use-resource";
+
+import type { IntegrationStatus } from "./AccountManager";
 import { SettingRow, SettingsSection } from "./SettingsSection";
 
 interface BackupsState {
@@ -32,9 +35,13 @@ function size(bytes: number): string {
 /**
  * The desktop app's backups (desktop/src/runtime.ts makes them). Renders
  * nothing on a self-hosted server, where backing up the database is the
- * host's job.
+ * host's job, and a note under dev:local, which runs the desktop runtime
+ * without the app that keeps backups.
  */
 export function BackupSettings() {
+  const desktop =
+    useResource<IntegrationStatus>("/api/integration-status").data?.desktop ??
+    false;
   const [state, setState] = useState<BackupsState | null>(null);
   const [working, setWorking] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -90,6 +97,16 @@ export function BackupSettings() {
     }
   };
 
+  if (state && !state.available && desktop) {
+    return (
+      <SettingsSection
+        title="Backups"
+        description="Backups come with the desktop app. npm run dev:local keeps its database in the .local folder of the checkout, so copying that folder is the backup."
+      >
+        {null}
+      </SettingsSection>
+    );
+  }
   if (!state?.available) return null;
   const backups = state.backups ?? [];
   const newest = backups[0];
