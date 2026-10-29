@@ -66,10 +66,10 @@ export const usePeopleStore = create<PeopleStore>()((set, get) => ({
     if (get().status === "idle") set({ status: "loading" });
     try {
       const [active, archived] = await Promise.all([
-        fetch("/api/erwin/people").then((r) =>
+        fetch("/api/sigwald/people").then((r) =>
           json<{ people: PersonRow[] }>(r)
         ),
-        fetch("/api/erwin/people?archived=1").then((r) =>
+        fetch("/api/sigwald/people?archived=1").then((r) =>
           json<{ people: PersonRow[] }>(r)
         ),
       ]);
@@ -86,7 +86,7 @@ export const usePeopleStore = create<PeopleStore>()((set, get) => ({
   loadInteractions: async (personId) => {
     try {
       const body = await json<{ interactions: InteractionRow[] }>(
-        await fetch(`/api/erwin/people/${personId}/interactions`)
+        await fetch(`/api/sigwald/people/${personId}/interactions`)
       );
       set((s) => ({
         interactions: { ...s.interactions, [personId]: body.interactions },
@@ -99,7 +99,7 @@ export const usePeopleStore = create<PeopleStore>()((set, get) => ({
   create: async (input) => {
     try {
       const { person } = await json<{ person: PersonRow }>(
-        await send("/api/erwin/people", "POST", input)
+        await send("/api/sigwald/people", "POST", input)
       );
       await get().load();
       set({ selected: person.id });
@@ -112,7 +112,7 @@ export const usePeopleStore = create<PeopleStore>()((set, get) => ({
   update: async (id, input) => {
     try {
       const { person } = await json<{ person: PersonRow }>(
-        await send(`/api/erwin/people/${id}`, "PATCH", input)
+        await send(`/api/sigwald/people/${id}`, "PATCH", input)
       );
       await get().load();
       return person;
@@ -124,7 +124,7 @@ export const usePeopleStore = create<PeopleStore>()((set, get) => ({
   log: async (personId, input) => {
     try {
       await json(
-        await send(`/api/erwin/people/${personId}/interactions`, "POST", input)
+        await send(`/api/sigwald/people/${personId}/interactions`, "POST", input)
       );
       await Promise.all([get().load(), get().loadInteractions(personId)]);
       return true;

@@ -49,7 +49,7 @@ export function NewsSheet({
   onSelect: (id: string | null) => void;
 }) {
   const { data, loading, error } = useResource<NewsItem[]>(
-    courseKey ? `/api/erwin/news?courseId=${courseKey}` : "/api/erwin/news"
+    courseKey ? `/api/sigwald/news?courseId=${courseKey}` : "/api/sigwald/news"
   );
   const markSeen = useCourseActivityStore((s) => s.markSeen);
   const [query, setQuery] = useState("");

@@ -116,14 +116,14 @@ export function BackupSettings() {
   return (
     <SettingsSection
       title="Backups"
-      description="Erwin keeps copies of everything in it: one a day while it's open, one before any update that changes the database, and one whenever you ask. They sit on this computer, which Help, Show backups opens. Copy that folder to another drive or a cloud folder now and then, so a lost disk doesn't take them too."
+      description="Sigwald keeps copies of everything in it: one a day while it's open, one before any update that changes the database, and one whenever you ask. They sit on this computer, which Help, Show backups opens. Copy that folder to another drive or a cloud folder now and then, so a lost disk doesn't take them too."
     >
       <SettingRow
         label="Back up now"
         description={
           newest
             ? `Newest copy ${format(new Date(newest.createdAt), "MMM d, h:mm a")}.`
-            : "No copies yet. The first daily copy comes a few minutes after Erwin opens."
+            : "No copies yet. The first daily copy comes a few minutes after Sigwald opens."
         }
       >
         <Button
@@ -138,7 +138,7 @@ export function BackupSettings() {
 
       <SettingRow
         label="Restore"
-        description="Erwin restarts into the copy you pick. The database it replaces stays in the data folder, so a restore deletes nothing."
+        description="Sigwald restarts into the copy you pick. The database it replaces stays in the data folder, so a restore deletes nothing."
       >
         {restarting ? (
           <p className="text-[13px] text-muted-foreground" role="status">

@@ -26,7 +26,7 @@ const BLANK: GoalFormValues = {
 };
 
 /**
- * Adding and editing the goals made in Erwin. Goals from the vault never open
+ * Adding and editing the goals made in Sigwald. Goals from the vault never open
  * here: the next projection would overwrite whatever changed.
  */
 export function GoalDialog() {
@@ -111,7 +111,7 @@ export function GoalDialog() {
           <DialogTitle>{editingId ? (values?.isBoss ? "Edit boss" : "Edit goal") : "Add a goal"}</DialogTitle>
           <DialogDescription>
             A goal names the stats its work develops. Each task that counts toward it earns XP for those stats when you
-            finish it, whether it files there on its own or you link it from Tasks. A boss can name its proof, so Erwin
+            finish it, whether it files there on its own or you link it from Tasks. A boss can name its proof, so Sigwald
             knows when it&apos;s beaten.
           </DialogDescription>
         </DialogHeader>

@@ -6,7 +6,7 @@ import {
 } from "crypto";
 
 /**
- * Authenticated encryption for the credentials Erwin stores — OAuth tokens,
+ * Authenticated encryption for the credentials Sigwald stores — OAuth tokens,
  * the Canvas access token, the CalDAV password, third-party API keys.
  *
  * AES-256-GCM from Node's built-in `crypto`; no dependency is added for this.
@@ -27,10 +27,10 @@ const KEY_BYTES = 32;
 const IV_BYTES = 12; // 96 bits, the size GCM is defined for
 // No dot in the prefix: `.` is the envelope separator, and base64url never
 // produces one, so the parts stay unambiguous.
-const ENVELOPE_PREFIX = "erwin_v1";
+const ENVELOPE_PREFIX = "sigwald_v1";
 
 /**
- * `erwin_v1.<iv>.<authTag>.<ciphertext>`, all base64url.
+ * `sigwald_v1.<iv>.<authTag>.<ciphertext>`, all base64url.
  *
  * The version is in the string rather than tracked elsewhere so a future
  * algorithm or key-derivation change can be told apart from this one by
@@ -67,10 +67,10 @@ let cachedKey: Buffer | null = null;
 function key(): Buffer {
   if (cachedKey) return cachedKey;
 
-  const raw = process.env.ERWIN_SECRET_KEY;
+  const raw = process.env.SIGWALD_SECRET_KEY;
   if (!raw) {
     throw new Error(
-      "ERWIN_SECRET_KEY is not set, so stored credentials cannot be read or " +
+      "SIGWALD_SECRET_KEY is not set, so stored credentials cannot be read or " +
         "written. Generate one with `openssl rand -base64 32` and add it to .env."
     );
   }
@@ -78,7 +78,7 @@ function key(): Buffer {
   const decoded = Buffer.from(raw, "base64");
   if (decoded.length !== KEY_BYTES) {
     throw new Error(
-      `ERWIN_SECRET_KEY must decode to ${KEY_BYTES} bytes, got ${decoded.length}. ` +
+      `SIGWALD_SECRET_KEY must decode to ${KEY_BYTES} bytes, got ${decoded.length}. ` +
         "Generate one with `openssl rand -base64 32`."
     );
   }
@@ -136,7 +136,7 @@ export function decryptSecret(value: string): string {
     // tampered with or the key has changed. Both are worth failing on rather
     // than handing back a broken credential and blaming the remote service.
     throw new Error(
-      "A stored credential failed to decrypt. Either ERWIN_SECRET_KEY is not " +
+      "A stored credential failed to decrypt. Either SIGWALD_SECRET_KEY is not " +
         "the key this value was written with, or the row has been altered."
     );
   }

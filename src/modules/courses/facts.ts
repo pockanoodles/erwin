@@ -7,7 +7,7 @@
  *  - `submissionStatus`, Canvas's word on the submission: unsubmitted |
  *    missing | missed | submitted | pending_review | graded | excused. Ops
  *    reads it to tell a hand-ticked completion from one Canvas confirmed;
- *  - `corrections`, where Erwin overrides Canvas for it (a teammate handed
+ *  - `corrections`, where Sigwald overrides Canvas for it (a teammate handed
  *    it in, Connect closes at noon), each with what Canvas said; null when
  *    Canvas stands. `submissionStatus` already has them applied;
  *  - `gradeWeightPercent`: roughly how much of the course grade it's worth;
@@ -23,8 +23,8 @@
 import { courseTab } from "@/components/courses/course-tab";
 
 import { storedCorrections } from "@/lib/canvas/corrections";
-import { projectMissedGrades } from "@/lib/erwin/load-grade-projections";
-import type { RankSignals } from "@/lib/erwin/rank-stage1";
+import { projectMissedGrades } from "@/lib/sigwald/load-grade-projections";
+import type { RankSignals } from "@/lib/sigwald/rank-stage1";
 import type { Db, DbTransaction } from "@/lib/prisma";
 
 import type { FactsRequest, TaskFacts } from "@/modules/server";

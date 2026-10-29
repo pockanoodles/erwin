@@ -325,7 +325,7 @@ function EmptyState({
     <div className="max-w-xl space-y-5 p-6 md:p-10">
       <p className="er-label">No jobs yet</p>
       <p className="text-lg leading-relaxed text-foreground">
-        Add the jobs you work shifts at. Erwin puts each shift on the calendar,
+        Add the jobs you work shifts at. Sigwald puts each shift on the calendar,
         adds up your hours against your weekly cap, and reminds you to hand in
         your timesheet each pay period.
       </p>

@@ -1,15 +1,15 @@
 <p align="center"><img src="brand/app-icon.svg" width="96" alt=""></p>
 
-<h1 align="center">Erwin</h1>
+<h1 align="center">Sigwald</h1>
 
 <p align="center">
-Erwin reads your calendar and your tasks, ranks everything you have to do with a score you
+Sigwald reads your calendar and your tasks, ranks everything you have to do with a score you
 can read, and shows you the one thing to start next. Modules add the rest when you turn them
 on, from your Canvas courses and goals to your workouts and meals.
 </p>
 
 <p align="center">
-  <a href="https://kaitosoeno.com/erwin">kaitosoeno.com/erwin</a> ·
+  <a href="https://kaitosoeno.com/sigwald">kaitosoeno.com/sigwald</a> ·
   <a href="#install">Install</a> ·
   <a href="#modules">Modules</a> ·
   <a href="#how-the-ranking-works">Ranking</a> ·
@@ -18,21 +18,21 @@ on, from your Canvas courses and goals to your workouts and meals.
   <a href="LICENSE">MIT License</a>
 </p>
 
-![Erwin's Today screen, with example data](site/public/shots/today.webp)
+![Sigwald's Today screen, with example data](site/public/shots/today.webp)
 
-## What Erwin does
+## What Sigwald does
 
-Your week is spread across calendars, task lists and whatever else you keep track of, and none of them knows how the others compare. Erwin pulls them into one local database and ranks every task on one scale, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
+Your week is spread across calendars, task lists and whatever else you keep track of, and none of them knows how the others compare. Sigwald pulls them into one local database and ranks every task on one scale, so the top row is always the one to start. It runs as a desktop app with its own database, which means a download works offline with no account, or as a server you host to reach the same data from every device.
 
-- **It ranks by what is at stake.** Due dates, what each task is worth and how much its goal matters feed one fixed-weight score (`src/lib/erwin/rank-stage1.ts`). The order never changes for a reason you cannot read.
+- **It ranks by what is at stake.** Due dates, what each task is worth and how much its goal matters feed one fixed-weight score (`src/lib/sigwald/rank-stage1.ts`). The order never changes for a reason you cannot read.
 - **It shows one thing at a time.** Focus puts the next task, what you need for it and its deadline on one screen, with done, skip and later on the D, S and L keys.
 - **It holds your week.** Google, Outlook and CalDAV calendars, and any calendar with an iCal link, sit together in one view, and tasks drag into the open time or schedule themselves.
 - **It holds only what you use.** [Modules](#modules) add your Canvas courses, goals in two-month cycles, the people you keep in touch with, your workouts, what you eat and the shifts you work. Turning one off hides it everywhere and deletes nothing.
-- **It keeps your data with you.** Everything sits in a database on your machine or your server, and Erwin has no analytics and no AI service ([Privacy](#privacy)).
+- **It keeps your data with you.** Everything sits in a database on your machine or your server, and Sigwald has no analytics and no AI service ([Privacy](#privacy)).
 
 ## The core
 
-Every Erwin has the same four pages, and they hold their place at the top of the rail while modules come and go below them.
+Every Sigwald has the same four pages, and they hold their place at the top of the rail while modules come and go below them.
 
 | Page | What it is for |
 |---|---|
@@ -45,7 +45,7 @@ The top bar is the same strip on every page. It holds the page's own views and a
 
 ## Modules
 
-The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Erwin. Every module starts off, except that School comes on by itself for an install that already had Canvas connected.
+The core works on its own, and everything else is a module you turn on or off at `/modules`. Each module's row there says what it adds, what it keeps and what it sends out of Sigwald. Every module starts off, except that School comes on by itself for an install that already had Canvas connected.
 
 | Module | What it adds | Sends data to |
 |---|---|---|
@@ -60,7 +60,7 @@ Turning a module off hides its page and its tasks from every list and from the s
 
 ### School
 
-School mirrors your Canvas courses. Erwin reads your current courses every 15 minutes and turns their assignments into tasks. Your scores, feedback and rubrics land under Grades, announcements and Inbox messages under News, and module pages and files under Library, stored locally so a task's materials open from the task. Canvas is only ever read, and nothing is written back.
+School mirrors your Canvas courses. Sigwald reads your current courses every 15 minutes and turns their assignments into tasks. Your scores, feedback and rubrics land under Grades, announcements and Inbox messages under News, and module pages and files under Library, stored locally so a task's materials open from the task. Canvas is only ever read, and nothing is written back.
 
 An assignment's impact in the ranking is its share of your final course grade. A weighted course splits each group's weight across the group's points, an unweighted course divides an assignment's points by the course total, and work that doesn't count toward the grade gets none. The Activity view lists what changed since you last looked (an announcement, a new file, a moved due date, a posted grade, work gone missing), with an unseen count in the top bar on every page. In Focus and in the task sheet's pane, an assignment shows its instructions, rubric and materials.
 
@@ -70,13 +70,13 @@ Stats holds your goals. The year is six fixed two-month cycles, which the page c
 
 A goal gets its work in two ways. It can claim where the work comes from, and every task from there files under it on its own, finished ones included. A claim can cover all of Canvas, one course, your Google or Outlook tasks, all reach-outs, all workouts, one Training routine or a project. You can also link a task to a goal by hand in the Goal column on the Tasks page, where each of the cycle's top goals gets a tab along the bottom.
 
-A boss is a dated milestone on a goal, and it can name its proof, which is a Canvas gradebook item or another task. Handing the work in, a grade or an excusal fells the boss, and the item's due date replaces the boss's. A boss with no proof is marked done by hand. A goal you set aside files nothing new but keeps the XP its finished work earned (`src/lib/erwin/goal-rules.ts`, `src/lib/erwin/boss-proof.ts`).
+A boss is a dated milestone on a goal, and it can name its proof, which is a Canvas gradebook item or another task. Handing the work in, a grade or an excusal fells the boss, and the item's due date replaces the boss's. A boss with no proof is marked done by hand. A goal you set aside files nothing new but keeps the XP its finished work earned (`src/lib/sigwald/goal-rules.ts`, `src/lib/sigwald/boss-proof.ts`).
 
-The Stats page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled boss earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/erwin/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A tool that keeps your goals somewhere else can send them, with the Build, through `POST /api/erwin/goals/project`, and `GET /api/erwin/xp` reports the same XP over any span of days.
+The Stats page reads a cycle as a character sheet. A goal names the stats its work develops, from a fixed set of eight (Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith and Arcane). Every finished task earns 1 XP, split evenly across its goals and then across their stats, and a felled boss earns 5. Level L costs L(L+1)/2 XP in all, so each level asks for one more XP than the last. XP is worked out from finished tasks each time the page loads and is never stored, so changing a goal's stats changes its history too (`src/lib/sigwald/xp.ts`). Each cycle can name a Build, the two or three stats it pushes, and the page shows how much of the cycle's XP landed on them. A tool that keeps your goals somewhere else can send them, with the Build, through `POST /api/sigwald/goals/project`, and `GET /api/sigwald/xp` reports the same XP over any span of days.
 
 ### People
 
-People keeps the people you want to stay in touch with. Give someone a cadence (every week up to every six months), and a "Reach out to" task appears a few days before they're due. Logging a conversation on the People page (a message, call, meeting or email) finishes that task and plans the next one from it. Ticking the task off anywhere else in Erwin logs a conversation too, so the next check-in is planned either way.
+People keeps the people you want to stay in touch with. Give someone a cadence (every week up to every six months), and a "Reach out to" task appears a few days before they're due. Logging a conversation on the People page (a message, call, meeting or email) finishes that task and plans the next one from it. Ticking the task off anywhere else in Sigwald logs a conversation too, so the next check-in is planned either way.
 
 ### Training
 
@@ -90,9 +90,9 @@ Nutrition tracks what you eat against daily targets for calories, protein, carbs
 
 ### Work
 
-Work holds the jobs you work shifts at. Each job's shifts show on the calendar through a feed of their own, so the scheduler never plans work on top of them, and the top bar shows the next shift on every page. Shifts come in two ways. A script can send a job's schedule a week at a time (`PUT /api/erwin/shifts`), and each new week replaces that week's imported shifts while keeping what you noted on them. You can also add a shift by hand, like one you picked up, and an import never deletes it. When the schedule later lists the same shift, the two become one.
+Work holds the jobs you work shifts at. Each job's shifts show on the calendar through a feed of their own, so the scheduler never plans work on top of them, and the top bar shows the next shift on every page. Shifts come in two ways. A script can send a job's schedule a week at a time (`PUT /api/sigwald/shifts`), and each new week replaces that week's imported shifts while keeping what you noted on them. You can also add a shift by hand, like one you picked up, and an import never deletes it. When the schedule later lists the same shift, the two become one.
 
-A shift that's over counts as worked. You can drop one you gave away, or enter the times you really worked when you stayed late. Give a job its hourly rate and pay period (weekly or every 2 weeks) and the Hours view adds up each period's hours and estimated pay. Once a period's shifts are worked, a task named for the hours shows up on its last day, listing every shift to enter on the timesheet. Marking the period submitted finishes the task, and ticking the task off anywhere else marks the period submitted. A weekly cap warns you when the week's shifts go over it. Each job also keeps its links (the timesheet, a handbook) and its contacts, and a shift's supervisor links to their phone number when the contacts list has them. A roster can be imported too (`PUT /api/erwin/work/import/contacts`). Contacts stay in Erwin.
+A shift that's over counts as worked. You can drop one you gave away, or enter the times you really worked when you stayed late. Give a job its hourly rate and pay period (weekly or every 2 weeks) and the Hours view adds up each period's hours and estimated pay. Once a period's shifts are worked, a task named for the hours shows up on its last day, listing every shift to enter on the timesheet. Marking the period submitted finishes the task, and ticking the task off anywhere else marks the period submitted. A weekly cap warns you when the week's shifts go over it. Each job also keeps its links (the timesheet, a handbook) and its contacts, and a shift's supervisor links to their phone number when the contacts list has them. A roster can be imported too (`PUT /api/sigwald/work/import/contacts`). Contacts stay in Sigwald.
 
 ### Writing a module
 
@@ -135,7 +135,7 @@ flowchart LR
     DB --> K
 ```
 
-Google, Outlook and CalDAV sync in both directions, so an event you move in Erwin moves in the calendar it came from. Canvas and iCal links are read only. Google and Outlook sync when you use them in the app. Everything else syncs on a background timer, every 15 minutes by default.
+Google, Outlook and CalDAV sync in both directions, so an event you move in Sigwald moves in the calendar it came from. Canvas and iCal links are read only. Google and Outlook sync when you use them in the app. Everything else syncs on a background timer, every 15 minutes by default.
 
 ```mermaid
 sequenceDiagram
@@ -156,7 +156,7 @@ sequenceDiagram
 
 ## How the ranking works
 
-Erwin's ranker is deterministic arithmetic, with no model and no learned weights, so you can work out why a task is on top. Each open task gets a base score between 0 and 2, built from three weighted terms plus a boost and a penalty.
+Sigwald's ranker is deterministic arithmetic, with no model and no learned weights, so you can work out why a task is on top. Each open task gets a base score between 0 and 2, built from three weighted terms plus a boost and a penalty.
 
 ```mermaid
 flowchart LR
@@ -198,66 +198,66 @@ flowchart TD
 
 A task is in danger when it is overdue, when less than three times its estimated effort remains before the due date, or when it has been skipped three times, has an impact above 0.5 and is due within five days. A task nothing vouches for has no impact from its module, no goal behind it and no high priority, and it waits while work with stakes is in danger or due within a day. A task linked to a goal always competes in the main pool, which is how a workout or a reach-out that serves a goal holds its place. The ranker itself names no module, since impact, a goal's lift and a task's stakes all reach it from the modules that are on.
 
-A due date picked without a time counts until the end of that day in your time zone (`src/lib/erwin/due.ts`), so a task due Wednesday is not overdue on Tuesday evening. A module's task carries a real deadline, such as a Canvas assignment's 11:59 PM, and a reach-out or a workout is due by the end of its day.
+A due date picked without a time counts until the end of that day in your time zone (`src/lib/sigwald/due.ts`), so a task due Wednesday is not overdue on Tuesday evening. A module's task carries a real deadline, such as a Canvas assignment's 11:59 PM, and a reach-out or a workout is due by the end of its day.
 
 ## Install
 
-Erwin has not had its first release yet. The channels below are set up in `packaging/` and go live with it, and until then you can run it from source.
+Sigwald has not had its first release yet. The channels below are set up in `packaging/` and go live with it, and until then you can run it from source.
 
 | System | Channel | How |
 |---|---|---|
-| macOS | Homebrew | `brew install --cask pockanoodles/tap/erwin` |
-| macOS | Disk image (Apple silicon, Intel) | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
-| Windows | winget | `winget install KaitoSoeno.Erwin` |
-| Windows | Installer (.exe) | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
-| Linux | Snap Store | `sudo snap install erwin` |
-| Linux | AUR | `yay -S erwin-bin` |
-| Linux | AppImage, .deb, .rpm | [GitHub Releases](https://github.com/pockanoodles/erwin/releases) |
+| macOS | Homebrew | `brew install --cask pockanoodles/tap/sigwald` |
+| macOS | Disk image (Apple silicon, Intel) | [GitHub Releases](https://github.com/pockanoodles/sigwald/releases) |
+| Windows | winget | `winget install KaitoSoeno.Sigwald` |
+| Windows | Installer (.exe) | [GitHub Releases](https://github.com/pockanoodles/sigwald/releases) |
+| Linux | Snap Store | `sudo snap install sigwald` |
+| Linux | AUR | `yay -S sigwald-bin` |
+| Linux | AppImage, .deb, .rpm | [GitHub Releases](https://github.com/pockanoodles/sigwald/releases) |
 | Server | Docker Compose | See [Self-host](#self-host) |
 | Phone | The web app from your server or your Mac | See [On a phone](#on-a-phone) |
 
 The Mac App Store and the Microsoft Store come later, if people ask for them.
 
-Homebrew, winget, the Snap Store and the AUR update Erwin through `brew upgrade`, `winget upgrade`, snapd and `yay -Syu`. The Windows installer and the AppImage update themselves.
+Homebrew, winget, the Snap Store and the AUR update Sigwald through `brew upgrade`, `winget upgrade`, snapd and `yay -Syu`. The Windows installer and the AppImage update themselves.
 
-The builds are not signed by Apple or Microsoft yet. Homebrew takes care of macOS for you. If you download the disk image instead, macOS refuses to open the app until you clear the quarantine flag once: `xattr -dr com.apple.quarantine /Applications/Erwin.app`. That copy doesn't update itself, so download the next release when it comes out. On Windows, SmartScreen asks once before the installer runs (More info, then Run anyway).
+The builds are not signed by Apple or Microsoft yet. Homebrew takes care of macOS for you. If you download the disk image instead, macOS refuses to open the app until you clear the quarantine flag once: `xattr -dr com.apple.quarantine /Applications/Sigwald.app`. That copy doesn't update itself, so download the next release when it comes out. On Windows, SmartScreen asks once before the installer runs (More info, then Run anyway).
 
-Every release file is listed in `SHA256SUMS.txt` and carries a signed record of the workflow run that built it, which you can check with the GitHub CLI: `gh attestation verify Erwin-1.0.0-mac-arm64.dmg -R pockanoodles/erwin`. The server image has one too (`oci://ghcr.io/pockanoodles/erwin:1.0.0`).
+Every release file is listed in `SHA256SUMS.txt` and carries a signed record of the workflow run that built it, which you can check with the GitHub CLI: `gh attestation verify Sigwald-1.0.0-mac-arm64.dmg -R pockanoodles/sigwald`. The server image has one too (`oci://ghcr.io/pockanoodles/sigwald:1.0.0`).
 
 ## Run from source
 
 You need Node 20. Nothing else has to be installed.
 
 ```bash
-git clone https://github.com/pockanoodles/erwin && cd erwin
+git clone https://github.com/pockanoodles/sigwald && cd sigwald
 npm install
 npm run dev:local -- --seed demo
 ```
 
-`dev:local` runs Erwin on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on School, Training, Nutrition and Work. The `--reset` flag starts over with an empty database. It listens on your machine only, and `--lan` opens it to a phone (see [On a phone](#on-a-phone)).
+`dev:local` runs Sigwald on PGlite (Postgres compiled to WebAssembly) with no Postgres or Docker. It keeps its database in the `.local` folder and prints a link that signs you in. The `--seed demo` flag fills a fresh database with one example student's week, with classes, assignments, goals, three workout routines, three days of meals and a campus job's shifts, and it turns on School, Training, Nutrition and Work. The `--reset` flag starts over with an empty database. It listens on your machine only, and `--lan` opens it to a phone (see [On a phone](#on-a-phone)).
 
 ## Self-host
 
-To use Erwin from several devices, run the server with Postgres.
+To use Sigwald from several devices, run the server with Postgres.
 
 ```bash
-cp .env.example .env    # then set NEXTAUTH_SECRET, ERWIN_SECRET_KEY and POSTGRES_PASSWORD
+cp .env.example .env    # then set NEXTAUTH_SECRET, SIGWALD_SECRET_KEY and POSTGRES_PASSWORD
 docker compose up -d
 ```
 
-Generate the two secrets with `openssl rand -base64 32` and the database password with `openssl rand -hex 24`, then put the same password in `DATABASE_URL`. Open http://localhost:3000, and the first account you create is the admin. `ERWIN_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
+Generate the two secrets with `openssl rand -base64 32` and the database password with `openssl rand -hex 24`, then put the same password in `DATABASE_URL`. Open http://localhost:3000, and the first account you create is the admin. `SIGWALD_SECRET_KEY` encrypts stored credentials (OAuth tokens, the Canvas token, CalDAV passwords), so keep it with your backups, because losing it means connecting every integration again.
 
-Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. It publishes Postgres on 127.0.0.1 only, so other machines cannot reach it. The user and database name (`erwin` by default) apply only when the database volume is first created, so changing them later means a new volume.
+Compose refuses to start without `POSTGRES_PASSWORD`, and there is no default. It publishes Postgres on 127.0.0.1 only, so other machines cannot reach it. The user and database name (`sigwald` by default) apply only when the database volume is first created, so changing them later means a new volume.
 
 Password reset email needs `RESEND_API_KEY` and `EMAIL_FROM`, an address on a domain you have verified in Resend. Without `EMAIL_FROM` the server logs an error and sends nothing. The desktop app sends no email.
 
-Background sync runs on a timer in the `worker` service, every 15 minutes by default (`ERWIN_BACKGROUND_SYNC_INTERVAL_MS`). A single container can set `ERWIN_SCHEDULER=inprocess` instead, which runs the same loop inside the app. Run one or the other, because running both syncs everything twice.
+Background sync runs on a timer in the `worker` service, every 15 minutes by default (`SIGWALD_BACKGROUND_SYNC_INTERVAL_MS`). A single container can set `SIGWALD_SCHEDULER=inprocess` instead, which runs the same loop inside the app. Run one or the other, because running both syncs everything twice.
 
-Back up the database yourself, because a server keeps no copies of its own. `docker compose exec db pg_dump -U erwin -Fc erwin > erwin-$(date +%F).dump` makes one, `pg_restore` puts it back, and `ERWIN_SECRET_KEY` has to travel with it.
+Back up the database yourself, because a server keeps no copies of its own. `docker compose exec db pg_dump -U sigwald -Fc sigwald > sigwald-$(date +%F).dump` makes one, `pg_restore` puts it back, and `SIGWALD_SECRET_KEY` has to travel with it.
 
 ## On a phone
 
-On a phone, Erwin is the same web app with a layout for small screens and a bottom bar. Open it in the browser and add it to your home screen (in Safari, Share, then Add to Home Screen).
+On a phone, Sigwald is the same web app with a layout for small screens and a bottom bar. Open it in the browser and add it to your home screen (in Safari, Share, then Add to Home Screen).
 
 - **From a self-hosted server.** Put it behind HTTPS, with a reverse proxy or with `tailscale serve 3000` on the server, and set `NEXTAUTH_URL` to that address. Add the same address to your Google and Outlook redirect URIs.
 - **From your Mac over Tailscale.** Run `npm run dev:local`, then `tailscale serve 3000` on the Mac. On the phone, open the printed sign-in link with `http://localhost:3000` replaced by the Mac's `https://<name>.<tailnet>.ts.net` address. The server stays on the Mac's loopback interface, and only your tailnet can reach it.
@@ -293,17 +293,17 @@ Pick the desktop app if you want a download that works offline with no account. 
 
 ## Connecting services
 
-**Canvas** comes with the School module. Turn on School in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Erwin keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
+**Canvas** comes with the School module. Turn on School in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Sigwald keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
 
 **CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose CalDAV, and enter the server URL with an app-specific password.
 
-**An iCal link** works for any calendar that publishes one, with no account and no OAuth app, in the desktop app too. In Settings, open Accounts, choose iCal link, and paste the address. The calendar is read only, and Erwin reads it again every 15 minutes. A moved occurrence of a repeating event shows once, at its new time.
+**An iCal link** works for any calendar that publishes one, with no account and no OAuth app, in the desktop app too. In Settings, open Accounts, choose iCal link, and paste the address. The calendar is read only, and Sigwald reads it again every 15 minutes. A moved occurrence of a repeating event shows once, at its new time.
 
 - Google Calendar: Settings, the calendar, Integrate calendar, then Secret address in iCal format.
 - Outlook: Settings, Calendar, Shared calendars, Publish a calendar, then the ICS link.
 - Apple Calendar: share the calendar as a Public Calendar and copy its link.
 
-A secret address lets anyone who has it read that calendar, so treat it like a password. Erwin only fetches public addresses, never one on your machine or your local network.
+A secret address lets anyone who has it read that calendar, so treat it like a password. Sigwald only fetches public addresses, never one on your machine or your local network.
 
 **Google Calendar** needs your own OAuth app.
 
@@ -345,16 +345,16 @@ The repository holds the app (`src/`, with each module under `src/modules/`, and
 
 ## Privacy
 
-Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Erwin has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Stats, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `ERWIN_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Sigwald has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Stats, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `SIGWALD_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
 
 ## Credits
 
-Erwin began as a fork of [FluidCalendar](https://github.com/dotnetfactory/fluid-calendar) by Emad Ibrahim, an open-source alternative to Motion, and keeps its MIT license. Erwin is not affiliated with or endorsed by FluidCalendar or its author.
+Sigwald began as a fork of [FluidCalendar](https://github.com/dotnetfactory/fluid-calendar) by Emad Ibrahim, an open-source alternative to Motion, and keeps its MIT license. Sigwald is not affiliated with or endorsed by FluidCalendar or its author.
 
 ## License
 
-Erwin is MIT licensed. The license carries two copyright lines, Copyright (c) 2024 Emad Ibrahim and Copyright (c) 2026 Kaito Soeno, and its full text is in [LICENSE](LICENSE).
+Sigwald is MIT licensed. The license carries two copyright lines, Copyright (c) 2024 Emad Ibrahim and Copyright (c) 2026 Kaito Soeno, and its full text is in [LICENSE](LICENSE).
 
 ## Name
 
-Erwin is unrelated to erwin Data Modeler (Quest Software) and to any fictional character.
+Sigwald is unrelated to sigwald Data Modeler (Quest Software) and to any fictional character.

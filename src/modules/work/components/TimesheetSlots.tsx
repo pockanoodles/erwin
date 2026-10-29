@@ -6,7 +6,7 @@ import Link from "next/link";
 
 import { toast } from "sonner";
 
-import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+import type { FocusQueueTask } from "@/lib/sigwald/parse-task";
 
 import { PeriodCard } from "@/modules/work/components/PeriodPane";
 import { LINK } from "@/modules/work/components/parts";
@@ -15,7 +15,7 @@ import type { PeriodRow, TimesheetDetail } from "@/modules/work/types";
 
 import { invalidateResources, useResource } from "@/hooks/use-resource";
 
-import { useErwinStatusStore } from "@/store/erwinStatus";
+import { useSigwaldStatusStore } from "@/store/sigwaldStatus";
 
 /**
  * Work's task slots (src/modules/client.tsx): a "Submit hours" task in Focus
@@ -23,7 +23,7 @@ import { useErwinStatusStore } from "@/store/erwinStatus";
  * come to and the timesheet link, so the hours can be entered from here.
  */
 function useTimesheet(taskId: string) {
-  return useResource<TimesheetDetail>(`/api/erwin/work/tasks/${taskId}`);
+  return useResource<TimesheetDetail>(`/api/sigwald/work/tasks/${taskId}`);
 }
 
 /** Marking it is quiet here: Focus and the sheet have their own Done. */
@@ -37,15 +37,15 @@ function TimesheetCard({ detail }: { detail: TimesheetDetail }) {
     setBusy(true);
     try {
       const res = await fetch(
-        `/api/erwin/work/jobs/${job.id}/periods/${period.first}`,
+        `/api/sigwald/work/jobs/${job.id}/periods/${period.first}`,
         { method: submitted ? "POST" : "DELETE" }
       );
       if (!res.ok) throw new Error(`Request failed (${res.status})`);
       const body = (await res.json()) as { period: PeriodRow };
       setPeriod(body.period);
-      invalidateResources("/api/erwin/work/");
+      invalidateResources("/api/sigwald/work/");
       // Submitting finishes the task; reopening brings it back.
-      void useErwinStatusStore.getState().load({ force: true });
+      void useSigwaldStatusStore.getState().load({ force: true });
     } catch {
       toast.error("Couldn't change that. Try again.");
     }

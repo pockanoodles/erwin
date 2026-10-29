@@ -12,7 +12,7 @@ import type { LibraryCourse, LibraryMaterial, MaterialDetail } from "@/types/cou
 import type { LibraryRow } from "./library-rows";
 
 /**
- * The library's reading pane: whatever the selected row is, shown in Erwin
+ * The library's reading pane: whatever the selected row is, shown in Sigwald
  * rather than behind a Canvas login. Pages render their text, PDFs and
  * images render inline from the local copy, and an assignment row shows the
  * same packet the Tasks sheet does.
@@ -57,7 +57,7 @@ function ActionLink({ href, children, newTab = true }: { href: string; children:
 
 function Syllabus({ course }: { course: LibraryCourse }) {
   const { data, loading, error } = useResource<{ syllabusHtml: string }>(
-    `/api/erwin/courses/${course.id}/syllabus`
+    `/api/sigwald/courses/${course.id}/syllabus`
   );
   return (
     <>
@@ -74,7 +74,7 @@ function Syllabus({ course }: { course: LibraryCourse }) {
 }
 
 function Page({ m, moduleName }: { m: LibraryMaterial; moduleName: string | null }) {
-  const { data, loading, error } = useResource<MaterialDetail>(`/api/erwin/materials/${m.id}`);
+  const { data, loading, error } = useResource<MaterialDetail>(`/api/sigwald/materials/${m.id}`);
   return (
     <>
       <Header
@@ -100,7 +100,7 @@ function Page({ m, moduleName }: { m: LibraryMaterial; moduleName: string | null
 }
 
 function File({ m, moduleName }: { m: LibraryMaterial; moduleName: string | null }) {
-  const local = `/api/erwin/materials/${m.id}/file`;
+  const local = `/api/sigwald/materials/${m.id}/file`;
   const status = statusLabel(m);
   const meta = [m.fileName, sizeLabel(m.sizeBytes), status].filter(Boolean).join(" · ");
   const inline = m.cached && m.contentType && INLINE_TYPES.test(m.contentType);

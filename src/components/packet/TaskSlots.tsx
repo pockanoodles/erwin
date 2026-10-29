@@ -10,7 +10,7 @@ import {
   useTaskPacket,
 } from "@/components/packet/TaskPacket";
 
-import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+import type { FocusQueueTask } from "@/lib/sigwald/parse-task";
 
 /**
  * Courses' task slots (src/modules/client.tsx): how a Canvas assignment

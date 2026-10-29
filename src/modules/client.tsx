@@ -29,7 +29,7 @@ import {
 import { CanvasLmsSettings } from "@/components/settings/CanvasLmsSettings";
 import type { TasksLens } from "@/components/tasks/lens";
 
-import type { FocusQueueTask } from "@/lib/erwin/parse-task";
+import type { FocusQueueTask } from "@/lib/sigwald/parse-task";
 
 import { moduleForSource } from "@/modules";
 import { useCoursesTasksLens } from "@/modules/courses/tasks";

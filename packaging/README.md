@@ -1,4 +1,4 @@
-# Releasing Erwin
+# Releasing Sigwald
 
 A tag builds every package and drafts a GitHub Release. Publishing the draft
 ships it to every package manager below: `channels.yml` pushes the Homebrew
@@ -15,12 +15,12 @@ builds").
 
 | Channel | Install | How it updates |
 | --- | --- | --- |
-| GitHub Releases | Download from https://github.com/pockanoodles/erwin/releases | The Windows installer and the AppImage update themselves from the release feed, and so will the macOS DMG and zip once they are notarized. deb, rpm and tar.gz do not. Download the new file. |
-| winget | `winget install KaitoSoeno.Erwin` | `winget upgrade KaitoSoeno.Erwin`, or the in-app updater |
-| Homebrew | `brew install --cask pockanoodles/tap/erwin` | `brew upgrade --cask erwin` |
-| Snap Store | `sudo snap install erwin` | snapd refreshes it |
-| AUR | `yay -S erwin-bin` | `yay -Syu` |
-| Docker (self-hosted server) | `docker pull ghcr.io/pockanoodles/erwin:latest` | Pull a newer tag |
+| GitHub Releases | Download from https://github.com/pockanoodles/sigwald/releases | The Windows installer and the AppImage update themselves from the release feed, and so will the macOS DMG and zip once they are notarized. deb, rpm and tar.gz do not. Download the new file. |
+| winget | `winget install KaitoSoeno.Sigwald` | `winget upgrade KaitoSoeno.Sigwald`, or the in-app updater |
+| Homebrew | `brew install --cask pockanoodles/tap/sigwald` | `brew upgrade --cask sigwald` |
+| Snap Store | `sudo snap install sigwald` | snapd refreshes it |
+| AUR | `yay -S sigwald-bin` | `yay -Syu` |
+| Docker (self-hosted server) | `docker pull ghcr.io/pockanoodles/sigwald:latest` | Pull a newer tag |
 | Mac App Store, Microsoft Store | Later | Their store |
 
 The in-app updater is off in every build that a store or package manager
@@ -60,7 +60,7 @@ The store jobs start after the draft release exists, so nothing reaches a
 store unless every direct build passed. The `.pkg` and `.appx` stay out of the
 GitHub Release. Nobody can install them outside their store.
 
-`docker.yml` runs on its own. A push to `main` publishes `ghcr.io/pockanoodles/erwin:edge`.
+`docker.yml` runs on its own. A push to `main` publishes `ghcr.io/pockanoodles/sigwald:edge`.
 A tag publishes `:X.Y.Z`, `:X.Y` and `:latest`, and a pre-release tag publishes
 only its own version. Every published image carries a provenance attestation
 in the registry.
@@ -73,8 +73,8 @@ checks out the tag, renders the manifests from the release's
 
 | Job | Runs when this secret exists | Result |
 | --- | --- | --- |
-| `tap` | `TAP_DEPLOY_KEY` | Commits `Casks/erwin.rb` to `pockanoodles/homebrew-tap` |
-| `aur` | `AUR_SSH_PRIVATE_KEY` | Pushes `PKGBUILD` and `.SRCINFO` to `erwin-bin` on the AUR |
+| `tap` | `TAP_DEPLOY_KEY` | Commits `Casks/sigwald.rb` to `pockanoodles/homebrew-tap` |
+| `aur` | `AUR_SSH_PRIVATE_KEY` | Pushes `PKGBUILD` and `.SRCINFO` to `sigwald-bin` on the AUR |
 | `winget` | `WINGET_CREATE_GITHUB_TOKEN` | Opens the pull request on `microsoft/winget-pkgs` with `wingetcreate submit`, unless the version is already there or has an open pull request |
 | `snap` | `SNAPCRAFT_STORE_CREDENTIALS` | Releases the revision with this release's version to `stable` |
 
@@ -89,20 +89,20 @@ Every file in a release is in `SHA256SUMS.txt` and has a signed attestation
 that says which workflow run, commit and tag built it:
 
 ```sh
-gh attestation verify Erwin-1.0.0-mac-arm64.dmg -R pockanoodles/erwin
-gh attestation verify oci://ghcr.io/pockanoodles/erwin:1.0.0 -R pockanoodles/erwin
+gh attestation verify Sigwald-1.0.0-mac-arm64.dmg -R pockanoodles/sigwald
+gh attestation verify oci://ghcr.io/pockanoodles/sigwald:1.0.0 -R pockanoodles/sigwald
 ```
 
 ## Unsigned builds
 
 Until there is an Apple Developer ID and a Windows certificate:
 
-- **macOS.** CI signs the app ad hoc and marks it `erwinBuild: adhoc`, which
+- **macOS.** CI signs the app ad hoc and marks it `sigwaldBuild: adhoc`, which
   turns the in-app updater off (`desktop/src/updater.ts`): Squirrel.Mac can't
   update an ad-hoc signed app. Gatekeeper refuses the app while it carries the
   quarantine flag. The cask clears the flag in `postflight` and leaves updates
   to `brew upgrade`, and someone who downloads the DMG clears it with
-  `xattr -dr com.apple.quarantine /Applications/Erwin.app`. When notarization
+  `xattr -dr com.apple.quarantine /Applications/Sigwald.app`. When notarization
   lands, drop the `postflight` block, add `auto_updates true` back to the cask
   and update the README's Install section.
   The same flag keeps the install keys out of the Keychain
@@ -124,7 +124,7 @@ store uploads.
   `brand/app-icon.svg`.
 - **Privacy policy.** Both app stores ask for a privacy policy URL. `DATAFLOW.md`
   is the source for what it says.
-- **Docker image.** GitHub creates `ghcr.io/pockanoodles/erwin` as a private
+- **Docker image.** GitHub creates `ghcr.io/pockanoodles/sigwald` as a private
   package. After the first push, open the package settings and make it public.
   If a package with that name already exists, add this repo under "Manage
   Actions access" with write access.
@@ -147,22 +147,22 @@ store uploads.
 1. Create the empty repo `pockanoodles/homebrew-tap` on GitHub and push
    `~/Projects/homebrew-tap` to it (see "First submission by hand"). CI clones
    it, so it needs that first commit.
-2. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C erwin-ci -f tap_key`.
+2. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C sigwald-ci -f tap_key`.
 3. In the tap's Settings, Deploy keys, add `tap_key.pub` with write access.
-4. `gh secret set TAP_DEPLOY_KEY -R pockanoodles/erwin < tap_key`, then delete
+4. `gh secret set TAP_DEPLOY_KEY -R pockanoodles/sigwald < tap_key`, then delete
    both files.
 
 The key can write to the tap and nothing else.
 
 ### AUR
 
-1. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C erwin-ci -f aur_key`.
+1. Make a key for CI only: `ssh-keygen -t ed25519 -N "" -C sigwald-ci -f aur_key`.
 2. Add `aur_key.pub` to your AUR account (My Account, SSH Public Key). The AUR
    takes several keys, one per line.
-3. `gh secret set AUR_SSH_PRIVATE_KEY -R pockanoodles/erwin < aur_key`, then
+3. `gh secret set AUR_SSH_PRIVATE_KEY -R pockanoodles/sigwald < aur_key`, then
    delete both files.
 
-The first push creates `erwin-bin`. CI checks the AUR's host key against the
+The first push creates `sigwald-bin`. CI checks the AUR's host key against the
 ED25519 fingerprint it publishes on https://aur.archlinux.org.
 
 ### winget
@@ -171,7 +171,7 @@ ED25519 fingerprint it publishes on https://aur.archlinux.org.
    https://aka.ms/winget-create-token describes. wingetcreate forks
    `microsoft/winget-pkgs` into the token's account and opens the pull request
    from there.
-2. `gh secret set WINGET_CREATE_GITHUB_TOKEN -R pockanoodles/erwin`.
+2. `gh secret set WINGET_CREATE_GITHUB_TOKEN -R pockanoodles/sigwald`.
 
 The first pull request is a new package, and the winget reviewers check it by
 hand. Run the validation under "First submission by hand" on a Windows machine
@@ -185,7 +185,7 @@ first.
    - Developer ID Application, for the DMG and zip.
    - Apple Distribution, for the Mac App Store app.
    - Mac Installer Distribution, for the Mac App Store `.pkg`.
-3. Register the explicit App ID `com.kaitosoeno.erwin` and create a Mac App
+3. Register the explicit App ID `com.kaitosoeno.sigwald` and create a Mac App
    Store Connect provisioning profile for it. Download the
    `.provisionprofile`.
 4. Create an app-specific password in your Apple Account settings, for
@@ -202,7 +202,7 @@ first.
 
 ### Microsoft Store (later)
 
-1. Open the Partner Center account and reserve the name Erwin as a new MSIX app.
+1. Open the Partner Center account and reserve the name Sigwald as a new MSIX app.
 2. Under Product management, Product identity, copy:
    - Package/Identity/Name into `MS_STORE_IDENTITY_NAME`.
    - Package/Identity/Publisher (it starts with `CN=`) into `MS_STORE_PUBLISHER`.
@@ -211,13 +211,13 @@ first.
      publisher display name shown there.
 3. Submit the first version by hand. Push a 1.0.0 tag with the two identity
    secrets in place. The `msstore` job keeps the `.appx` as the `store-appx`
-   artifact. Download it from the run and upload it on the Packages page. Erwin
+   artifact. Download it from the run and upload it on the Packages page. Sigwald
    asks for the restricted `runFullTrust` capability, so Partner Center wants a
    sentence on why. The reason is that it runs its own local server.
 4. After the app is live, set up automatic uploads. Register an application in
    Microsoft Entra ID and add a client secret. In Partner Center, open Account
    settings, User management, Microsoft Entra applications, and add it with the
-   Manager role. Microsoft supports this route for free products only, and Erwin
+   Manager role. Microsoft supports this route for free products only, and Sigwald
    is free.
 5. Add `MS_STORE_TENANT_ID`, `MS_STORE_CLIENT_ID`, `MS_STORE_CLIENT_SECRET` and
    `MS_STORE_SELLER_ID` (the publisher id in Account settings).
@@ -281,20 +281,20 @@ Run the manifest script (below), publish the release, then:
 
 ```sh
 git clone git@github.com:<you>/winget-pkgs.git && cd winget-pkgs
-dir=manifests/k/KaitoSoeno/Erwin/1.0.0
-mkdir -p "$dir" && cp /path/to/erwin/packaging/winget/*.yaml "$dir"
+dir=manifests/k/KaitoSoeno/Sigwald/1.0.0
+mkdir -p "$dir" && cp /path/to/sigwald/packaging/winget/*.yaml "$dir"
 ```
 
 On Windows, check it before you push:
 
 ```powershell
-winget validate --manifest manifests\k\KaitoSoeno\Erwin\1.0.0
+winget validate --manifest manifests\k\KaitoSoeno\Sigwald\1.0.0
 winget settings --enable LocalManifestFiles
-winget install --manifest manifests\k\KaitoSoeno\Erwin\1.0.0
+winget install --manifest manifests\k\KaitoSoeno\Sigwald\1.0.0
 ```
 
 Commit on a branch and open a pull request titled
-`New package: KaitoSoeno.Erwin version 1.0.0`. The installer is the per-user
+`New package: KaitoSoeno.Sigwald version 1.0.0`. The installer is the per-user
 NSIS build (`Scope: user`). That matches `nsis.oneClick: true` and
 `nsis.perMachine: false` in `desktop/electron-builder.yml`.
 
@@ -302,18 +302,18 @@ Later versions can go through `wingetcreate`, which needs a GitHub token (see
 https://aka.ms/winget-create-token):
 
 ```powershell
-wingetcreate update KaitoSoeno.Erwin --version <version> --urls <installer url> --submit
+wingetcreate update KaitoSoeno.Sigwald --version <version> --urls <installer url> --submit
 ```
 
 ### AUR
 
 ```sh
-git clone ssh://aur@aur.archlinux.org/erwin-bin.git
-cp /path/to/erwin/packaging/aur/erwin-bin/PKGBUILD erwin-bin/
-cd erwin-bin
+git clone ssh://aur@aur.archlinux.org/sigwald-bin.git
+cp /path/to/sigwald/packaging/aur/sigwald-bin/PKGBUILD sigwald-bin/
+cd sigwald-bin
 makepkg --printsrcinfo > .SRCINFO    # on Arch
 makepkg -f && namcap PKGBUILD *.pkg.tar.zst
-git add PKGBUILD .SRCINFO && git commit -m "erwin-bin 1.0.0" && git push origin master
+git add PKGBUILD .SRCINFO && git commit -m "sigwald-bin 1.0.0" && git push origin master
 ```
 
 The AUR only accepts the `master` branch. Cloning a new name gives you an
@@ -332,11 +332,11 @@ git push -u origin main
 After `channels.yml` has pushed the cask:
 
 ```sh
-brew install --cask pockanoodles/tap/erwin
-brew audit --cask --online --strict pockanoodles/tap/erwin
+brew install --cask pockanoodles/tap/sigwald
+brew audit --cask --online --strict pockanoodles/tap/sigwald
 ```
 
-The cask in the tap is a copy of `packaging/homebrew/erwin.rb`, and CI
+The cask in the tap is a copy of `packaging/homebrew/sigwald.rb`, and CI
 overwrites it on every release.
 
 ## Every release
@@ -346,8 +346,8 @@ channels it pushed. For a channel it skipped, render the manifests and push
 them as in "First submission by hand":
 
 ```sh
-gh release download v1.0.0 -p SHA256SUMS.txt -D /tmp/erwin-release
-node scripts/release/update-manifests.mjs 1.0.0 /tmp/erwin-release/SHA256SUMS.txt \
+gh release download v1.0.0 -p SHA256SUMS.txt -D /tmp/sigwald-release
+node scripts/release/update-manifests.mjs 1.0.0 /tmp/sigwald-release/SHA256SUMS.txt \
   --tap ~/Projects/homebrew-tap
 git diff packaging
 ```
@@ -374,19 +374,19 @@ first release. The script replaces them and keeps working on later runs.
 
 ## File names
 
-CI relies on `artifactName: "Erwin-${version}-${os}-${arch}.${ext}"` in
+CI relies on `artifactName: "Sigwald-${version}-${os}-${arch}.${ext}"` in
 `desktop/electron-builder.yml`. electron-builder fills `${arch}` per file type,
 so the names differ by type:
 
 | File | Name |
 | --- | --- |
-| DMG, zip | `Erwin-<version>-mac-arm64.dmg`, `Erwin-<version>-mac-x64.dmg` |
-| NSIS installer | `Erwin-<version>-win-x64.exe` |
-| AppImage | `Erwin-<version>-linux-x86_64.AppImage`, `-linux-arm64.AppImage` |
-| deb | `Erwin-<version>-linux-amd64.deb`, `-linux-arm64.deb` |
-| rpm | `Erwin-<version>-linux-x86_64.rpm`, `-linux-aarch64.rpm` |
-| tar.gz | `Erwin-<version>-linux-x64.tar.gz`, `-linux-arm64.tar.gz` |
-| snap | `Erwin-<version>-linux-amd64.snap` |
+| DMG, zip | `Sigwald-<version>-mac-arm64.dmg`, `Sigwald-<version>-mac-x64.dmg` |
+| NSIS installer | `Sigwald-<version>-win-x64.exe` |
+| AppImage | `Sigwald-<version>-linux-x86_64.AppImage`, `-linux-arm64.AppImage` |
+| deb | `Sigwald-<version>-linux-amd64.deb`, `-linux-arm64.deb` |
+| rpm | `Sigwald-<version>-linux-x86_64.rpm`, `-linux-aarch64.rpm` |
+| tar.gz | `Sigwald-<version>-linux-x64.tar.gz`, `-linux-arm64.tar.gz` |
+| snap | `Sigwald-<version>-linux-amd64.snap` |
 
 The tar.gz holds one top-level folder named after the file. The cask, the
 winget manifest and the PKGBUILD read the five files named in

@@ -1,10 +1,10 @@
 {
-  "name": "erwin-desktop",
-  "productName": "Erwin",
+  "name": "sigwald-desktop",
+  "productName": "Sigwald",
   "version": "1.0.0",
-  "description": "Erwin reads your calendar, your tasks and the modules you turn on, then tells you the one thing to do next.",
-  "homepage": "https://kaitosoeno.com/erwin",
-  "repository": "github:pockanoodles/erwin",
+  "description": "Sigwald reads your calendar, your tasks and the modules you turn on, then tells you the one thing to do next.",
+  "homepage": "https://kaitosoeno.com/sigwald",
+  "repository": "github:pockanoodles/sigwald",
   "license": "MIT",
   "author": {
     "name": "Kaito Soeno",

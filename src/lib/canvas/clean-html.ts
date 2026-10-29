@@ -1,5 +1,5 @@
 /**
- * Canvas HTML → HTML that is safe to render inside Erwin. Pure — the caller
+ * Canvas HTML → HTML that is safe to render inside Sigwald. Pure — the caller
  * supplies what's mirrored locally (`material-html.ts` does the lookup).
  *
  * Two jobs at once:
@@ -7,7 +7,7 @@
  *     instructor-authored HTML; only structural markup survives — no script,
  *     style, iframes, event handlers or inline styling.
  *  2. Point links at the local mirror. A link to a course file that's already
- *     on disk opens Erwin's copy instead of a Canvas login page; a link to a
+ *     on disk opens Sigwald's copy instead of a Canvas login page; a link to a
  *     mirrored page opens it in the library. Anything else Canvas-relative is
  *     made absolute so it still reaches Canvas.
  */
@@ -31,7 +31,7 @@ export interface CleanOptions {
 export const NO_TARGETS: LocalTargets = { files: new Map(), pages: new Map() };
 
 export const materialFileHref = (materialId: string) =>
-  `/api/erwin/materials/${materialId}/file`;
+  `/api/sigwald/materials/${materialId}/file`;
 export const materialLibraryHref = (materialId: string) =>
   `/courses?m=${materialId}`;
 

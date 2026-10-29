@@ -100,8 +100,8 @@ export function AccountManager() {
       title="Accounts"
       description={
         desktop
-          ? "Add a calendar by its iCal link, or connect a CalDAV account, and Erwin mirrors it locally."
-          : "Connect Google, Outlook or CalDAV, or subscribe by iCal link, so Erwin can mirror your calendars locally."
+          ? "Add a calendar by its iCal link, or connect a CalDAV account, and Sigwald mirrors it locally."
+          : "Connect Google, Outlook or CalDAV, or subscribe by iCal link, so Sigwald can mirror your calendars locally."
       }
     >
       {desktop ? (
@@ -109,9 +109,9 @@ export function AccountManager() {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Google and Outlook calendars come in by iCal link</AlertTitle>
           <AlertDescription>
-            Both publish any calendar as an iCal link, which Erwin reads every
-            15 minutes. Changing their events from Erwin, and Google Tasks or
-            Microsoft To Do, needs a self-hosted Erwin for now.
+            Both publish any calendar as an iCal link, which Sigwald reads every
+            15 minutes. Changing their events from Sigwald, and Google Tasks or
+            Microsoft To Do, needs a self-hosted Sigwald for now.
           </AlertDescription>
         </Alert>
       ) : null}

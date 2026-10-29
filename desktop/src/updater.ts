@@ -6,7 +6,7 @@ import { isAdhocMacBuild } from "./build";
  * Self-update, only where nothing else delivers updates.
  *
  * The app stores, Snap and the Linux package managers (deb, rpm, AUR) each
- * update Erwin themselves, and a second updater fighting them breaks installs.
+ * update Sigwald themselves, and a second updater fighting them breaks installs.
  * What is left is the direct downloads from GitHub Releases: the macOS
  * DMG/zip, the Windows installer and the AppImage. Those check the release
  * feed on launch and install on the next quit. On Linux that leaves only the

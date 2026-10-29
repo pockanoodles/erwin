@@ -2,7 +2,7 @@
 
 import { formatDay } from "@/components/goals/types";
 
-import { type FocusQueueTask, primaryLadderGoal } from "@/lib/erwin/parse-task";
+import { type FocusQueueTask, primaryLadderGoal } from "@/lib/sigwald/parse-task";
 
 /** Ladder's section in Today's panel: the goal the selected task works toward. */
 export function TodayGoalSection({ task }: { task: FocusQueueTask }) {

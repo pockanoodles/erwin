@@ -15,7 +15,7 @@ import {
   CalendarTopBarActions,
   CalendarTopBarViews,
 } from "@/components/calendar/CalendarTopBar";
-import { ErwinStatus } from "@/components/navigation/ErwinStatus";
+import { SigwaldStatus } from "@/components/navigation/SigwaldStatus";
 import { BarDivider } from "@/components/navigation/top-bar-parts";
 import {
   TasksTopBarActions,
@@ -187,7 +187,7 @@ export function AppTopBar() {
       <div className="flex flex-1 items-center justify-end gap-3 pl-3">
         {/* The counts sit before the page's actions and take whatever room
             is free, so the actions stay put while counts load and change. */}
-        <ErwinStatus />
+        <SigwaldStatus />
 
         {Actions ? (
           <div className="flex flex-none items-center gap-2">

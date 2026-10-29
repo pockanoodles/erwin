@@ -1,14 +1,14 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  // The landing page for kaitosoeno.com/erwin. An assets-only Worker on that
+  // The landing page for kaitosoeno.com/sigwald. An assets-only Worker on that
   // route: the personal site stays the origin for every other path, and this
-  // one ships on Erwin's own release schedule.
-  "name": "kaitosoeno-erwin",
+  // one ships on Sigwald's own release schedule.
+  "name": "kaitosoeno-sigwald",
   "compatibility_date": "2026-08-08",
   "assets": {
     "directory": "./dist",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "404-page"
   },
-  "routes": [{ "pattern": "kaitosoeno.com/erwin*", "zone_name": "kaitosoeno.com" }]
+  "routes": [{ "pattern": "kaitosoeno.com/sigwald*", "zone_name": "kaitosoeno.com" }]
 }

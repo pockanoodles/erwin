@@ -6,19 +6,19 @@ import { pruneCourseFolder } from "../canvas/material-files";
 
 describe("pruneCourseFolder", () => {
   let root: string;
-  const previous = process.env.ERWIN_MATERIALS_DIR;
+  const previous = process.env.SIGWALD_MATERIALS_DIR;
 
   beforeEach(async () => {
-    root = await mkdtemp(path.join(os.tmpdir(), "erwin-materials-"));
-    process.env.ERWIN_MATERIALS_DIR = root;
+    root = await mkdtemp(path.join(os.tmpdir(), "sigwald-materials-"));
+    process.env.SIGWALD_MATERIALS_DIR = root;
   });
 
   afterEach(async () => {
-    process.env.ERWIN_MATERIALS_DIR = previous;
+    process.env.SIGWALD_MATERIALS_DIR = previous;
     await rm(root, { recursive: true, force: true });
   });
 
-  it("removes only Erwin's unreferenced files, leftovers included", async () => {
+  it("removes only Sigwald's unreferenced files, leftovers included", async () => {
     const dir = path.join(root, "265615");
     await mkdir(dir, { recursive: true });
     for (const name of ["101-slides.pdf", "102-old.png", "103-study guide.docx.partial", "notes.txt"]) {

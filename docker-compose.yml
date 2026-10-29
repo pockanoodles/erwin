@@ -13,7 +13,7 @@ services:
     environment:
       # Inside the compose network, Postgres lives at its service hostname —
       # this overrides the host-oriented localhost value from .env.
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sigwald}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-sigwald}
       # Next standalone binds this host; without it the server can bind
       # localhost-only inside the container and break the port mapping.
       - HOSTNAME=0.0.0.0
@@ -31,10 +31,10 @@ services:
     restart: unless-stopped
 
   # The sync worker: periodic Canvas + CalDAV sync for all eligible
-  # users/feeds on a timer (src/lib/erwin/sync-loop.ts). Shares the app image
-  # (development stage) so src/lib/erwin/* and src/worker/* are present.
+  # users/feeds on a timer (src/lib/sigwald/sync-loop.ts). Shares the app image
+  # (development stage) so src/lib/sigwald/* and src/worker/* are present.
   # A separate process so sync runs outside the web server; a single
-  # container can set ERWIN_SCHEDULER=inprocess and drop this service.
+  # container can set SIGWALD_SCHEDULER=inprocess and drop this service.
   worker:
     build:
       context: .
@@ -43,7 +43,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://${POSTGRES_USER:-erwin}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-erwin}
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-sigwald}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-sigwald}
     depends_on:
       db:
         condition: service_healthy
@@ -59,9 +59,9 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      - POSTGRES_USER=${POSTGRES_USER:-erwin}
+      - POSTGRES_USER=${POSTGRES_USER:-sigwald}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
-      - POSTGRES_DB=${POSTGRES_DB:-erwin}
+      - POSTGRES_DB=${POSTGRES_DB:-sigwald}
     # Loopback only: reachable from this machine for `npm run dev` and Prisma,
     # not from the network. The app and worker reach it as `db` on the compose
     # network and do not need the published port.

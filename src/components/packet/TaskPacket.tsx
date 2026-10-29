@@ -13,12 +13,12 @@ import { useResource } from "@/hooks/use-resource";
 /**
  * The task packet: everything Canvas says about one assignment — the
  * instructions, how it's graded, and what to read for it — pulled into
- * Erwin so doing the work doesn't start with a Canvas login. The pieces are
+ * Sigwald so doing the work doesn't start with a Canvas login. The pieces are
  * separate so Focus can lay them across its columns; `TaskPacketPane` stacks
  * them for the Tasks sheet.
  */
 
-export const packetUrl = (taskId: string) => `/api/erwin/tasks/${taskId}/materials`;
+export const packetUrl = (taskId: string) => `/api/sigwald/tasks/${taskId}/materials`;
 
 /** The packet for a Canvas task; null (and no request) for anything else. */
 export function useTaskPacket(taskId: string | null, source: string | null | undefined) {

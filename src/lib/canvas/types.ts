@@ -1,5 +1,5 @@
 /**
- * Minimal Canvas LMS REST types used by Erwin sync: courses and grades,
+ * Minimal Canvas LMS REST types used by Sigwald sync: courses and grades,
  * assignments and submissions, modules and materials, announcements, inbox.
  * @see https://canvas.instructure.com/doc/api/
  */

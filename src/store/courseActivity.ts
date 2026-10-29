@@ -53,7 +53,7 @@ export const useCourseActivityStore = create<CourseActivityState>()((set, get) =
     if (!force && fetchedAt != null && Date.now() - fetchedAt < FRESH_MS) return;
     set({ fetchedAt: Date.now() });
     try {
-      const res = await fetch(`/api/erwin/activity?limit=${FEED_LIMIT}`);
+      const res = await fetch(`/api/sigwald/activity?limit=${FEED_LIMIT}`);
       if (!res.ok) throw new Error(`Failed to load activity (${res.status})`);
       const feed = (await res.json()) as ActivityFeed;
       set({ items: feed.items, unseenCount: feed.unseenCount, loaded: true, error: null });
@@ -71,15 +71,15 @@ export const useCourseActivityStore = create<CourseActivityState>()((set, get) =
       unseenCount: "all" in target && !target.courseId ? 0 : Math.max(0, s.unseenCount - hits.length),
     }));
     try {
-      await fetch("/api/erwin/activity/seen", {
+      await fetch("/api/sigwald/activity/seen", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(target),
       });
     } finally {
       // Per-course counts, unseen flags on materials, grades and news.
-      invalidateResources("/api/erwin/grades");
-      invalidateResources("/api/erwin/courses/");
+      invalidateResources("/api/sigwald/grades");
+      invalidateResources("/api/sigwald/courses/");
       void get().load({ force: true });
       void useCourseLibraryStore.getState().fetchCourses();
     }

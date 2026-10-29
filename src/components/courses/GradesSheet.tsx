@@ -33,7 +33,7 @@ import {
 
 /**
  * Grades: Canvas's gradebook, mirrored. The All tab is the summary sheet —
- * one row per course with Canvas's total (or Erwin's estimate where Canvas
+ * one row per course with Canvas's total (or Sigwald's estimate where Canvas
  * hides it); a course tab lists every assignment under its group, with the
  * score, the class mean and any feedback, and the pane shows how it went.
  */
@@ -45,7 +45,7 @@ function shortDate(d: Date): string {
   return isThisYear(d) ? format(d, "MMM d") : format(d, "MMM yyyy");
 }
 
-/** "99.6% A", or Erwin's estimate marked as such. */
+/** "99.6% A", or Sigwald's estimate marked as such. */
 export function courseTotal(c: GradebookCourse): { text: string; estimated: boolean } | null {
   if (c.currentScore != null) return { text: `${pct(c.currentScore)}${c.currentGrade ? ` ${c.currentGrade}` : ""}`, estimated: false };
   if (c.estimate != null) return { text: `${pct(c.estimate)}${c.estimateLetter ? ` ${c.estimateLetter}` : ""}`, estimated: true };
@@ -72,7 +72,7 @@ export function GradesSheet({
   onOpenCourse: (courseId: string) => void;
 }) {
   const { data, loading, error } = useResource<GradebookCourse[]>(
-    courseKey ? `/api/erwin/grades?courseId=${courseKey}` : "/api/erwin/grades"
+    courseKey ? `/api/sigwald/grades?courseId=${courseKey}` : "/api/sigwald/grades"
   );
   if (!data) {
     return (
@@ -119,7 +119,7 @@ function GradeSummary({
     <>
       <FilterStrip>
         <StripCount>
-          {courses.length} course{courses.length === 1 ? "" : "s"} · Canvas&apos;s totals, or Erwin&apos;s estimate where a course hides them
+          {courses.length} course{courses.length === 1 ? "" : "s"} · Canvas&apos;s totals, or Sigwald&apos;s estimate where a course hides them
         </StripCount>
       </FilterStrip>
       <SheetLayout
@@ -168,7 +168,7 @@ function GradeSummary({
                     <td className={cn(cell, titleCellClass(isActive), "text-muted-foreground")} title={c.name}>
                       {c.name}
                     </td>
-                    <td className={cn(cell, "text-right tabular-nums", total?.estimated ? "text-muted-foreground" : "text-foreground")} title={total?.estimated ? "Canvas hides this course's total; Erwin's estimate from your scores" : undefined}>
+                    <td className={cn(cell, "text-right tabular-nums", total?.estimated ? "text-muted-foreground" : "text-foreground")} title={total?.estimated ? "Canvas hides this course's total; Sigwald's estimate from your scores" : undefined}>
                       {total ? `${total.estimated ? "≈ " : ""}${total.text}` : "—"}
                     </td>
                     <td className={cn(cell, "text-right tabular-nums text-muted-foreground")}>{pct(c.finalScore) ?? "—"}</td>
@@ -203,7 +203,7 @@ function CourseBreakdown({ course, onOpenCourse }: { course: GradebookCourse; on
         <h2 className="text-[17px] font-medium leading-snug tracking-[-0.01em] text-foreground">{course.name}</h2>
         <p className="mt-2 flex items-baseline gap-3">
           <span className="er-display text-[22px] tabular-nums text-foreground">{total?.text ?? "No grades yet"}</span>
-          {total?.estimated ? <span className="text-[13px] text-muted-foreground">Erwin&apos;s estimate — Canvas hides this course&apos;s total</span> : null}
+          {total?.estimated ? <span className="text-[13px] text-muted-foreground">Sigwald&apos;s estimate — Canvas hides this course&apos;s total</span> : null}
           {!total?.estimated && course.finalScore != null ? (
             <span className="text-[13px] tabular-nums text-muted-foreground">{pct(course.finalScore)} with ungraded work as zero</span>
           ) : null}
@@ -362,7 +362,7 @@ function CourseGrades({
           {course.assignments.length} assignments · {graded} graded
         </StripCount>
         <span className="ml-auto px-1 text-[13px] tabular-nums text-foreground">
-          {total ? (total.estimated ? `≈ ${total.text} (Erwin's estimate — Canvas hides the total)` : `Canvas ${total.text}`) : "No grades yet"}
+          {total ? (total.estimated ? `≈ ${total.text} (Sigwald's estimate — Canvas hides the total)` : `Canvas ${total.text}`) : "No grades yet"}
           {!total?.estimated && course.finalScore != null ? (
             <span className="text-muted-foreground"> · final {pct(course.finalScore)}</span>
           ) : null}

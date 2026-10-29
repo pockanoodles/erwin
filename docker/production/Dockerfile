@@ -15,7 +15,7 @@ RUN npx prisma generate
 COPY . .
 
 # Build application
-RUN ERWIN_STANDALONE=1 npm run build
+RUN SIGWALD_STANDALONE=1 npm run build
 
 # Production stage
 FROM node:20-alpine3.19 AS runner

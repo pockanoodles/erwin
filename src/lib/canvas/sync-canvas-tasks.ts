@@ -1,9 +1,9 @@
 /**
- * Canvas → Erwin tasks for one course, projected from the gradebook the same
+ * Canvas → Sigwald tasks for one course, projected from the gradebook the same
  * sync just wrote (`sync-canvas-gradebook.ts`). Read-only relative to Canvas.
  *
  * One task per actionable assignment (`isActionable`), whatever its
- * submission state: work handed in before Erwin first saw it is a completed
+ * submission state: work handed in before Sigwald first saw it is a completed
  * task, not a gap in the record. The task holds what any task has (title,
  * dates, status, impact); Canvas's own facts stay on the gradebook row, which
  * links to its task. Tasks that are no longer actionable are deleted —
@@ -105,7 +105,7 @@ export async function projectCourseTasks(
       title: plan.name,
       description: a.description ?? null,
       status: done ? "completed" : "todo",
-      // Completed by this sync: when it was handed in, not when Erwin noticed.
+      // Completed by this sync: when it was handed in, not when Sigwald noticed.
       completedAt: done
         ? (prev?.completedAt ?? plan.submittedAt ?? plan.gradedAt ?? now)
         : undone

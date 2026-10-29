@@ -168,7 +168,7 @@ export const TASK_FILTER_FIELDS: readonly TaskFilterField[] = [
           t.source
             ? [{ value: t.source, label: formatEnumValue(t.source) }]
             : [],
-        "Erwin"
+        "Sigwald"
       ),
   },
   {

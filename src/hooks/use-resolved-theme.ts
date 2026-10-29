@@ -11,11 +11,11 @@ function read(): ResolvedTheme {
 /**
  * The theme on screen right now, "system" already resolved.
  *
- * Erwin's own ThemeProvider (components/providers/ThemeProvider.tsx) writes
+ * Sigwald's own ThemeProvider (components/providers/ThemeProvider.tsx) writes
  * the resolved theme to <html data-theme>, so this reads that attribute and
  * follows it. Components that need a concrete light/dark value for a third-
  * party prop (React Flow's colorMode, the toaster) use this rather than
- * next-themes, whose provider Erwin does not mount.
+ * next-themes, whose provider Sigwald does not mount.
  */
 export function useResolvedTheme(): ResolvedTheme {
   const [theme, setTheme] = useState<ResolvedTheme>("light");

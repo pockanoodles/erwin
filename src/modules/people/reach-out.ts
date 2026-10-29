@@ -3,7 +3,7 @@
  * cadence after the last conversation (src/modules/people/cadence.ts).
  *
  * It closes from either side. Logging a conversation on the People page
- * finishes the open task; finishing the task anywhere else in Erwin (Today,
+ * finishes the open task; finishing the task anywhere else in Sigwald (Today,
  * Focus, Tasks, ops) is logged as a conversation by `reconcileReachOuts`,
  * which the sync loop runs. Either way the next check-in is planned from it.
  */

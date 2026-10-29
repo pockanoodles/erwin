@@ -1,4 +1,4 @@
-// The Erwin mark (brand/BRAND.md § Mark): a plate with two corners cut, a run
+// The Sigwald mark (brand/BRAND.md § Mark): a plate with two corners cut, a run
 // of railroad minute track, and the twelve-o'clock index in rust. Inline so it
 // takes the page's ink, which is how mark-mono.svg is meant to be used. Below
 // 32px the track turns to noise, so small marks use favicon.svg's geometry: the

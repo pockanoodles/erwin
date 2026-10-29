@@ -8,8 +8,8 @@ import { chromium } from "playwright";
 
 const BASE = process.env.BASE ?? "http://localhost:3230";
 const PAGES = [
-  { path: "/erwin/", lang: "en", h1: "What should I do right now?", tabs: ["Today", "Focus", "Calendar", "Tasks"] },
-  { path: "/erwin/ja/", lang: "ja", h1: "今、何をやるべきか。", tabs: ["今日", "フォーカス", "カレンダー", "タスク"] },
+  { path: "/sigwald/", lang: "en", h1: "What should I do right now?", tabs: ["Today", "Focus", "Calendar", "Tasks"] },
+  { path: "/sigwald/ja/", lang: "ja", h1: "今、何をやるべきか。", tabs: ["今日", "フォーカス", "カレンダー", "タスク"] },
 ];
 const VIEWPORTS = [
   { name: "laptop", width: 1440, height: 900 },

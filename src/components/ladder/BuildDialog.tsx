@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
-import { STAT_ABBREV, STAT_KEYS, STAT_NAMES, type StatKey } from "@/lib/erwin/stats";
+import { STAT_ABBREV, STAT_KEYS, STAT_NAMES, type StatKey } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import { useLadderStore } from "@/store/ladder";
@@ -17,7 +17,7 @@ import { useLadderStore } from "@/store/ladder";
 /**
  * Respec: the stats the running hex pushes, and what it's about. A Build the
  * vault's map sets shows here read-only, since the goal sync would put it
- * back each morning; the theme is Erwin's either way.
+ * back each morning; the theme is Sigwald's either way.
  */
 export function BuildDialog() {
   const open = useLadderStore((s) => s.buildOpen);

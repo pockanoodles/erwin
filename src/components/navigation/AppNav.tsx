@@ -18,7 +18,7 @@ interface AppNavProps {
   className?: string;
 }
 
-/** The core: every Erwin has these, in this order, and they never move. */
+/** The core: every Sigwald has these, in this order, and they never move. */
 const CORE_LINKS = [
   { href: "/today", label: "Today" },
   { href: "/focus", label: "Focus" },
@@ -130,7 +130,7 @@ export function AppNav({ className }: AppNavProps) {
           vanishes under you. It opens the catalog. */}
       <Link
         href="/modules"
-        title="Modules: turn parts of Erwin on or off"
+        title="Modules: turn parts of Sigwald on or off"
         tabIndex={tabIndex}
         className={cn(
           "mx-2 mt-4 flex items-center justify-between whitespace-nowrap px-2.5 transition-colors duration-150",

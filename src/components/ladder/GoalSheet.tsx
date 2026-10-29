@@ -13,7 +13,7 @@ import {
   useScrollActiveIntoView,
 } from "@/components/sheet/sheet";
 
-import { STAT_ABBREV } from "@/lib/erwin/stats";
+import { STAT_ABBREV } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import { useLadderStore } from "@/store/ladder";

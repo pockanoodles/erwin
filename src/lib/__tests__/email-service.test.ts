@@ -61,13 +61,13 @@ describe("EmailService", () => {
     await expect(EmailService.sendEmail(message)).resolves.toEqual({ jobId: "msg_1" });
 
     expect(send).toHaveBeenCalledWith(
-      expect.objectContaining({ from: "Erwin <hello@example.com>", to: "a@example.com" })
+      expect.objectContaining({ from: "Sigwald <hello@example.com>", to: "a@example.com" })
     );
   });
 
   it("still reads the old RESEND_FROM_EMAIL name", () => {
     process.env.RESEND_FROM_EMAIL = "old@example.com";
 
-    expect(EmailService.sender()).toBe("Erwin <old@example.com>");
+    expect(EmailService.sender()).toBe("Sigwald <old@example.com>");
   });
 });

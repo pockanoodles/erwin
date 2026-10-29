@@ -1,14 +1,14 @@
 /**
  * The only bridge between web content and the shell, kept deliberately thin.
  *
- * App pages get `window.erwinDesktop` (platform and version, nothing that can
+ * App pages get `window.sigwaldDesktop` (platform and version, nothing that can
  * act), so the UI can make room for the macOS traffic lights and label itself.
  * The boot screen also gets restart and open-logs, which only matter there.
  */
 
 import { contextBridge, ipcRenderer } from "electron";
 
-const versionArg = process.argv.find((arg) => arg.startsWith("--erwin-version="));
+const versionArg = process.argv.find((arg) => arg.startsWith("--sigwald-version="));
 
 /** The two DOM calls a preload makes, typed here so the shell needs no DOM lib. */
 const page = globalThis as unknown as {
@@ -23,14 +23,14 @@ const markDesktop = () => page.document.documentElement?.setAttribute("data-desk
 if (page.document.documentElement) markDesktop();
 else page.addEventListener("DOMContentLoaded", markDesktop, { once: true });
 
-contextBridge.exposeInMainWorld("erwinDesktop", {
+contextBridge.exposeInMainWorld("sigwaldDesktop", {
   platform: process.platform,
-  version: versionArg ? versionArg.slice("--erwin-version=".length) : "",
+  version: versionArg ? versionArg.slice("--sigwald-version=".length) : "",
 });
 
 if (page.location?.protocol === "file:") {
-  contextBridge.exposeInMainWorld("erwinBoot", {
-    restart: () => ipcRenderer.invoke("erwin:boot:restart"),
-    openLogs: () => ipcRenderer.invoke("erwin:boot:open-logs"),
+  contextBridge.exposeInMainWorld("sigwaldBoot", {
+    restart: () => ipcRenderer.invoke("sigwald:boot:restart"),
+    openLogs: () => ipcRenderer.invoke("sigwald:boot:open-logs"),
   });
 }

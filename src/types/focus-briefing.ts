@@ -1,5 +1,5 @@
 /**
- * GET /api/erwin/focus/briefing response (docs/focus-mode.md §1.2). Each task
+ * GET /api/sigwald/focus/briefing response (docs/focus-mode.md §1.2). Each task
  * carries the facts its module adds (Courses: course, grade share, and in
  * danger the grade if it's missed).
  */

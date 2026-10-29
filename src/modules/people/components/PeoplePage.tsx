@@ -217,7 +217,7 @@ function EmptyState({
       <p className="er-label">No one here yet</p>
       <p className="text-lg leading-relaxed text-foreground">
         Add the people you want to keep in touch with. Give someone a cadence
-        and Erwin puts a reach-out in Today when it&apos;s time.
+        and Sigwald puts a reach-out in Today when it&apos;s time.
       </p>
       <Button onClick={onAdd}>Add person</Button>
     </div>

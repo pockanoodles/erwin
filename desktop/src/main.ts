@@ -1,7 +1,7 @@
 /**
- * Erwin desktop: the Electron main process.
+ * Sigwald desktop: the Electron main process.
  *
- * Owns the window and the app lifecycle. Everything Erwin actually does runs
+ * Owns the window and the app lifecycle. Everything Sigwald actually does runs
  * in the runtime utility process (see runtime.ts): the database, migrations
  * and the Next server. This process starts it, hands it its keys over the
  * private parent port, shows a boot screen while it comes up, then signs the
@@ -50,8 +50,8 @@ let logStream: fs.WriteStream | null = null;
 
 // Development and tests can point the app at a throwaway folder, so running
 // an unpackaged build never touches a real install's database.
-if (!app.isPackaged && process.env.ERWIN_USER_DATA) {
-  app.setPath("userData", process.env.ERWIN_USER_DATA);
+if (!app.isPackaged && process.env.SIGWALD_USER_DATA) {
+  app.setPath("userData", process.env.SIGWALD_USER_DATA);
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -100,8 +100,8 @@ async function onReady(): Promise<void> {
       },
     })
   );
-  ipcMain.handle("erwin:boot:restart", () => restartRuntime());
-  ipcMain.handle("erwin:boot:open-logs", () => shell.openPath(p.logs));
+  ipcMain.handle("sigwald:boot:restart", () => restartRuntime());
+  ipcMain.handle("sigwald:boot:open-logs", () => shell.openPath(p.logs));
 
   createWindow();
   startRuntime();
@@ -129,7 +129,7 @@ function createWindow(): void {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: true,
-      additionalArguments: [`--erwin-version=${app.getVersion()}`],
+      additionalArguments: [`--sigwald-version=${app.getVersion()}`],
     },
   });
   if (state.maximized) mainWindow.maximize();
@@ -183,7 +183,7 @@ function startRuntime(): void {
   runtime.on("message", (message: RuntimeToMain) => {
     switch (message.type) {
       case "progress":
-        bootScreen(`window.erwinBootStep && window.erwinBootStep(${JSON.stringify(message.step)})`);
+        bootScreen(`window.sigwaldBootStep && window.sigwaldBootStep(${JSON.stringify(message.step)})`);
         break;
       case "ready":
         // Same origin the runtime gave Next (see runtime.ts): localhost.
@@ -220,7 +220,7 @@ function startRuntime(): void {
     migrationsDir: p.migrations,
     socketDir: p.socketDir,
     port: PREFERRED_PORT,
-    secrets: { nextauthSecret: keys.nextauthSecret, erwinSecretKey: keys.erwinSecretKey, bootToken },
+    secrets: { nextauthSecret: keys.nextauthSecret, sigwaldSecretKey: keys.sigwaldSecretKey, bootToken },
     machine: {
       userName: os.userInfo().username,
       timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -272,7 +272,7 @@ function navigate(route: string): void {
 async function showFailure(message: string): Promise<void> {
   if (!mainWindow) return;
   if (!mainWindow.webContents.getURL().startsWith("file:")) await mainWindow.loadFile(BOOT_HTML);
-  bootScreen(`window.erwinBootFailed && window.erwinBootFailed(${JSON.stringify(message.slice(0, 2_000))})`);
+  bootScreen(`window.sigwaldBootFailed && window.sigwaldBootFailed(${JSON.stringify(message.slice(0, 2_000))})`);
 }
 
 function bootScreen(script: string): void {

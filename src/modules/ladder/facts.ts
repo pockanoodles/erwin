@@ -3,7 +3,7 @@
  * each task climbs toward, for Today and Focus to show, and how much its most
  * important active goal lifts it in Focus's ranking.
  */
-import type { RankSignals } from "@/lib/erwin/rank-stage1";
+import type { RankSignals } from "@/lib/sigwald/rank-stage1";
 import type { Db } from "@/lib/prisma";
 
 import type { FactsRequest, TaskFacts } from "@/modules/server";

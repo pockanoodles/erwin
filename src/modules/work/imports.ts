@@ -1,6 +1,6 @@
 /**
- * What a script outside Erwin feeds the Work module: a schedule, a week at a
- * time (PUT /api/erwin/shifts), and a job's contact roster. ops' shifts
+ * What a script outside Sigwald feeds the Work module: a schedule, a week at a
+ * time (PUT /api/sigwald/shifts), and a job's contact roster. ops' shifts
  * module parses the weekly schedule and sends both; any other source can
  * use the same calls.
  *
@@ -34,7 +34,7 @@ const MAX_CONTACTS = 500;
 
 /**
  * The key a hand-added shift goes by where a source reads shifts back (GET
- * /api/erwin/shifts). A week sent back with one in it skips it: hand-added
+ * /api/sigwald/shifts). A week sent back with one in it skips it: hand-added
  * shifts change through the Work API, never through an import.
  */
 export const HAND_KEY_PREFIX = "hand-";

@@ -7,7 +7,7 @@ import {
   statsOf,
   sumStats,
   type XpGoal,
-} from "../erwin/xp";
+} from "../sigwald/xp";
 
 const goal = (id: string, develops: string[], parentIds: string[] = [], isBoss = false): XpGoal => ({
   id,

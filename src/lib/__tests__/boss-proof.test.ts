@@ -1,4 +1,4 @@
-import { itemProof, selfProof, suggestProof, taskProof, type ProofCandidate } from "../erwin/boss-proof";
+import { itemProof, selfProof, suggestProof, taskProof, type ProofCandidate } from "../sigwald/boss-proof";
 
 describe("proofs", () => {
   it("reads a module's item as it stands, or says it isn't there yet", () => {

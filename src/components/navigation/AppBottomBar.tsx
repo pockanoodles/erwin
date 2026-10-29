@@ -20,7 +20,7 @@ import {
 
 import { cn } from "@/lib/utils";
 
-import { countDanger, useErwinStatusStore } from "@/store/erwinStatus";
+import { countDanger, useSigwaldStatusStore } from "@/store/sigwaldStatus";
 import { useModulesStore, useOnModules } from "@/store/modules";
 import { useNavUIStore } from "@/store/navUi";
 
@@ -51,8 +51,8 @@ const MODULE_ICONS: Partial<Record<string, IconType>> = {
 export function AppBottomBar() {
   const pathname = usePathname() ?? "";
   const { isDrawerOpen, setDrawerOpen } = useNavUIStore();
-  const tasks = useErwinStatusStore((s) => s.tasks);
-  const loadStatus = useErwinStatusStore((s) => s.load);
+  const tasks = useSigwaldStatusStore((s) => s.tasks);
+  const loadStatus = useSigwaldStatusStore((s) => s.load);
   const loadModules = useModulesStore((s) => s.load);
   const onModules = useOnModules();
 

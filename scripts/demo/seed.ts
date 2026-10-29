@@ -3,7 +3,7 @@
  *
  *   npm run dev:local -- --seed demo
  *
- * Used for trying Erwin without connecting anything, for UI review, and for
+ * Used for trying Sigwald without connecting anything, for UI review, and for
  * the screenshots on the landing page and store listings, where it is
  * labelled as example data. Every date is relative to now, so the week always
  * looks current. The courses, people and places are made up.
@@ -15,17 +15,18 @@
 
 import { localDay } from "../../src/lib/date-utils";
 import { ensureDesktopUser } from "../../src/lib/desktop/bootstrap";
-import { applyGoalRules } from "../../src/lib/erwin/goal-rules";
-import { ensureCurrentHex } from "../../src/lib/erwin/hex";
+import { applyGoalRules } from "../../src/lib/sigwald/goal-rules";
+import { ensureCurrentHex } from "../../src/lib/sigwald/hex";
 import { prisma } from "../../src/lib/prisma";
 import { syncWorkoutTask } from "../../src/modules/training/workout";
 import { ensureJobFeed, projectShift } from "../../src/modules/work/feed";
 import { syncTimesheetTasks } from "../../src/modules/work/timesheet";
 
 const url = process.env.DATABASE_URL ?? "";
-// `fluid_calendar` is the database name installs made before the rename keep, and
-// `erwin` is the self-host default: both are someone's real data, never a demo.
-if (!/@(127\.0\.0\.1|localhost)[:/]/.test(url) || /\/(fluid_calendar|erwin)(\?|$)/.test(url)) {
+// `fluid_calendar` and `erwin` are the database names installs made under the
+// earlier names keep, and `sigwald` is the self-host default: all are someone's
+// real data, never a demo.
+if (!/@(127\.0\.0\.1|localhost)[:/]/.test(url) || /\/(fluid_calendar|erwin|sigwald)(\?|$)/.test(url)) {
   throw new Error(`Refusing to seed ${url.replace(/\/\/[^@]*@/, "//…@")}: not a local database`);
 }
 

@@ -2,7 +2,7 @@
 
 import { FilterStrip, StripCount } from "@/components/sheet/sheet";
 
-import { STAT_ABBREV, STAT_KEYS, STAT_NAMES } from "@/lib/erwin/stats";
+import { STAT_ABBREV, STAT_KEYS, STAT_NAMES } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import { useLadderStore } from "@/store/ladder";

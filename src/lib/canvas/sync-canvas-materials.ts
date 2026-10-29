@@ -6,7 +6,7 @@
  *
  * Runs every sync, in one of two depths. Incremental (most ticks) re-reads the
  * module structure and fetches only what's new or newly unlocked, so a file
- * posted at 9:00 is in Erwin by 9:15. Full (every MATERIALS_FULL_INTERVAL, or
+ * posted at 9:00 is in Sigwald by 9:15. Full (every MATERIALS_FULL_INTERVAL, or
  * forced) also re-reads every page body and file's metadata, which is how an
  * edited page or a replaced file is noticed; files re-download only when
  * Canvas reports a newer `updated_at`. Canvas is the source of truth: anything

@@ -1,4 +1,4 @@
-# Self-hosted server image: ghcr.io/pockanoodles/erwin
+# Self-hosted server image: ghcr.io/pockanoodles/sigwald
 #
 # Pushes to main publish :edge. A tag vX.Y.Z publishes :X.Y.Z, :X.Y and :latest
 # (a pre-release tag publishes only its own version). Every build also gets a
@@ -7,7 +7,7 @@
 # Each platform builds on a runner of its own architecture and pushes by
 # digest. The last job joins the two digests into one multi-platform tag.
 # The published index carries a signed build provenance attestation in the
-# registry: gh attestation verify oci://ghcr.io/pockanoodles/erwin:latest -R pockanoodles/erwin
+# registry: gh attestation verify oci://ghcr.io/pockanoodles/sigwald:latest -R pockanoodles/sigwald
 # Packages start out private. After the first push, set the package to public
 # in its settings. See packaging/README.md.
 
@@ -27,7 +27,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref_type == 'branch' }}
 
 env:
-  IMAGE: ghcr.io/pockanoodles/erwin
+  IMAGE: ghcr.io/pockanoodles/sigwald
 
 jobs:
   build:

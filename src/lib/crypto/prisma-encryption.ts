@@ -7,7 +7,7 @@ import { decryptSecret, encryptSecret } from "./secret-box";
  * the way out, as a Prisma client extension.
  *
  * Deliberately transparent rather than a pair of helpers called at each site.
- * Erwin is a fork that periodically ports fixes from upstream, and the files
+ * Sigwald is a fork that periodically ports fixes from upstream, and the files
  * that touch tokens — the sync providers, the token manager, the OAuth
  * callbacks — are exactly the files those ports land in. Sprinkling
  * `encryptSecret()` through them would turn every future port into a merge

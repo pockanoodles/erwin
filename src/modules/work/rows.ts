@@ -163,7 +163,7 @@ type RowJob = Pick<
 /**
  * A pay period's sums from the shifts that start in it. One from before the
  * job's `timesheetsFrom` has nothing left to submit: its hours were handled
- * before Erwin tracked them.
+ * before Sigwald tracked them.
  */
 export function toPeriodRow(
   job: RowJob,

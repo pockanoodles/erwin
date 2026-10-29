@@ -188,7 +188,7 @@ export function RoutinePane({ routine }: { routine: RoutineRow | null }) {
           <p className="text-sm text-foreground">
             {routine.cadenceDays
               ? `${cadenceLabel(routine.cadenceDays)}. Next session ${nextLabel(routine.nextDue, today)}.`
-              : "No schedule, so Erwin won't remind you."}{" "}
+              : "No schedule, so Sigwald won't remind you."}{" "}
             <span className="text-muted-foreground">
               Last done {lastLabel(routine.lastDoneAt, today)}.
             </span>

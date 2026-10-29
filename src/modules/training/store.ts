@@ -86,19 +86,19 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
       if (get().status === "idle") set({ status: "loading" });
       // What Focus and the task sheet show for a workout task is read from
       // the same data; a reload means it may have moved.
-      invalidateResources("/api/erwin/training/");
+      invalidateResources("/api/sigwald/training/");
       try {
         // The routines first: reading them turns workout tasks ticked off
         // elsewhere into sessions, which the other two lists then include.
         const active = await json<{
           routines: RoutineRow[];
           unit: Unit | null;
-        }>(await fetch("/api/erwin/training/routines"));
+        }>(await fetch("/api/sigwald/training/routines"));
         const [archived, all] = await Promise.all([
-          fetch("/api/erwin/training/routines?archived=1").then((r) =>
+          fetch("/api/sigwald/training/routines?archived=1").then((r) =>
             json<{ routines: RoutineRow[] }>(r)
           ),
-          fetch("/api/erwin/training/workouts").then((r) =>
+          fetch("/api/sigwald/training/workouts").then((r) =>
             json<{ workouts: WorkoutRow[] }>(r)
           ),
         ]);
@@ -117,7 +117,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
     loadHistory: async (routineId) => {
       try {
         const body = await json<{ workouts: WorkoutRow[] }>(
-          await fetch(`/api/erwin/training/routines/${routineId}/workouts`)
+          await fetch(`/api/sigwald/training/routines/${routineId}/workouts`)
         );
         set((s) => ({ history: { ...s.history, [routineId]: body.workouts } }));
       } catch {
@@ -128,7 +128,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
     create: async (input) => {
       try {
         const { routine } = await json<{ routine: RoutineRow }>(
-          await send("/api/erwin/training/routines", "POST", input)
+          await send("/api/sigwald/training/routines", "POST", input)
         );
         await get().load();
         set({ selected: routine.id });
@@ -141,7 +141,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
     update: async (id, input) => {
       try {
         const { routine } = await json<{ routine: RoutineRow }>(
-          await send(`/api/erwin/training/routines/${id}`, "PATCH", input)
+          await send(`/api/sigwald/training/routines/${id}`, "PATCH", input)
         );
         await get().load();
         return routine;
@@ -154,7 +154,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
       try {
         await json(
           await send(
-            `/api/erwin/training/routines/${routineId}/workouts`,
+            `/api/sigwald/training/routines/${routineId}/workouts`,
             "POST",
             input
           )
@@ -170,7 +170,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
       try {
         await json(
           await send(
-            `/api/erwin/training/workouts/${workout.id}`,
+            `/api/sigwald/training/workouts/${workout.id}`,
             "PATCH",
             input
           )
@@ -185,7 +185,7 @@ export const useTrainingStore = create<TrainingStore>()((set, get) => {
     remove: async (workout) => {
       try {
         await json(
-          await send(`/api/erwin/training/workouts/${workout.id}`, "DELETE")
+          await send(`/api/sigwald/training/workouts/${workout.id}`, "DELETE")
         );
         if (get().selected === workout.id) set({ selected: null });
         await reloadAfter(workout.routineId);

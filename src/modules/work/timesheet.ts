@@ -7,7 +7,7 @@
  *
  * It closes from either side, like Training's workout task. Marking the
  * period submitted on the Work page finishes the task; finishing the task
- * anywhere else in Erwin marks the period's worked shifts as on the
+ * anywhere else in Sigwald marks the period's worked shifts as on the
  * timesheet, by `reconcileTimesheets`, which the sync loop runs and the page
  * runs before it reads. A shift worked after that (one added late) opens the
  * period again with a new task for what's left.

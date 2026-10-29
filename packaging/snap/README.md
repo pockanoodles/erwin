@@ -1,13 +1,13 @@
 # Snap
 
-Erwin has no `snapcraft.yaml`. electron-builder builds the snap itself.
+Sigwald has no `snapcraft.yaml`. electron-builder builds the snap itself.
 
 ## Why
 
 electron-builder 26 has a `snap` target. With the `snap:` block in
 `desktop/electron-builder.yml` and no `stagePackages`, it assembles the snap
 from a prebuilt Electron template and does not call snapcraft. That path
-exists for x64 and armv7l only, so Erwin ships a snap for x64. Linux arm64
+exists for x64 and armv7l only, so Sigwald ships a snap for x64. Linux arm64
 users get the AppImage, deb, rpm, tar.gz and the AUR package instead.
 
 A `snapcraft.yaml` is not needed. electron-builder runs snapcraft itself when
@@ -19,7 +19,7 @@ It is how an arm64 snap would ship later. In that case add
 
 ## What CI does
 
-- `build-linux` (x64) builds `Erwin-<version>-linux-amd64.snap` with the other Linux files.
+- `build-linux` (x64) builds `Sigwald-<version>-linux-amd64.snap` with the other Linux files.
 - The `snap` job in `.github/workflows/release.yml` uploads it to the `edge`
   channel with `snapcraft upload --release=edge`. It runs only when the
   `SNAPCRAFT_STORE_CREDENTIALS` secret exists and the draft release was created.
@@ -30,13 +30,13 @@ It is how an arm64 snap would ship later. In that case add
 2. Install snapcraft and reserve the name:
 
    ```sh
-   snapcraft register erwin
+   snapcraft register sigwald
    ```
 
 3. Export a login that can only touch this snap and its edge and stable channels:
 
    ```sh
-   snapcraft export-login --snaps=erwin --channels=edge,stable \
+   snapcraft export-login --snaps=sigwald --channels=edge,stable \
      --acls=package_access,package_push,package_update,package_release \
      --expires=2027-10-29 credentials.txt
    ```
@@ -55,15 +55,15 @@ one before then.
 ## Promoting to stable
 
 A draft release only reaches `edge`. Test it with
-`sudo snap install erwin --edge`. Publishing the release runs
+`sudo snap install sigwald --edge`. Publishing the release runs
 `.github/workflows/channels.yml`, which releases the revision with that
 release's version to `stable`. Edge can hold a newer build, such as a
 pre-release, and that one stays on edge.
 By hand:
 
 ```sh
-snapcraft status erwin
-snapcraft release erwin <revision> stable
+snapcraft status sigwald
+snapcraft release sigwald <revision> stable
 ```
 
 The first stable release goes through the Snap Store review.
@@ -71,6 +71,6 @@ The first stable release goes through the Snap Store review.
 ## What the snap needs
 
 `snap:` in `desktop/electron-builder.yml` sets strict confinement and the plugs
-`default` and `network-bind`. Erwin's own server listens on 127.0.0.1, which is
+`default` and `network-bind`. Sigwald's own server listens on 127.0.0.1, which is
 what `network-bind` is for. The snap name comes from `linux.executableName`
-(`erwin`).
+(`sigwald`).

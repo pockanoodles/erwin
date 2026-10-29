@@ -4,7 +4,7 @@ import { brand } from "./brand";
 
 /**
  * The OS menu bar. Standard roles do the work (copy and paste, zoom, window
- * management) so Erwin behaves like every other app on the machine; the only
+ * management) so Sigwald behaves like every other app on the machine; the only
  * additions are Settings in the app menu and help links.
  */
 export function buildMenu(actions: { openSettings: () => void; openLogs: () => void; openBackups: () => void }): Menu {

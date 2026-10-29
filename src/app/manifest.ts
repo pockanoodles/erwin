@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { brand } from "@/lib/brand";
 
-// PWA manifest so erwin installs as a standalone app (macOS "Add to Dock",
+// PWA manifest so sigwald installs as a standalone app (macOS "Add to Dock",
 // iOS/Android home screen) with no browser chrome. One colour pair only, so
 // it is the field-at-night ground from brand/tokens.css (--er-stage, --er-bg).
 export default function manifest(): MetadataRoute.Manifest {

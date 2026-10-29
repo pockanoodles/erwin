@@ -26,7 +26,7 @@ describe("cleanCanvasHtml", () => {
       `<a href="${BASE}/courses/123/files/456/download?wrap=1">Slides</a>`,
       opts()
     );
-    expect(out).toBe('<a href="/api/erwin/materials/mat-file/file" target="_blank">Slides</a>');
+    expect(out).toBe('<a href="/api/sigwald/materials/mat-file/file" target="_blank">Slides</a>');
   });
 
   it("points a mirrored page at the library, including relative and encoded links", () => {
@@ -51,7 +51,7 @@ describe("cleanCanvasHtml", () => {
       '<a href="javascript:alert(1)">x</a><img src="/courses/123/files/999/preview"><img src="/courses/123/files/456/preview" alt="d">',
       opts()
     );
-    expect(out).toBe('<span>x</span><img src="/api/erwin/materials/mat-file/file" alt="d" />');
+    expect(out).toBe('<span>x</span><img src="/api/sigwald/materials/mat-file/file" alt="d" />');
   });
 
   it("demotes h1 and handles empty input", () => {

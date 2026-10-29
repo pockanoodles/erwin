@@ -176,7 +176,7 @@ function CatalogRow({
       <td className={cn(cell, "text-muted-foreground")}>
         {m.egress.length > 0
           ? m.egress.map((e) => e.to).join(", ")
-          : "Nothing leaves Erwin"}
+          : "Nothing leaves Sigwald"}
       </td>
       <td className={cell}>
         {known ? (
@@ -266,10 +266,10 @@ function ModulePane({
         <p className="text-sm text-foreground">{m.keeps}</p>
       </PaneSection>
 
-      <PaneSection label="Sends out of Erwin">
+      <PaneSection label="Sends out of Sigwald">
         {m.egress.length === 0 ? (
           <p className="text-sm text-foreground">
-            Nothing. Everything it does stays in Erwin.
+            Nothing. Everything it does stays in Sigwald.
           </p>
         ) : (
           <ul className="space-y-3">

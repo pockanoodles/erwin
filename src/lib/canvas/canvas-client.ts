@@ -1,7 +1,7 @@
 /**
  * Thin Canvas LMS REST client (read-only). Uses a personal access token.
  *
- * Erwin's one egress to Canvas: everything it reads — courses and grades,
+ * Sigwald's one egress to Canvas: everything it reads — courses and grades,
  * assignments and submissions, modules, files, announcements, inbox — comes
  * through here, and nothing here writes. Inbox threads are fetched with
  * `auto_mark_as_read=false` so reading them never marks them read in Canvas.

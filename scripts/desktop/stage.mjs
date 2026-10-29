@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds Erwin's server for the desktop app and stages it for electron-builder.
+ * Builds Sigwald's server for the desktop app and stages it for electron-builder.
  *
  *   npm run build:desktop        → desktop/.stage/{server,migrations}
  *
@@ -34,8 +34,8 @@ const cli = (pkg, file) => path.join(root, "node_modules", pkg, file);
 const buildEnv = {
   NODE_ENV: "production",
   NEXT_TELEMETRY_DISABLED: "1",
-  ERWIN_STANDALONE: "1",
-  ERWIN_DIST_DIR: distDir,
+  SIGWALD_STANDALONE: "1",
+  SIGWALD_DIST_DIR: distDir,
   NEXT_PUBLIC_APP_URL: "",
   NEXT_PUBLIC_SITE_URL: "",
   DATABASE_URL: "postgresql://build:build@127.0.0.1:1/no_database_at_build_time",
@@ -49,7 +49,7 @@ if (!process.argv.includes("--skip-build")) {
 
 const standalone = path.join(root, distDir, "standalone");
 if (!fs.existsSync(path.join(standalone, "server.js"))) {
-  throw new Error(`No standalone server at ${standalone}. Did the build run with ERWIN_STANDALONE=1?`);
+  throw new Error(`No standalone server at ${standalone}. Did the build run with SIGWALD_STANDALONE=1?`);
 }
 
 fs.rmSync(stage, { recursive: true, force: true });

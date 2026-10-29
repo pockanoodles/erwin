@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * The datasheet grammar every sheet in Erwin shares — Tasks, Courses' views,
+ * The datasheet grammar every sheet in Sigwald shares — Tasks, Courses' views,
  * the Ladder, Modules and People: 26px ruled rows (36px on touch phones), a
  * sticky numbered gutter, mono column heads, and a rust frame around the
  * active cell, so they all read as one tool. Core, not any module's: modules

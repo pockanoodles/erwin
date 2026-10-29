@@ -1,6 +1,6 @@
 /**
  * The People module's HTTP handlers. The route files under
- * src/app/api/erwin/people only forward here, so the module's server code
+ * src/app/api/sigwald/people only forward here, so the module's server code
  * lives in one folder. Every handler answers 409 module_off while People is
  * off.
  */
@@ -103,7 +103,7 @@ function invalid(error: z.ZodError) {
   );
 }
 
-/** GET /api/erwin/people[?archived=1]: everyone, or the archived. */
+/** GET /api/sigwald/people[?archived=1]: everyone, or the archived. */
 export async function listPeople(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -119,7 +119,7 @@ export async function listPeople(request: NextRequest) {
   }
 }
 
-/** POST /api/erwin/people: adds someone, and their reach-out if they have a cadence. */
+/** POST /api/sigwald/people: adds someone, and their reach-out if they have a cadence. */
 export async function createPerson(request: NextRequest) {
   try {
     const auth = await authorize(request);
@@ -140,7 +140,7 @@ export async function createPerson(request: NextRequest) {
   }
 }
 
-/** PATCH /api/erwin/people/:id: edits, archives or restores someone. */
+/** PATCH /api/sigwald/people/:id: edits, archives or restores someone. */
 export async function updatePerson(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -170,7 +170,7 @@ export async function updatePerson(request: NextRequest, { params }: Ctx) {
   }
 }
 
-/** GET /api/erwin/people/:id/interactions: their conversations, newest first. */
+/** GET /api/sigwald/people/:id/interactions: their conversations, newest first. */
 export async function listInteractions(request: NextRequest, { params }: Ctx) {
   try {
     const auth = await authorize(request);
@@ -195,7 +195,7 @@ export async function listInteractions(request: NextRequest, { params }: Ctx) {
 }
 
 /**
- * POST /api/erwin/people/:id/interactions  { kind, note?, at? }
+ * POST /api/sigwald/people/:id/interactions  { kind, note?, at? }
  *
  * Logs a conversation. It finishes the open reach-out task and plans the
  * next one. `at` defaults to now.

@@ -1,4 +1,4 @@
-/** Client shapes for the course activity and news APIs (src/app/api/erwin/{activity,news}). */
+/** Client shapes for the course activity and news APIs (src/app/api/sigwald/{activity,news}). */
 
 export type ActivityKind =
   | "ANNOUNCEMENT"
@@ -30,7 +30,7 @@ export interface ActivityItem {
     taskId: string | null;
     announcementId: string | null;
     conversationId: string | null;
-    /** The same thing in Canvas, when Erwin has no copy of it. */
+    /** The same thing in Canvas, when Sigwald has no copy of it. */
     htmlUrl: string | null;
   };
 }

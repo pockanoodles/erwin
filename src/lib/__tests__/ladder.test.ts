@@ -1,4 +1,4 @@
-import { buildLadder, type LadderGoalRow, type LadderInput } from "../erwin/ladder";
+import { buildLadder, type LadderGoalRow, type LadderInput } from "../sigwald/ladder";
 
 const goal = (row: Partial<LadderGoalRow> & Pick<LadderGoalRow, "id" | "title">): LadderGoalRow => ({
   isBoss: false,

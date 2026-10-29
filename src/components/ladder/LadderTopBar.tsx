@@ -9,7 +9,7 @@ import {
 
 import { BarButton, BarIconButton } from "@/components/navigation/top-bar-parts";
 
-import { hexForDate, hexLabel } from "@/lib/erwin/hex";
+import { hexForDate, hexLabel } from "@/lib/sigwald/hex";
 
 import { useLadderStore } from "@/store/ladder";
 

@@ -33,7 +33,7 @@ export interface PeriodRow {
   submitted: boolean;
   /**
    * It starts on or after the job's `timesheetsFrom`. One before was handled
-   * before Erwin tracked it: it reads as submitted and can't be reopened.
+   * before Sigwald tracked it: it reads as submitted and can't be reopened.
    */
   tracked: boolean;
   /** Today falls in it. */
@@ -114,13 +114,13 @@ export interface ShiftRow {
   contact: ContactRow | null;
 }
 
-/** The shift on now or next, for the top bar (GET /api/erwin/work/next). */
+/** The shift on now or next, for the top bar (GET /api/sigwald/work/next). */
 export interface NextShift extends ShiftRow {
   jobName: string;
   color: string;
 }
 
-/** What a "Submit hours" task is about (GET /api/erwin/work/tasks/:id). */
+/** What a "Submit hours" task is about (GET /api/sigwald/work/tasks/:id). */
 export interface TimesheetDetail {
   job: JobRow;
   period: PeriodRow;

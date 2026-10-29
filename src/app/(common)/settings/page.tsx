@@ -190,7 +190,7 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-          Accounts, display, calendars and the quiet switches that keep Erwin
+          Accounts, display, calendars and the quiet switches that keep Sigwald
           pointed at your day.
         </p>
       </header>

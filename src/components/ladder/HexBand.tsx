@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 
-import { STAT_ABBREV, STAT_NAMES } from "@/lib/erwin/stats";
+import { STAT_ABBREV, STAT_NAMES } from "@/lib/sigwald/stats";
 import { cn } from "@/lib/utils";
 
 import { useElementWidth } from "@/hooks/use-element-width";

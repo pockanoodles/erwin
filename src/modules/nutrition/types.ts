@@ -20,7 +20,7 @@ export interface FoodRow extends Macros {
   archived: boolean;
 }
 
-/** GET /api/erwin/nutrition/day */
+/** GET /api/sigwald/nutrition/day */
 export interface DayRow {
   day: string;
   entries: EntryRow[];
@@ -33,7 +33,7 @@ export interface FoodInput extends Macros {
   serving: string | null;
 }
 
-/** POST /api/erwin/nutrition/entries: a saved food, or one typed in (and maybe saved). */
+/** POST /api/sigwald/nutrition/entries: a saved food, or one typed in (and maybe saved). */
 export type EntryInput = { day: string; servings: number } & (
   | { foodId: string }
   | { food: FoodInput; save: boolean }

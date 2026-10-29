@@ -1,5 +1,5 @@
 /**
- * A module is an optional part of Erwin that each person turns on or off on
+ * A module is an optional part of Sigwald that each person turns on or off on
  * /modules. The core (Today, Focus, Calendar, Tasks) works without any of
  * them; a module adds to the core through fixed slots, and the core never
  * reaches into a module.
@@ -18,7 +18,7 @@ export type ModuleId =
   | "nutrition"
   | "work";
 
-/** One thing a module sends out of Erwin, written for someone who isn't an engineer. */
+/** One thing a module sends out of Sigwald, written for someone who isn't an engineer. */
 export interface ModuleEgress {
   /** Who receives it: "Your school's Canvas". */
   to: string;
@@ -50,7 +50,7 @@ export interface ModuleManifest {
   adds: string[];
   /** What it stores, plainly. */
   keeps: string;
-  /** Everything it sends out of Erwin. Empty means nothing leaves. */
+  /** Everything it sends out of Sigwald. Empty means nothing leaves. */
   egress: ModuleEgress[];
 }
 
@@ -94,6 +94,6 @@ export interface ProofItem {
   label: string;
   /** Handed in, graded or excused: it fells the boss that names it. */
   settles: boolean;
-  /** The task that is its work, if Erwin tracks one. */
+  /** The task that is its work, if Sigwald tracks one. */
   task: { id: string; goalsPinned: boolean } | null;
 }

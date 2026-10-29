@@ -43,7 +43,7 @@ const SUBMISSION_ORDER = [
   "excused",
 ];
 
-/** Canvas's word on the submission, with Erwin's corrections applied. */
+/** Canvas's word on the submission, with Sigwald's corrections applied. */
 export const SUBMISSION_FILTER: TaskFilterField = {
   id: "submission",
   label: "Submission",

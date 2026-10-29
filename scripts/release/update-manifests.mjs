@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Rewrites the package manifests for one Erwin release.
+ * Rewrites the package manifests for one Sigwald release.
  *
  *   node scripts/release/update-manifests.mjs <version> <SHA256SUMS.txt> [options]
  *
@@ -8,16 +8,16 @@
  * the draft release. This script reads the checksums from it and updates, in
  * place:
  *
- *   packaging/homebrew/erwin.rb              Homebrew cask
+ *   packaging/homebrew/sigwald.rb              Homebrew cask
  *   packaging/winget/*.yaml                  winget manifests
- *   packaging/aur/erwin-bin/PKGBUILD         AUR package
- *   packaging/aur/erwin-bin/.SRCINFO         derived from the PKGBUILD
+ *   packaging/aur/sigwald-bin/PKGBUILD         AUR package
+ *   packaging/aur/sigwald-bin/.SRCINFO         derived from the PKGBUILD
  *
  * Options:
  *   --check        Report what is out of date and change nothing. Exit code 1
  *                  if anything is stale or a placeholder is left.
  *   --date <d>     Release date, YYYY-MM-DD. Defaults to today (UTC).
- *   --tap <dir>    Also write the cask to <dir>/Casks/erwin.rb (a checkout of
+ *   --tap <dir>    Also write the cask to <dir>/Casks/sigwald.rb (a checkout of
  *                  the homebrew-tap repo).
  *   --root <dir>   Repo root. Defaults to the repo this script lives in.
  *
@@ -33,17 +33,17 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-const REPO = "https://github.com/pockanoodles/erwin";
+const REPO = "https://github.com/pockanoodles/sigwald";
 const ICON_PATH = "desktop/build/icon.png";
 
 /** Release asset names. They follow artifactName in desktop/electron-builder.yml. */
 export function assetNames(version) {
   return {
-    macArm64: `Erwin-${version}-mac-arm64.dmg`,
-    macX64: `Erwin-${version}-mac-x64.dmg`,
-    winX64: `Erwin-${version}-win-x64.exe`,
-    linuxX64: `Erwin-${version}-linux-x64.tar.gz`,
-    linuxArm64: `Erwin-${version}-linux-arm64.tar.gz`,
+    macArm64: `Sigwald-${version}-mac-arm64.dmg`,
+    macX64: `Sigwald-${version}-mac-x64.dmg`,
+    winX64: `Sigwald-${version}-win-x64.exe`,
+    linuxX64: `Sigwald-${version}-linux-x64.tar.gz`,
+    linuxArm64: `Sigwald-${version}-linux-arm64.tar.gz`,
   };
 }
 
@@ -299,11 +299,11 @@ export function main(argv) {
 
   const rel = (...p) => path.join(root, "packaging", ...p);
   const jobs = [
-    { file: rel("homebrew", "erwin.rb"), update: updateCask },
-    { file: rel("winget", "KaitoSoeno.Erwin.yaml"), update: updateWingetVersion },
-    { file: rel("winget", "KaitoSoeno.Erwin.installer.yaml"), update: updateWingetInstaller },
-    { file: rel("winget", "KaitoSoeno.Erwin.locale.en-US.yaml"), update: updateWingetLocale },
-    { file: rel("aur", "erwin-bin", "PKGBUILD"), update: updatePkgbuild },
+    { file: rel("homebrew", "sigwald.rb"), update: updateCask },
+    { file: rel("winget", "KaitoSoeno.Sigwald.yaml"), update: updateWingetVersion },
+    { file: rel("winget", "KaitoSoeno.Sigwald.installer.yaml"), update: updateWingetInstaller },
+    { file: rel("winget", "KaitoSoeno.Sigwald.locale.en-US.yaml"), update: updateWingetLocale },
+    { file: rel("aur", "sigwald-bin", "PKGBUILD"), update: updatePkgbuild },
   ];
 
   const results = [];
@@ -320,8 +320,8 @@ export function main(argv) {
       after: generateSrcinfo(pkgbuild.after),
     });
     if (values.tap) {
-      const cask = results.find((r) => path.basename(r.file) === "erwin.rb");
-      const tapFile = path.join(path.resolve(values.tap), "Casks", "erwin.rb");
+      const cask = results.find((r) => path.basename(r.file) === "sigwald.rb");
+      const tapFile = path.join(path.resolve(values.tap), "Casks", "sigwald.rb");
       results.push({ file: tapFile, before: fs.existsSync(tapFile) ? fs.readFileSync(tapFile, "utf8") : "", after: cask.after });
     }
   } catch (error) {

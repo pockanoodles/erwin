@@ -10,7 +10,7 @@ jest.mock("@/lib/desktop/bootstrap", () => ({
   ensureDesktopUser: jest.fn().mockResolvedValue({
     id: "user-1",
     name: "You",
-    email: "local@erwin.invalid",
+    email: "local@sigwald.invalid",
     role: "admin",
   }),
 }));
@@ -27,8 +27,8 @@ describe("GET /api/desktop/session", () => {
   beforeEach(() => {
     process.env = {
       ...originalEnv,
-      ERWIN_RUNTIME: "desktop",
-      ERWIN_DESKTOP_BOOT_TOKEN: "test-boot-token",
+      SIGWALD_RUNTIME: "desktop",
+      SIGWALD_DESKTOP_BOOT_TOKEN: "test-boot-token",
       NEXTAUTH_SECRET: "test-secret",
       NEXTAUTH_URL: "http://localhost:3000",
     };
