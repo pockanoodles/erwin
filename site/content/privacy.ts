@@ -78,7 +78,7 @@ const en: PolicyDoc = {
         { where: "A CalDAV server you name", what: "Event content, plus your username and password on each request", why: "To sync that calendar" },
         { where: "The host of an iCal link you add", what: "A plain request for the link, which carries your IP address and none of your data", why: "To show that calendar, read-only" },
         { where: "Canvas, at your school's address, while the School module is on", what: "Your access token and read-only requests", why: "To bring in courses, assignments, grades and feedback, announcements, Inbox messages and course files, which are saved on your device" },
-        { where: "GitHub Releases, for direct downloads only", what: "The app version, your platform and your IP address", why: "To check for updates, which store and package-manager builds never do" },
+        { where: "GitHub Releases, for GitHub downloads and the Homebrew and winget installs", what: "The app version, your platform and your IP address", why: "To check for updates, which store, Snap and Linux package builds never do" },
         { where: "Resend, on a server whose operator turns it on", what: "Your email address and a reset link", why: "To send a password reset email" },
       ],
       after: [
@@ -159,7 +159,7 @@ const ja: PolicyDoc = {
         { where: "指定した CalDAV サーバー", what: "予定の内容と、毎回のリクエストに含まれるユーザー名とパスワード", why: "そのカレンダーを同期するため" },
         { where: "追加した iCal リンクの配信元", what: "リンクへの通常のリクエスト（IP アドレスを含み、ご自身のデータは含みません）", why: "そのカレンダーを読み取り専用で表示するため" },
         { where: "学校の Canvas（School モジュールが有効なときのみ）", what: "アクセストークンと読み取りのみのリクエスト", why: "授業、課題、成績とフィードバック、お知らせ、受信トレイのメッセージ、授業資料を取り込むためで、資料は端末に保存されます" },
-        { where: "GitHub Releases（直接ダウンロード版のみ）", what: "アプリのバージョン、OS、IP アドレス", why: "アップデートを確認するためで、ストア版やパッケージマネージャー版は確認しません" },
+        { where: "GitHub Releases（GitHub からのダウンロード版、Homebrew 版、winget 版）", what: "アプリのバージョン、OS、IP アドレス", why: "アップデートを確認するためで、ストア版、Snap 版、Linux パッケージ版は確認しません" },
         { where: "Resend（運用者が有効にしたサーバーのみ）", what: "メールアドレスと再設定用リンク", why: "パスワード再設定のメールを送るため" },
       ],
       after: [
