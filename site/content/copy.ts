@@ -29,6 +29,7 @@ export interface Dict {
     live: string;
     copy: string;
     copied: string;
+    open: string;
     groups: Record<"mac" | "windows" | "linux" | "server", string>;
   };
   open: { eyebrow: string; title: string; body: string; cta: string; by: string; more: string };
@@ -99,6 +100,7 @@ const en: Dict = {
     live: "Available",
     copy: "Copy",
     copied: "Copied",
+    open: "Open",
     groups: { mac: "macOS", windows: "Windows", linux: "Linux", server: "Self-host" },
   },
   open: {
@@ -185,6 +187,7 @@ const ja: Dict = {
     live: "公開中",
     copy: "コピー",
     copied: "コピーしました",
+    open: "開く",
     groups: { mac: "macOS", windows: "Windows", linux: "Linux", server: "セルフホスト" },
   },
   open: {

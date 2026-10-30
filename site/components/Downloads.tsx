@@ -1,14 +1,25 @@
 "use client";
 
 // Every channel, grouped by system, with the visitor's own system marked by
-// the rust index. Commands copy; pages link. A channel that is not serving the
-// app yet says so in brackets instead of linking to an empty page.
+// the rust index. A live channel gets a box to act on: commands copy (one line
+// per step, joined with && on the clipboard), pages open. A channel that is not
+// serving the app yet shows only its name and "soon".
 import { useEffect, useState } from "react";
 import { channels, type ChannelGroup } from "@/content/channels";
 import type { Dict } from "@/content/copy";
 import { CopyButton } from "./CopyButton";
 
 const GROUPS: ChannelGroup[] = ["mac", "windows", "linux", "server"];
+
+/** Lets a long command or URL wrap after a slash or # instead of mid-word. */
+function breakable(text: string) {
+  return text.split(/(?<=[/#])/).map((part, i) => (
+    <span key={i}>
+      {part}
+      <wbr />
+    </span>
+  ));
+}
 
 export function detectGroup(): ChannelGroup | null {
   if (typeof navigator === "undefined") return null;
@@ -38,19 +49,27 @@ export function Downloads({ t }: { t: Dict["install"] }) {
               .map((c) => (
                 <li key={c.id} className="channel">
                   <div className="channel__head">
-                    {c.href && c.live ? (
-                      <a href={c.href} className="channel__name">
-                        {c.name}
-                      </a>
-                    ) : (
-                      <span className="channel__name">{c.name}</span>
-                    )}
+                    <span className="channel__name">{c.name}</span>
                     <span className={c.live ? "status status--live" : "status"}>{c.live ? t.live : t.soon}</span>
                   </div>
-                  {c.command ? (
+                  {c.live && c.command ? (
                     <div className="channel__cmd">
-                      <code id={`cmd-${c.id}`}>{c.command}</code>
-                      <CopyButton text={c.command} label={t.copy} done={t.copied} targetId={`cmd-${c.id}`} />
+                      <code id={`cmd-${c.id}`}>
+                        {c.command.map((line) => (
+                          <span key={line}>{breakable(line)}</span>
+                        ))}
+                      </code>
+                      <CopyButton text={c.command.join(" && ")} label={t.copy} done={t.copied} targetId={`cmd-${c.id}`} />
+                    </div>
+                  ) : null}
+                  {c.live && c.href ? (
+                    <div className="channel__cmd">
+                      <code>
+                        <span>{breakable(c.href.replace(/^https:\/\//, ""))}</span>
+                      </code>
+                      <a href={c.href} className="copy">
+                        {t.open}
+                      </a>
                     </div>
                   ) : null}
                 </li>

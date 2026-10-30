@@ -61,11 +61,15 @@ for (const pg of PAGES) {
     );
     check(broken === 0, `${tag}: every screenshot loads`);
 
-    // Every channel says whether it is live, and commands carry a copy button.
+    // Every channel says whether it is live, and only live ones offer a box.
     const statuses = await page.locator(".channel .status").count();
     const channelsCount = await page.locator(".channel").count();
     check(statuses === channelsCount && channelsCount >= 9, `${tag}: ${channelsCount} channels, each with a status`);
-    check((await page.locator(".channel__cmd .copy").count()) >= 5, `${tag}: commands can be copied`);
+    const live = await page.locator(".channel:has(.status--live)").count();
+    const boxes = await page.locator(".channel__cmd").count();
+    check(live >= 1 && boxes === live, `${tag}: ${live} live channels, each with a box, and no box on the rest`);
+    const clipped = await page.$$eval(".channel__cmd code", (els) => els.filter((el) => el.scrollWidth > el.clientWidth + 1).length);
+    check(clipped === 0, `${tag}: no command is cut off`);
 
     // The site's MENU pill opens and closes.
     // The pill grows into its drawer over 300ms and fades it out on close, so

@@ -611,14 +611,6 @@ a.label:hover {
   font-size: 15px;
   color: var(--er-ink);
 }
-a.channel__name {
-  text-decoration: underline;
-  text-decoration-color: var(--er-line-strong);
-  text-underline-offset: 4px;
-}
-a.channel__name:hover {
-  text-decoration-color: var(--er-ink);
-}
 .status {
   flex: none;
   font-family: var(--er-font-mono), var(--er-font-ja);
@@ -638,25 +630,31 @@ a.channel__name:hover {
 }
 .channel__cmd {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--er-s-2);
   min-width: 0;
   padding: var(--er-s-2) var(--er-s-2) var(--er-s-2) var(--er-s-3);
   background: var(--er-bg);
   border: 1px solid var(--er-line);
 }
+/* Commands wrap instead of hiding under the button: one step per line, a long
+   URL after a slash (Downloads.tsx), and anywhere only if a part still won't fit. */
 .channel__cmd code {
   flex: 1;
   min-width: 0;
-  overflow-x: auto;
-  white-space: nowrap;
+  display: grid;
+  gap: 2px;
+  align-self: center;
+  overflow-wrap: anywhere;
   font-family: var(--er-font-mono);
   font-size: 12px;
+  line-height: 1.5;
   color: var(--er-muted);
-  scrollbar-width: none;
 }
 .copy {
   flex: none;
+  display: inline-flex;
+  align-items: center;
   min-height: 28px;
   padding: 0 var(--er-s-2);
   border: 1px solid var(--er-line-strong);
@@ -668,6 +666,10 @@ a.channel__name:hover {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
+}
+.copy:link,
+.copy:visited {
+  text-decoration: none;
 }
 .copy:hover {
   color: var(--er-ink);
