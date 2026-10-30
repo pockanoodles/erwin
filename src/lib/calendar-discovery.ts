@@ -181,7 +181,11 @@ async function probeWellKnown(
     }
     const location = response.headers.get("location");
     if (response.status < 301 || response.status > 308 || !location) return null;
-    url = new URL(location, url);
+    try {
+      url = new URL(location, url);
+    } catch {
+      return null; // A malformed redirect: the next host may still answer.
+    }
   }
   return null;
 }
@@ -205,7 +209,7 @@ async function byWellKnown(domain: string, deps: DiscoveryDeps): Promise<Discove
     const serverUrl =
       status === 401 && url.pathname.replace(/\/$/, "") === "/.well-known/caldav"
         ? url.origin
-        : `${url.origin}${url.pathname}`.replace(/\/$/, "");
+        : `${url.origin}${url.pathname.replace(/\/$/, "")}${url.search}`;
     return { kind: "caldav", serverUrl, via: "well-known" };
   }
   return null;

@@ -128,6 +128,22 @@ describe("discoverCalendar", () => {
     });
   });
 
+  it("moves on past a malformed redirect, and keeps a redirect's query", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 301, headers: { location: "https://[bad" } }))
+      .mockResolvedValueOnce(
+        new Response(null, {
+          status: 301,
+          headers: { location: "https://dav.example.net/dav/?tenant=example.org" },
+        })
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    expect(await discoverCalendar("a@example.org", deps({ fetch: fetchMock }))).toMatchObject({
+      serverUrl: "https://dav.example.net/dav?tenant=example.org",
+    });
+  });
+
   it("vets every redirect hop, and won't follow one off https", async () => {
     const checked: string[] = [];
     const fetchMock = jest
