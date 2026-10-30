@@ -7,6 +7,10 @@ import { brand } from "@/lib/brand";
 // it is the field-at-night ground from brand/tokens.css (--er-stage, --er-bg).
 export default function manifest(): MetadataRoute.Manifest {
   return {
+    // Without an id, Chrome keys an install to start_url, so moving start_url
+    // orphans every install: it never takes a new name or icon again. "/today"
+    // is the start_url every install since b476217 was keyed to.
+    id: "/today",
     name: brand.name,
     short_name: brand.name,
     description: brand.description,

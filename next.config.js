@@ -72,13 +72,6 @@ const nextConfig = {
       },
     },
   },
-
-  // The product was called Erwin until 1.0. ops still calls /api/erwin/* and
-  // reads each Focus task's `erwin` field (sigwald/focus/queue/route.ts), so
-  // both answer until ops moves to the new names. Delete both together then.
-  async rewrites() {
-    return [{ source: "/api/erwin/:path*", destination: "/api/sigwald/:path*" }];
-  },
 };
 
 module.exports = nextConfig;

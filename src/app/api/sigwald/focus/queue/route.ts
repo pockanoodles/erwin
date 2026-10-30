@@ -52,8 +52,6 @@ export async function GET(request: NextRequest) {
           ...row,
           ...core.facts.get(t.id),
           sigwald,
-          // The pre-1.0 name, for ops until it reads `sigwald` (next.config.js).
-          erwin: sigwald,
         },
       ];
     });
