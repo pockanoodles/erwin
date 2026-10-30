@@ -1,5 +1,9 @@
+import type { Metadata } from "next";
 import { fontVars } from "./_lib/fonts";
 import "./globals.css";
+
+// Without its own title the tab showed the bare URL.
+export const metadata: Metadata = { title: "404 · Sigwald" };
 
 // Exported as 404.html; the Worker serves it for any unknown /sigwald path.
 export default function NotFound() {
