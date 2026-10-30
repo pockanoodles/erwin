@@ -4,7 +4,7 @@ Sigwald is a personal calendar and task assistant. It runs either as a desktop a
 
 This document answers three questions in plain language: what leaves this machine, where it goes, and why. It is written to be read by someone who does not work on the code. It is kept by hand, so a change to how Sigwald talks to the outside world should change this file in the same commit.
 
-Last verified against the code on **2026-10-26**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Last verified against the code on **2026-10-26**. For the privacy policy that sits on top of this document, see [kaitosoeno.com/sigwald/privacy](https://kaitosoeno.com/sigwald/privacy/) (`site/content/privacy.ts`), which a change here should follow.
 
 ---
 

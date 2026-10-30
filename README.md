@@ -14,7 +14,7 @@ on, from your Canvas courses and goals to your workouts and meals.
   <a href="#modules">Modules</a> ·
   <a href="#how-the-ranking-works">Ranking</a> ·
   <a href="DATAFLOW.md">Data flow</a> ·
-  <a href="https://kaitosoeno.com/privacy">Privacy</a> ·
+  <a href="https://kaitosoeno.com/sigwald/privacy/">Privacy</a> ·
   <a href="LICENSE">MIT License</a>
 </p>
 
@@ -347,7 +347,7 @@ The repository holds the app (`src/`, with each module under `src/modules/`, and
 
 ## Privacy
 
-Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Sigwald has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Stats, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `SIGWALD_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/privacy](https://kaitosoeno.com/privacy).
+Your tasks, notes, goals, course materials, workouts, meals and shifts stay in the database on your machine or your server. Sigwald has no analytics, no crash reporting and no telemetry, and it sends nothing to any AI service. It contacts only the services you connect (Canvas, Google, Microsoft, a CalDAV server) and, for desktop builds downloaded from GitHub, GitHub Releases to check for an update. Stats, People, Training, Nutrition and Work send nothing anywhere. Credentials are stored encrypted with `SIGWALD_SECRET_KEY`. [`DATAFLOW.md`](DATAFLOW.md) lists every endpoint, what is sent and why, and the privacy policy is at [kaitosoeno.com/sigwald/privacy](https://kaitosoeno.com/sigwald/privacy/).
 
 ## Credits
 

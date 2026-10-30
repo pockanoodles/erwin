@@ -118,8 +118,6 @@ const en: Dict = {
     items: [
       { href: "/", label: "Contact" },
       { href: "/portfolio", label: "Portfolio" },
-      { href: "/experience", label: "Experience" },
-      { href: "/about", label: "About" },
     ],
   },
 };
@@ -205,8 +203,6 @@ const ja: Dict = {
     items: [
       { href: "/ja", label: "お問い合わせ" },
       { href: "/ja/portfolio", label: "作品" },
-      { href: "/ja/experience", label: "経歴" },
-      { href: "/ja/about", label: "プロフィール" },
     ],
   },
 };

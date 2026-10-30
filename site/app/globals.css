@@ -1118,3 +1118,132 @@ html[data-vt="in"]::view-transition-new(vt-name) {
     transform: translateY(14px);
   }
 }
+
+/* ── Privacy policy (components/Privacy.tsx) ────────────────────────── */
+
+/* A short screen: the eyebrow, the title and the date, with the policy
+   straight under it rather than a screen away. */
+.policy-head {
+  min-height: 0;
+  padding-top: calc(var(--er-header) + var(--er-s-10));
+  padding-bottom: var(--er-s-9);
+  border-top: 0;
+}
+.policy-head__updated {
+  margin-top: var(--er-s-5);
+}
+
+/* Full width, so the field behind it is one ground; the text keeps the
+   section measure. */
+.policy {
+  position: relative;
+  z-index: 1;
+  padding: 0 max(var(--er-gutter), calc((100% - var(--er-measure-section)) / 2)) var(--er-s-11);
+  background: var(--er-stage);
+}
+.policy__section {
+  display: grid;
+  grid-template-columns: 4rem minmax(0, 1fr);
+  gap: var(--er-s-5);
+  padding: var(--er-s-8) 0;
+  border-top: 1px solid var(--er-line-strong);
+  scroll-margin-top: calc(var(--er-header) + var(--er-s-5));
+}
+/* The number sits on the heading's first line. */
+.policy__section > .step__n {
+  padding-top: 0.2em;
+}
+.policy__body {
+  min-width: 0;
+}
+.policy__p {
+  max-width: 42rem;
+  margin-top: var(--er-s-3);
+  color: var(--er-muted);
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.ledger + .policy__p--after {
+  margin-top: var(--er-s-6);
+}
+
+.ledger {
+  margin-top: var(--er-s-6);
+}
+.ledger__row {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr 1.2fr;
+  gap: var(--er-s-5);
+  padding: var(--er-s-4) 0;
+  border-bottom: 1px solid var(--er-line);
+}
+.ledger__head {
+  padding-top: 0;
+  padding-bottom: var(--er-s-2);
+  border-bottom-color: var(--er-line-strong);
+}
+.ledger__cell {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--er-muted);
+}
+.ledger__cell[data-col="where"] {
+  color: var(--er-ink);
+}
+/* Each cell carries its column's name for the phone layout, where the head
+   row is gone. */
+.ledger__label {
+  display: none;
+}
+
+.policy__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--er-s-6);
+  margin-top: var(--er-s-4);
+  font-size: 14px;
+}
+/* A 44px target around a link whose underline stays on the text. */
+.policy__links li {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.policy__links a {
+  color: var(--er-ink);
+  border-bottom: 1px solid var(--er-line-strong);
+  padding-bottom: 1px;
+  transition: border-color 160ms var(--er-ease);
+}
+.policy__links a:hover {
+  border-color: var(--er-accent-text);
+}
+.foot__cols a[aria-current="page"] {
+  color: var(--er-ink);
+}
+
+@media (max-width: 760px), (max-aspect-ratio: 5/4) {
+  .policy-head {
+    padding-top: calc(var(--er-header) + var(--er-s-8));
+    padding-bottom: var(--er-s-7);
+  }
+  .policy__section {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--er-s-2);
+    padding: var(--er-s-7) 0;
+  }
+  .policy__section > .step__n {
+    padding-top: 0;
+  }
+  .ledger__head {
+    display: none;
+  }
+  .ledger__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--er-s-3);
+  }
+  .ledger__label {
+    display: block;
+    margin-bottom: 2px;
+  }
+}

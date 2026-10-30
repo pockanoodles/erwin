@@ -17,7 +17,7 @@ export const brand = {
   siteUrl: "https://kaitosoeno.com/sigwald",
   repoUrl: "https://github.com/pockanoodles/sigwald",
   issuesUrl: "https://github.com/pockanoodles/sigwald/issues",
-  privacyUrl: "https://kaitosoeno.com/privacy",
+  privacyUrl: "https://kaitosoeno.com/sigwald/privacy/",
   supportEmail: "soenokaito1@gmail.com",
 } as const;
 

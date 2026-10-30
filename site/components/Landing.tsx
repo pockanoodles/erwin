@@ -9,9 +9,10 @@ import { useEffect, useState } from "react";
 import type { Dict, Locale } from "@/content/copy";
 import { channels, PORTFOLIO_URL, RELEASES_URL, REPO_URL, type ChannelGroup } from "@/content/channels";
 import { AppTour } from "./AppTour";
+import { Bar } from "./Bar";
 import { Dial, type DayBlock } from "./Dial";
 import { Downloads, detectGroup } from "./Downloads";
-import { Mark } from "./Mark";
+import { Foot } from "./Foot";
 import { SiteMenu } from "./SiteMenu";
 
 // One example day for the dial, in minutes after midnight.
@@ -38,30 +39,10 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
   // work today rather than offering a download that lands on "Soon".
   const ctaLabel = !liveForMine ? t.hero.cta.source : group === "mac" ? t.hero.cta.mac : group === "windows" ? t.hero.cta.windows : group === "linux" ? t.hero.cta.linux : t.hero.cta.other;
   const ctaHref = liveForMine ? RELEASES_URL : "#install";
-  const other = locale === "en" ? { href: "/sigwald/ja/", label: "日本語" } : { href: "/sigwald/", label: "English" };
 
   return (
     <>
-      <header className="bar">
-        <a href={locale === "en" ? "/sigwald/" : "/sigwald/ja/"} className="bar__brand" aria-label={t.nav.label}>
-          <Mark size={26} />
-          <span>SIGWALD</span>
-        </a>
-        <nav className="bar__nav" aria-label={t.nav.label}>
-          <a href="#how">{t.nav.how}</a>
-          <a href="#app">{t.nav.app}</a>
-          <a href="#data">{t.nav.data}</a>
-          <a href="#install">{t.nav.install}</a>
-        </nav>
-        <div className="bar__util">
-          <a href={other.href} hrefLang={locale === "en" ? "ja" : "en"} className="label">
-            {other.label}
-          </a>
-          <a href={REPO_URL} className="label">
-            {t.nav.github}
-          </a>
-        </div>
-      </header>
+      <Bar t={t} locale={locale} page="landing" />
 
       <main>
         <section className="hero" data-hero>
@@ -152,41 +133,7 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
         </section>
       </main>
 
-      <footer className="foot">
-        <div className="foot__brand">
-          <Mark size={22} />
-          <span>
-            {t.footer.rights} · {t.footer.license}
-          </span>
-        </div>
-        <div className="foot__cols">
-          <div>
-            <p className="label">{t.footer.product}</p>
-            <ul>
-              <li>
-                <a href="#install">{t.nav.install}</a>
-              </li>
-              <li>
-                <a href={REPO_URL}>{t.footer.source}</a>
-              </li>
-              <li>
-                <a href={locale === "en" ? "https://kaitosoeno.com/privacy" : "https://kaitosoeno.com/ja/privacy"}>{t.footer.privacy}</a>
-              </li>
-            </ul>
-          </div>
-          <div>
-            <p className="label">{t.footer.maker}</p>
-            <ul>
-              <li>
-                <a href={locale === "en" ? PORTFOLIO_URL : "https://kaitosoeno.com/ja/portfolio"}>{t.footer.portfolio}</a>
-              </li>
-              <li>
-                <a href={locale === "en" ? "https://kaitosoeno.com/" : "https://kaitosoeno.com/ja"}>{t.menu.items[0].label}</a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </footer>
+      <Foot t={t} locale={locale} page="landing" />
 
       <SiteMenu t={t.menu} />
     </>
