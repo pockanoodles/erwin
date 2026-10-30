@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+import type { CalendarProvider } from "@/lib/calendar-providers";
 import { logger } from "@/lib/logger";
 
 const LOG_SOURCE = "CalDAVAccountForm";
@@ -35,6 +36,8 @@ interface TestResult {
 interface CalDAVAccountFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  preset?: CalendarProvider;
+  email?: string;
 }
 
 /**
@@ -44,17 +47,24 @@ interface CalDAVAccountFormProps {
 export function CalDAVAccountForm({
   onSuccess,
   onCancel,
+  preset,
+  email,
 }: CalDAVAccountFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [formData, setFormData] = useState({
-    serverUrl: "",
-    username: "",
+    serverUrl: preset?.caldav?.serverUrl ?? "",
+    username: email ?? "",
     password: "",
     path: "", // Optional path for some CalDAV servers
   });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<TestResult | null>(null);
+
+  const showServerUrl =
+    !preset?.caldav || preset.caldav.serverUrl === "";
+  const passwordLabel = preset?.caldav?.passwordLabel ?? "Password";
+  const title = preset ? `Connect ${preset.name}` : "Connect CalDAV Account";
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -284,11 +294,13 @@ export function CalDAVAccountForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Connect CalDAV Account</CardTitle>
-        <CardDescription>
-          Add your CalDAV calendar account from services like Fastmail, iCloud,
-          or other CalDAV providers
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        {!preset ? (
+          <CardDescription>
+            Add your CalDAV calendar account from services like Fastmail, iCloud,
+            or other CalDAV providers
+          </CardDescription>
+        ) : null}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -298,25 +310,29 @@ export function CalDAVAccountForm({
             </div>
           )}
 
-          <fieldset className="mb-4">
-            <Label
-              className="mb-2.5 text-[15px] leading-normal"
-              htmlFor="serverUrl"
-            >
-              Server URL <span className="text-destructive">*</span>
-            </Label>
-            <Input
-              id="serverUrl"
-              name="serverUrl"
-              placeholder="https://caldav.example.com"
-              value={formData.serverUrl}
-              onChange={handleChange}
-              required
-            />
-            <p className="mt-1 text-sm text-muted-foreground">
-              For Fastmail: https://caldav.fastmail.com
-            </p>
-          </fieldset>
+          {showServerUrl ? (
+            <fieldset className="mb-4">
+              <Label
+                className="mb-2.5 text-[15px] leading-normal"
+                htmlFor="serverUrl"
+              >
+                Server URL <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="serverUrl"
+                name="serverUrl"
+                placeholder="https://caldav.example.com"
+                value={formData.serverUrl}
+                onChange={handleChange}
+                required
+              />
+              {!preset ? (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  For Fastmail: https://caldav.fastmail.com
+                </p>
+              ) : null}
+            </fieldset>
+          ) : null}
 
           <fieldset className="mb-4">
             <Label
@@ -333,9 +349,11 @@ export function CalDAVAccountForm({
               onChange={handleChange}
               required
             />
-            <p className="mt-1 text-sm text-muted-foreground">
-              For Fastmail: Use your full email address
-            </p>
+            {!preset ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                For Fastmail: Use your full email address
+              </p>
+            ) : null}
           </fieldset>
 
           <fieldset className="mb-4">
@@ -343,7 +361,7 @@ export function CalDAVAccountForm({
               className="mb-2.5 text-[15px] leading-normal"
               htmlFor="password"
             >
-              Password <span className="text-destructive">*</span>
+              {passwordLabel} <span className="text-destructive">*</span>
             </Label>
             <Input
               id="password"
@@ -354,10 +372,29 @@ export function CalDAVAccountForm({
               onChange={handleChange}
               required
             />
-            <p className="mt-1 text-sm text-muted-foreground">
-              For Fastmail: Use an app-specific password from Settings →
-              Password & Security
-            </p>
+            {preset?.caldav ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {preset.caldav.passwordHelpUrl ? (
+                  <>
+                    <a
+                      href={preset.caldav.passwordHelpUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline underline-offset-2"
+                    >
+                      {preset.caldav.passwordHelp}
+                    </a>
+                  </>
+                ) : (
+                  preset.caldav.passwordHelp
+                )}
+              </p>
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                For Fastmail: Use an app-specific password from Settings →
+                Password & Security
+              </p>
+            )}
           </fieldset>
 
           <fieldset className="mb-4">
@@ -371,9 +408,11 @@ export function CalDAVAccountForm({
               value={formData.path}
               onChange={handleChange}
             />
-            <p className="mt-1 text-sm text-muted-foreground">
-              For Fastmail: /dav/calendars/user/youremail@fastmail.com
-            </p>
+            {!preset ? (
+              <p className="mt-1 text-sm text-muted-foreground">
+                For Fastmail: /dav/calendars/user/youremail@fastmail.com
+              </p>
+            ) : null}
           </fieldset>
 
           <div className="mt-4">

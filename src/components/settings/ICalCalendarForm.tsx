@@ -21,6 +21,8 @@ const LOG_SOURCE = "ICalCalendarForm";
 interface ICalCalendarFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  initialUrl?: string;
+  help?: string;
 }
 
 /**
@@ -32,13 +34,15 @@ interface ICalCalendarFormProps {
 export function ICalCalendarForm({
   onSuccess,
   onCancel,
+  initialUrl,
+  help,
 }: ICalCalendarFormProps) {
   const addFeed = useCalendarStore((state) => state.addFeed);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    url: "",
+    url: initialUrl ?? "",
     color: "#3b82f6",
   });
 
@@ -129,6 +133,9 @@ export function ICalCalendarForm({
             >
               iCal link <span className="text-destructive">*</span>
             </Label>
+            {help ? (
+              <p className="mb-2 text-sm text-muted-foreground">{help}</p>
+            ) : null}
             <Input
               id="ical-url"
               name="url"
