@@ -140,38 +140,73 @@ async function bySrv(domain: string, deps: DiscoveryDeps): Promise<Discovery | n
   return { kind: "caldav", serverUrl: url.href.replace(/\/$/, ""), via: "srv" };
 }
 
+const MAX_PROBE_REDIRECTS = 3;
+
 /**
- * A server that answers PROPFIND on `/.well-known/caldav` with a redirect, a
- * multistatus or a demand for credentials is a CalDAV server. A plain web
- * server answers 404, 405 or a page.
+ * Where a PROPFIND on `/.well-known/caldav` ends up, following redirects by
+ * hand so every hop passes the public-host guard. Null when it never reaches a
+ * CalDAV answer: a multistatus (207), or a demand for credentials (401). A
+ * redirect proves nothing on its own, since plenty of domains send every path
+ * to their website; a plain website ends in 404, 405 or a page.
  */
-async function byWellKnown(domain: string, deps: DiscoveryDeps): Promise<Discovery | null> {
-  for (const host of [domain, `caldav.${domain}`]) {
-    const url = new URL(`https://${host}/.well-known/caldav`);
+async function probeWellKnown(
+  start: URL,
+  deps: DiscoveryDeps
+): Promise<{ url: URL; status: number } | null> {
+  let url = start;
+  for (let hop = 0; hop <= MAX_PROBE_REDIRECTS; hop++) {
+    if (url.protocol !== "https:") return null;
     try {
       await deps.assertPublic(url);
     } catch {
-      continue;
+      return null;
     }
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+    let response: Response;
     try {
-      const response = await deps.fetch(url, {
+      response = await deps.fetch(url, {
         method: "PROPFIND",
         headers: { Depth: "0" },
         redirect: "manual",
         signal: controller.signal,
       });
-      const redirected =
-        response.status >= 301 && response.status <= 308 && !!response.headers.get("location");
-      if (response.status === 207 || response.status === 401 || redirected) {
-        return { kind: "caldav", serverUrl: `https://${host}`, via: "well-known" };
-      }
     } catch {
-      // Unreachable or too slow: try the next host.
+      return null; // Unreachable or too slow.
     } finally {
       clearTimeout(timer);
     }
+    if (response.status === 207 || response.status === 401) {
+      return { url, status: response.status };
+    }
+    const location = response.headers.get("location");
+    if (response.status < 301 || response.status > 308 || !location) return null;
+    url = new URL(location, url);
+  }
+  return null;
+}
+
+/**
+ * RFC 6764's fallback: the domain, then its `caldav.` host. The server URL is
+ * where the probe was answered, so a DAV root at `/caldav/` or one served at
+ * `/.well-known/caldav` itself keeps its path. The exception is a credentials
+ * demand at the well-known address itself (iCloud's habit), where the origin
+ * is right: the CalDAV client asks `/.well-known/caldav` again once it has
+ * credentials and follows wherever that leads.
+ */
+async function byWellKnown(domain: string, deps: DiscoveryDeps): Promise<Discovery | null> {
+  for (const host of [domain, `caldav.${domain}`]) {
+    const answered = await probeWellKnown(
+      new URL(`https://${host}/.well-known/caldav`),
+      deps
+    );
+    if (!answered) continue;
+    const { url, status } = answered;
+    const serverUrl =
+      status === 401 && url.pathname.replace(/\/$/, "") === "/.well-known/caldav"
+        ? url.origin
+        : `${url.origin}${url.pathname}`.replace(/\/$/, "");
+    return { kind: "caldav", serverUrl, via: "well-known" };
   }
   return null;
 }

@@ -98,6 +98,57 @@ describe("discoverCalendar", () => {
     );
   });
 
+  it("doesn't take a domain that redirects everything to its website for CalDAV", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, { status: 301, headers: { location: "https://www.example.org/" } })
+      )
+      .mockResolvedValueOnce(new Response("<html>", { status: 200 }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    expect(await discoverCalendar("a@example.org", deps({ fetch: fetchMock }))).toEqual({
+      kind: "caldav",
+      serverUrl: "https://caldav.example.org",
+      via: "well-known",
+    });
+  });
+
+  it("keeps the path a redirect leads to, and a 207 answered at the well-known address", async () => {
+    const redirecting = jest
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 301, headers: { location: "/caldav/" } }))
+      .mockResolvedValueOnce(new Response(null, { status: 401 }));
+    expect(await discoverCalendar("a@example.org", deps({ fetch: redirecting }))).toMatchObject({
+      serverUrl: "https://example.org/caldav",
+    });
+
+    const direct = jest.fn().mockResolvedValueOnce(new Response(null, { status: 207 }));
+    expect(await discoverCalendar("a@example.org", deps({ fetch: direct }))).toMatchObject({
+      serverUrl: "https://example.org/.well-known/caldav",
+    });
+  });
+
+  it("vets every redirect hop, and won't follow one off https", async () => {
+    const checked: string[] = [];
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(null, { status: 302, headers: { location: "http://example.org/dav" } })
+      )
+      .mockResolvedValue(new Response(null, { status: 404 }));
+    await discoverCalendar(
+      "a@example.org",
+      deps({
+        fetch: fetchMock,
+        assertPublic: async (url) => {
+          checked.push(url.href);
+        },
+      })
+    );
+    expect(checked).not.toContain("http://example.org/dav");
+    expect(checked).toContain("https://caldav.example.org/.well-known/caldav");
+  });
+
   it("probes nothing the public-host guard refuses", async () => {
     const fetchMock = jest.fn();
     const found = await discoverCalendar(
