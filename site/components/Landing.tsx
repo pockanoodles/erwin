@@ -34,7 +34,9 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
   useEffect(() => setGroup(detectGroup()), []);
 
   const liveForMine = channels.some((c) => c.group === group && c.live && c.href);
-  const ctaLabel = group === "mac" ? t.hero.cta.mac : group === "windows" ? t.hero.cta.windows : group === "linux" ? t.hero.cta.linux : t.hero.cta.other;
+  // Until a download serves this visitor's system, the button says what does
+  // work today rather than offering a download that lands on "Soon".
+  const ctaLabel = !liveForMine ? t.hero.cta.source : group === "mac" ? t.hero.cta.mac : group === "windows" ? t.hero.cta.windows : group === "linux" ? t.hero.cta.linux : t.hero.cta.other;
   const ctaHref = liveForMine ? RELEASES_URL : "#install";
   const other = locale === "en" ? { href: "/sigwald/ja/", label: "日本語" } : { href: "/sigwald/", label: "English" };
 

@@ -28,7 +28,7 @@ export const channels: Channel[] = [
   { id: "aur", group: "linux", name: "AUR", command: "yay -S sigwald-bin", live: false },
   { id: "appimage", group: "linux", name: "AppImage, .deb, .rpm", href: RELEASES, live: false },
   { id: "docker", group: "server", name: "Docker Compose", href: "https://github.com/pockanoodles/sigwald#self-host", live: false },
-  { id: "source", group: "server", name: "From source", command: "git clone https://github.com/pockanoodles/sigwald && cd sigwald && npm install && npm run dev:local", live: false },
+  { id: "source", group: "server", name: "From source", command: "git clone https://github.com/pockanoodles/sigwald && cd sigwald && npm install && npm run dev:local", live: true },
 ];
 
 export const RELEASES_URL = RELEASES;
