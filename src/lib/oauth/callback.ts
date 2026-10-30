@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 
-import type { OAuthProvider } from "./apps";
+import { type OAuthProvider, servesFromLoopback } from "./apps";
 import { finishOAuth } from "./finish";
 import { type PendingOAuth, claimOAuth } from "./requests";
 
@@ -32,10 +32,17 @@ export async function claimCallback(
   // Google sends Sigwald's own app back to 127.0.0.1, which doesn't carry the
   // session cookie a browser holds for localhost. Forward to the app's own
   // origin, same path and query, before claiming anything. The Host header,
-  // because Next's `nextUrl` reports 127.0.0.1 as localhost.
+  // because Next's `nextUrl` reports 127.0.0.1 as localhost. Only where
+  // Sigwald serves from loopback, which is the only place its own app works:
+  // behind a reverse proxy that forwards `Host: 127.0.0.1`, forwarding to the
+  // public origin would come straight back here, forever.
   const origin = new URL(process.env.NEXTAUTH_URL!);
   const host = request.headers.get("host") ?? "";
-  if (host.split(":")[0] === "127.0.0.1" && origin.hostname !== "127.0.0.1") {
+  if (
+    servesFromLoopback() &&
+    host.split(":")[0] === "127.0.0.1" &&
+    origin.hostname !== "127.0.0.1"
+  ) {
     const target = new URL(request.nextUrl.pathname, origin);
     target.search = request.nextUrl.search;
     return { response: NextResponse.redirect(target) };

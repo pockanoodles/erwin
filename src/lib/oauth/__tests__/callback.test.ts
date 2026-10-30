@@ -39,6 +39,19 @@ describe("claimCallback on a server", () => {
     expect(claimOAuth).not.toHaveBeenCalled();
   });
 
+  it("doesn't forward behind a proxy that sends Host 127.0.0.1 to a public origin", async () => {
+    process.env.NEXTAUTH_URL = "https://calendar.example.org";
+    jest.mocked(authenticateRequest).mockResolvedValue({ userId: "alice" } as never);
+    jest.mocked(claimOAuth).mockResolvedValue(pending);
+    const result = await claimCallback(
+      at("http://127.0.0.1:3000/api/calendar/google?code=c&state=s"),
+      "GOOGLE",
+      "test"
+    );
+    process.env.NEXTAUTH_URL = "http://localhost:3000";
+    expect(result).toEqual({ pending });
+  });
+
   it("refuses a browser that isn't signed in", async () => {
     jest.mocked(authenticateRequest).mockResolvedValue({ response: new Response() } as never);
     const result = await claimCallback(
