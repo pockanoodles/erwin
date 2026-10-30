@@ -103,4 +103,13 @@ describe("classifyPastedLink", () => {
   it.each(["ftp://x", "not a url"])("rejects %s as invalid", (input) => {
     expect(classifyPastedLink(input)).toEqual({ kind: "invalid" });
   });
+  it("reads a Nextcloud public export as an iCal link, and still offers the plain iCal choice", () => {
+    expect(
+      classifyPastedLink("https://cloud.example.org/remote.php/dav/public-calendars/AbC?export")
+    ).toEqual({
+      kind: "ical",
+      url: "https://cloud.example.org/remote.php/dav/public-calendars/AbC?export",
+    });
+    expect(providerById("ical")?.method).toBe("ical");
+  });
 });

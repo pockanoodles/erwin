@@ -3,26 +3,20 @@ import { NextRequest } from "next/server";
 import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { microsoftEndpoints, oauthApp } from "@/lib/oauth/apps";
+import { claimCallback } from "@/lib/oauth/callback";
 import { finishOAuth } from "@/lib/oauth/finish";
-import { claimOAuth } from "@/lib/oauth/requests";
 import { OutlookCalendarService } from "@/lib/outlook-calendar";
 import { TokenManager } from "@/lib/token-manager";
 
 const LOG_SOURCE = "OutlookCalendarAPI";
 
-// The Microsoft sign-in callback. The user comes from the sign-in's `state`,
-// not the session: in the desktop app this request arrives in the system
-// browser, which isn't signed in to Sigwald.
+// The Microsoft sign-in callback. Who it is for comes from the sign-in's
+// `state`, checked against the session on a server (see claimCallback).
 export async function GET(req: NextRequest) {
+  const claimed = await claimCallback(req, "OUTLOOK", LOG_SOURCE);
+  if ("response" in claimed) return claimed.response;
+  const { pending } = claimed;
   const searchParams = req.nextUrl.searchParams;
-  const pending = await claimOAuth(searchParams.get("state"), "OUTLOOK");
-  if (!pending) {
-    return finishOAuth("OUTLOOK", {
-      ok: false,
-      code: "outlook-auth-expired",
-      failure: "This sign-in link expired or was already used.",
-    });
-  }
 
   const code = searchParams.get("code");
   if (searchParams.get("error") || !code) {

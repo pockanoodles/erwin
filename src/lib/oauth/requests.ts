@@ -27,11 +27,12 @@ function base64url(bytes: Buffer): string {
 /**
  * Records a sign-in that is about to leave for Google or Microsoft.
  *
- * `state` ties the callback to the user who started it, which is how the
- * callback knows who it is for: the desktop app finishes sign-in in the system
- * browser, which has no Sigwald session. It also stops a forged callback from
- * attaching someone else's calendar. The PKCE verifier stays here and only its
- * hash travels, so an intercepted code is useless on its own.
+ * `state` ties the callback to the user who started it. In the desktop app
+ * that is how the callback knows who it is for, since it arrives in the system
+ * browser, which has no Sigwald session; on a server the session has to match
+ * it too (claimCallback). Either way a callback Sigwald didn't start is
+ * refused. The PKCE verifier stays here and only its hash travels, so an
+ * intercepted code is useless on its own.
  */
 export async function startOAuth(
   pending: PendingOAuth

@@ -13,7 +13,8 @@ const PAGE_STYLE =
 /**
  * Where a callback sends the user once it's done.
  *
- * In a browser that is signed in to Sigwald, back to Settings. The desktop app
+ * On a server, back to Settings (claimCallback made sure this browser is
+ * signed in as the user who started it). The desktop app
  * finishes sign-in in the system browser, which isn't signed in, so there it
  * says so and leaves the user to switch back: the app's Accounts list refreshes
  * when its window gets focus. `failure` is a fixed sentence, never echoed input.

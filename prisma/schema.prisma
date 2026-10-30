@@ -43,9 +43,10 @@ model ConnectedAccount {
 }
 
 /// A Google or Microsoft sign-in that has left and not come back yet. The
-/// callback finds its user by `state` rather than by session, because the
-/// desktop app finishes sign-in in the system browser, which has none. Each row
-/// is claimed once and lives at most ten minutes (src/lib/oauth/requests.ts).
+/// callback claims it by `state`: in the desktop app that alone, because it
+/// finishes in the system browser, which has no session; on a server the
+/// session must belong to `userId` too. Each row is claimed once and lives at
+/// most ten minutes (src/lib/oauth/requests.ts, src/lib/oauth/callback.ts).
 model OAuthRequest {
   state        String   @id
   provider     String // "GOOGLE" | "OUTLOOK"

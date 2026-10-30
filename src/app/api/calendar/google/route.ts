@@ -9,8 +9,8 @@ import { createAllDayDate, newDate, newDateFromYMD } from "@/lib/date-utils";
 import { createGoogleOAuthClient } from "@/lib/google";
 import { getGoogleCalendarClient } from "@/lib/google-calendar";
 import { oauthApp } from "@/lib/oauth/apps";
+import { claimCallback } from "@/lib/oauth/callback";
 import { finishOAuth } from "@/lib/oauth/finish";
-import { claimOAuth } from "@/lib/oauth/requests";
 import { prisma } from "@/lib/prisma";
 import { TokenManager } from "@/lib/token-manager";
 
@@ -67,19 +67,14 @@ async function fetchAllEvents(
   return items;
 }
 
-// Handle Google OAuth callback and account connection. The user comes from the
-// sign-in's `state`, not the session: in the desktop app this request arrives
-// in the system browser, which isn't signed in to Sigwald.
+// Handle Google OAuth callback and account connection. Who it is for comes
+// from the sign-in's `state`, checked against the session on a server
+// (see claimCallback).
 export async function GET(request: NextRequest) {
+  const claimed = await claimCallback(request, "GOOGLE", LOG_SOURCE);
+  if ("response" in claimed) return claimed.response;
+  const { pending } = claimed;
   const url = new URL(request.url);
-  const pending = await claimOAuth(url.searchParams.get("state"), "GOOGLE");
-  if (!pending) {
-    return finishOAuth("GOOGLE", {
-      ok: false,
-      code: "google-auth-expired",
-      failure: "This sign-in link expired or was already used.",
-    });
-  }
   const code = url.searchParams.get("code");
   if (!code) {
     return finishOAuth("GOOGLE", {

@@ -222,6 +222,15 @@ export const CALENDAR_PROVIDERS: readonly CalendarProvider[] = [
         "Use an app-specific password if your provider offers one.",
     },
   },
+  // Any calendar that publishes a feed, read-only. A pasted link is guessed,
+  // and a feed with no telltale in its address guesses wrong, so this tile is
+  // the way to say "it's an iCal link" outright.
+  {
+    id: "ical",
+    name: "iCal link",
+    method: "ical",
+    domains: [],
+  },
 ];
 
 export function providerById(id: string): CalendarProvider | undefined {
@@ -253,6 +262,8 @@ function isIcalUrl(original: string, url: URL): boolean {
   if (path.includes("/ical/") || path.includes("/published/")) return true;
   if (url.searchParams.get("format")?.toLowerCase() === "ics") return true;
   if (url.href.toLowerCase().includes("format=ics")) return true;
+  // Nextcloud's public-calendar export: `.../calendars/<id>?export`.
+  if (url.searchParams.has("export")) return true;
 
   if (
     url.hostname.toLowerCase() === "calendar.google.com" &&
