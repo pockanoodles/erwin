@@ -14,7 +14,7 @@ export interface Dict {
     label: string;
     statement: string;
     sub: string;
-    cta: { mac: string; windows: string; linux: string; other: string };
+    cta: { mac: string; windows: string; linux: string; other: string; source: string };
     more: string;
     dial: { caption: string; now: string; next: string; free: string };
   };
@@ -47,7 +47,7 @@ const en: Dict = {
     label: "Open source · MIT",
     statement: "What should I do right now?",
     sub: "Sigwald reads your calendar, your tasks and the modules you turn on, then names the one thing to do next.",
-    cta: { mac: "Download for macOS", windows: "Download for Windows", linux: "Download for Linux", other: "Download Sigwald" },
+    cta: { mac: "Download for macOS", windows: "Download for Windows", linux: "Download for Linux", other: "Download Sigwald", source: "Run it from source" },
     more: "or see every way to install",
     dial: { caption: "Example day", now: "Now", next: "Next", free: "Free until" },
   },
@@ -133,7 +133,7 @@ const ja: Dict = {
     label: "オープンソース · MIT",
     statement: "今、何をやるべきか。",
     sub: "Sigwald はカレンダーとタスク、オンにしたモジュールを読み取り、次にやるべきことをひとつだけ示します。",
-    cta: { mac: "macOS 版をダウンロード", windows: "Windows 版をダウンロード", linux: "Linux 版をダウンロード", other: "Sigwald をダウンロード" },
+    cta: { mac: "macOS 版をダウンロード", windows: "Windows 版をダウンロード", linux: "Linux 版をダウンロード", other: "Sigwald をダウンロード", source: "ソースから動かす" },
     more: "インストール方法をすべて見る",
     dial: { caption: "1 日の例", now: "今", next: "次", free: "空き時間" },
   },
