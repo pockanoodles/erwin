@@ -28,6 +28,10 @@ model ConnectedAccount {
   // CalDAV specific fields
   caldavUrl      String? // Base URL for CalDAV server
   caldavUsername String? // Username for Basic Auth
+  // Google and Outlook: the sign-in app that issued the tokens, "sigwald" or
+  // "custom" (src/lib/oauth/apps.ts). Only that app can refresh them. Null on
+  // accounts from before Sigwald had its own apps, which all used a custom one.
+  oauthApp       String?
 
   // User relationship
   userId       String?
@@ -36,6 +40,22 @@ model ConnectedAccount {
 
   @@unique([userId, provider, email])
   @@index([userId])
+}
+
+/// A Google or Microsoft sign-in that has left and not come back yet. The
+/// callback finds its user by `state` rather than by session, because the
+/// desktop app finishes sign-in in the system browser, which has none. Each row
+/// is claimed once and lives at most ten minutes (src/lib/oauth/requests.ts).
+model OAuthRequest {
+  state        String   @id
+  provider     String // "GOOGLE" | "OUTLOOK"
+  app          String // "sigwald" | "custom"
+  codeVerifier String
+  redirectUri  String
+  userId       String
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 /// A link to an external identity provider. Upstream stored the local password

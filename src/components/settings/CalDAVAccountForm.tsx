@@ -38,6 +38,8 @@ interface CalDAVAccountFormProps {
   onCancel?: () => void;
   preset?: CalendarProvider;
   email?: string;
+  /** A server the user pasted, which wins over the preset's. */
+  serverUrl?: string;
 }
 
 /**
@@ -49,11 +51,12 @@ export function CalDAVAccountForm({
   onCancel,
   preset,
   email,
+  serverUrl: pastedServerUrl,
 }: CalDAVAccountFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [formData, setFormData] = useState({
-    serverUrl: preset?.caldav?.serverUrl ?? "",
+    serverUrl: pastedServerUrl ?? preset?.caldav?.serverUrl ?? "",
     username: email ?? "",
     password: "",
     path: "", // Optional path for some CalDAV servers

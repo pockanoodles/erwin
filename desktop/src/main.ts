@@ -151,6 +151,15 @@ function createWindow(): void {
     event.preventDefault();
     void shell.openExternal(url);
   });
+  // A server redirect out of the app is a sign-in leaving for Google or
+  // Microsoft (Settings, Accounts). Google refuses sign-in inside an embedded
+  // browser, and the system browser is where the user is already signed in,
+  // so it finishes there; the callback claims it by `state`, not by session.
+  mainWindow.webContents.on("will-redirect", (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    void shell.openExternal(url);
+  });
   // The desktop user has no password. If anything ever lands on the sign-in
   // page (a cleared cookie, a sign-out), sign them straight back in.
   mainWindow.webContents.on("did-navigate", (_event, url) => {

@@ -1,54 +1,59 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 
-import { getOutlookCredentials } from "@/lib/auth";
-import { authenticateRequest } from "@/lib/auth/api-auth";
 import { newDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { MICROSOFT_GRAPH_AUTH_ENDPOINTS } from "@/lib/outlook";
+import { microsoftEndpoints, oauthApp } from "@/lib/oauth/apps";
+import { finishOAuth } from "@/lib/oauth/finish";
+import { claimOAuth } from "@/lib/oauth/requests";
 import { OutlookCalendarService } from "@/lib/outlook-calendar";
 import { TokenManager } from "@/lib/token-manager";
 
 const LOG_SOURCE = "OutlookCalendarAPI";
 
+// The Microsoft sign-in callback. The user comes from the sign-in's `state`,
+// not the session: in the desktop app this request arrives in the system
+// browser, which isn't signed in to Sigwald.
 export async function GET(req: NextRequest) {
-  try {
-    const auth = await authenticateRequest(req, LOG_SOURCE);
-    if ("response" in auth) {
-      return auth.response;
-    }
-
-    const userId = auth.userId;
-
-    const searchParams = req.nextUrl.searchParams;
-    const code = searchParams.get("code");
-    const error = searchParams.get("error");
-
-    if (error) {
-      logger.error("Outlook auth error:", { error }, LOG_SOURCE);
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?error=outlook-auth-failed`
-      );
-    }
-
-    if (!code) {
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?error=no-code`
-      );
-    }
-
-    const { clientId, clientSecret } = await getOutlookCredentials();
-    const redirectUrl = `${process.env.NEXTAUTH_URL}/api/calendar/outlook`;
-
-    // Exchange code for tokens
-    const params = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      code,
-      redirect_uri: redirectUrl,
-      grant_type: "authorization_code",
+  const searchParams = req.nextUrl.searchParams;
+  const pending = await claimOAuth(searchParams.get("state"), "OUTLOOK");
+  if (!pending) {
+    return finishOAuth("OUTLOOK", {
+      ok: false,
+      code: "outlook-auth-expired",
+      failure: "This sign-in link expired or was already used.",
     });
+  }
 
-    const tokenResponse = await fetch(MICROSOFT_GRAPH_AUTH_ENDPOINTS.token, {
+  const code = searchParams.get("code");
+  if (searchParams.get("error") || !code) {
+    logger.error(
+      "Outlook auth error:",
+      { error: searchParams.get("error") ?? "no code" },
+      LOG_SOURCE
+    );
+    return finishOAuth("OUTLOOK", {
+      ok: false,
+      code: "outlook-auth-declined",
+      failure: "Microsoft didn't give Sigwald access.",
+    });
+  }
+
+  try {
+    const app = await oauthApp("OUTLOOK", pending.app);
+    if (!app) throw new Error(`The ${pending.app} Outlook app isn't set up`);
+
+    // Exchange code for tokens, on the exact redirect the sign-in left with.
+    // Sigwald's own app is a public client and sends no secret.
+    const params = new URLSearchParams({
+      client_id: app.clientId,
+      code,
+      redirect_uri: pending.redirectUri,
+      grant_type: "authorization_code",
+      code_verifier: pending.codeVerifier,
+    });
+    if (app.clientSecret) params.set("client_secret", app.clientSecret);
+
+    const tokenResponse = await fetch(microsoftEndpoints(app.tenantId).token, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -62,16 +67,18 @@ export async function GET(req: NextRequest) {
         { status: tokenResponse.status },
         LOG_SOURCE
       );
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?error=token-exchange-failed`
-      );
+      return finishOAuth("OUTLOOK", {
+        ok: false,
+        code: "token-exchange-failed",
+        failure: "Microsoft refused the sign-in.",
+      });
     }
 
     const tokenData = await tokenResponse.json();
     const expiresAt = newDate(Date.now() + tokenData.expires_in * 1000);
 
     // Create a temporary account to get user info
-    const tempAccount = {
+    const outlookService = new OutlookCalendarService({
       id: "temp",
       provider: "OUTLOOK",
       email: "",
@@ -82,58 +89,49 @@ export async function GET(req: NextRequest) {
       updatedAt: newDate(),
       caldavUrl: null,
       caldavUsername: null,
-      userId: userId ?? null,
-    };
-
-    // Get user info
-    const outlookService = new OutlookCalendarService(tempAccount);
-    try {
-      const userProfile = await outlookService.getUserProfile();
-      if (!userProfile || !userProfile.mail) {
-        logger.error(
-          "Failed to get user profile",
-          { profile: userProfile.id ?? "unknown" },
-          LOG_SOURCE
-        );
-        return NextResponse.redirect(
-          `${process.env.NEXTAUTH_URL}/settings?error=profile-fetch-failed`
-        );
-      }
-
-      // Store tokens
-      const tokenManager = TokenManager.getInstance();
-      await tokenManager.storeTokens(
-        "OUTLOOK",
-        userProfile.mail,
-        {
-          accessToken: tokenData.access_token,
-          refreshToken: tokenData.refresh_token,
-          expiresAt,
-        },
-        userId ?? "unknown"
-      );
-
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?success=true`
-      );
-    } catch (error) {
+      oauthApp: app.kind,
+      userId: pending.userId,
+    });
+    const userProfile = await outlookService.getUserProfile();
+    // A personal Microsoft account often has no `mail`; its sign-in name is
+    // the address.
+    const email = userProfile?.mail || userProfile?.userPrincipalName;
+    if (!email) {
       logger.error(
         "Failed to get user profile",
-        { error: error instanceof Error ? error.message : String(error) },
+        { profile: userProfile?.id ?? "unknown" },
         LOG_SOURCE
       );
-      return NextResponse.redirect(
-        `${process.env.NEXTAUTH_URL}/settings?error=profile-failed`
-      );
+      return finishOAuth("OUTLOOK", {
+        ok: false,
+        code: "profile-fetch-failed",
+        failure: "Microsoft didn't share the account's email address.",
+      });
     }
+
+    await TokenManager.getInstance().storeTokens(
+      "OUTLOOK",
+      email,
+      {
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token,
+        expiresAt,
+      },
+      pending.userId,
+      app.kind
+    );
+
+    return finishOAuth("OUTLOOK", { ok: true });
   } catch (error) {
     logger.error(
       "Failed to connect Outlook account",
       { error: error instanceof Error ? error.message : String(error) },
       LOG_SOURCE
     );
-    return NextResponse.redirect(
-      `${process.env.NEXTAUTH_URL}/settings?error=callback-failed`
-    );
+    return finishOAuth("OUTLOOK", {
+      ok: false,
+      code: "callback-failed",
+      failure: "Sigwald couldn't finish signing in to Microsoft.",
+    });
   }
 }

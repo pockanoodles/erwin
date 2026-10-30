@@ -86,11 +86,14 @@ export function SystemSettings() {
         description="Configure system-wide settings for the application."
       >
         <SettingRow
-          label="Google Calendar Integration"
+          label="Your own Google app"
           description={
             <div className="space-y-2">
               <div>
-                Configure Google OAuth credentials for calendar integration.
+                Optional where Sigwald runs on your own computer, which signs in
+                through Sigwald&apos;s own Google app. A server at its own domain
+                needs one, because Sigwald&apos;s app only returns to this computer.
+                An app entered here is used for every new connection.
               </div>
               <div>
                 To get these credentials:
@@ -148,12 +151,14 @@ export function SystemSettings() {
         </SettingRow>
 
         <SettingRow
-          label="Outlook Calendar Integration"
+          label="Your own Microsoft app"
           description={
             <div className="space-y-2">
               <div>
-                Configure Microsoft Azure AD credentials for Outlook calendar
-                integration.
+                Optional where Sigwald runs on your own computer, which signs in
+                through Sigwald&apos;s own Microsoft app. A server at its own domain
+                needs one, because Sigwald&apos;s app only returns to this computer.
+                An app entered here is used for every new connection.
               </div>
               <div>
                 To get these credentials:

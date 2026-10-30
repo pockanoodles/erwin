@@ -4,7 +4,7 @@ import type { calendar_v3 } from "googleapis";
 import { useSettingsStore } from "@/store/settings";
 
 import { newDate, newDateFromYMD } from "./date-utils";
-import { createGoogleOAuthClient } from "./google";
+import { googleClientForApp } from "./google";
 import { TokenManager } from "./token-manager";
 
 type GoogleEvent = calendar_v3.Schema$Event;
@@ -31,9 +31,7 @@ export async function getGoogleCalendarClient(
     }
   }
 
-  const oauth2Client = await createGoogleOAuthClient({
-    redirectUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/google`,
-  });
+  const oauth2Client = await googleClientForApp(tokens.oauthApp);
 
   // Set credentials
   oauth2Client.setCredentials({

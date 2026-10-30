@@ -317,11 +317,9 @@ export async function getGoogleTasksClient(accountId: string, userId: string) {
     if (!tokens) throw new Error("Failed to refresh tokens");
   }
 
-  const { createGoogleOAuthClient } = await import("@/lib/google");
+  const { googleClientForApp } = await import("@/lib/google");
 
-  const oauth2Client = await createGoogleOAuthClient({
-    redirectUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/google`,
-  });
+  const oauth2Client = await googleClientForApp(tokens.oauthApp);
 
   // Set credentials
   oauth2Client.setCredentials({ access_token: tokens.accessToken, refresh_token: tokens.refreshToken });

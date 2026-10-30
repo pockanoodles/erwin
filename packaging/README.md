@@ -231,6 +231,25 @@ the workflow copies the `.appx` to a `.msix` name before it uploads.
 
 See `packaging/snap/README.md`.
 
+## Sigwald's own sign-in apps
+
+Google and Outlook connect in one click because Sigwald ships its own OAuth apps (`src/lib/oauth/sigwald-apps.ts`). They are registered once, under the maintainer's accounts, and their IDs are committed: none of it is secret, since an installed app can't keep a secret, and PKCE plus the loopback redirect are what protect a sign-in. Until a client ID is filled in, that provider falls back to an app entered under System, or shows as unavailable.
+
+**Google**
+1. In the [Google Cloud Console](https://console.cloud.google.com), create a project named Sigwald and enable the Google Calendar API and the Google Tasks API.
+2. Configure the OAuth consent screen: External, app name Sigwald, the support email, the landing page as the home page, and a privacy policy page (Google requires one; DATAFLOW.md is its content). Add the scopes `calendar`, `calendar.events`, `tasks`, `userinfo.email` and `openid`.
+3. Publish the app (Publishing status: In production). An app left in Testing issues refresh tokens that expire after 7 days, so every calendar would stop syncing a week after it connected.
+4. Create an OAuth client ID of type **Desktop app**. A Desktop client accepts any `http://127.0.0.1:<port>` redirect, which is what the desktop app's changing port needs, so there is no redirect URI to enter.
+5. Put its client ID and client secret in `SIGWALD_OAUTH_APPS.google`.
+6. Until Google verifies the app, the consent screen warns that the app is unverified and at most 100 users can sign in. Calendar and Tasks are sensitive scopes, so verification asks for the privacy policy, a short video of the sign-in and what Sigwald does with the data, and a verified domain (kaitosoeno.com). Submit it from the consent screen page.
+
+**Microsoft**
+1. In the [Azure portal](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade), register an app named Sigwald with "Accounts in any organizational directory and personal Microsoft accounts".
+2. Under Authentication, add the platform **Mobile and desktop applications** with the custom redirect URI `http://localhost/api/calendar/outlook`. Microsoft ignores the port on a loopback redirect, so it matches the desktop app's port whatever it is. Add no Web platform and create no client secret: this is a public client.
+3. Add the delegated Microsoft Graph permissions `Calendars.ReadWrite`, `Tasks.ReadWrite`, `User.Read` and `offline_access`.
+4. Put its Application (client) ID in `SIGWALD_OAUTH_APPS.microsoft`.
+5. Under Branding, set the publisher domain, and verify the publisher with a Microsoft Partner Network ID (free). Without it the consent screen says "unverified", and many work and school directories won't let their users consent at all.
+
 ## Repo secrets
 
 Add them under Settings, Secrets and variables, Actions, or with

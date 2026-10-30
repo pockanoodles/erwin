@@ -1,9 +1,8 @@
-import { getOutlookCredentials } from "@/lib/auth";
-import { createGoogleOAuthClient } from "@/lib/google";
+import { googleClientForApp } from "@/lib/google";
+import { type OAuthAppKind, microsoftEndpoints, oauthApp } from "@/lib/oauth/apps";
 import { prisma } from "@/lib/prisma";
 
 import { newDate } from "./date-utils";
-import { MICROSOFT_GRAPH_AUTH_ENDPOINTS } from "./outlook";
 
 export type Provider = "GOOGLE" | "OUTLOOK" | "CALDAV";
 
@@ -11,6 +10,12 @@ interface TokenInfo {
   accessToken: string;
   refreshToken?: string;
   expiresAt: Date;
+  /** The sign-in app behind these tokens; see ConnectedAccount.oauthApp. */
+  oauthApp: OAuthAppKind;
+}
+
+function appOf(account: { oauthApp: string | null }): OAuthAppKind {
+  return account.oauthApp === "sigwald" ? "sigwald" : "custom";
 }
 
 export class TokenManager {
@@ -40,6 +45,7 @@ export class TokenManager {
       accessToken: account.accessToken,
       refreshToken: account.refreshToken || undefined,
       expiresAt: account.expiresAt,
+      oauthApp: appOf(account),
     };
   }
 
@@ -55,15 +61,11 @@ export class TokenManager {
       return null;
     }
 
-    const oauth2Client = await createGoogleOAuthClient({
-      redirectUrl: `${process.env.NEXTAUTH_URL}/api/auth/callback/google`,
-    });
-
-    oauth2Client.setCredentials({
-      refresh_token: account.refreshToken,
-    });
-
     try {
+      const oauth2Client = await googleClientForApp(appOf(account));
+      oauth2Client.setCredentials({
+        refresh_token: account.refreshToken,
+      });
       const response = await oauth2Client.refreshAccessToken();
       // expiry_date is an absolute epoch-ms timestamp, not a duration.
       const expiresAt = newDate(
@@ -85,6 +87,7 @@ export class TokenManager {
         accessToken: updatedAccount.accessToken,
         refreshToken: updatedAccount.refreshToken || undefined,
         expiresAt: updatedAccount.expiresAt,
+        oauthApp: appOf(updatedAccount),
       };
     } catch (error) {
       console.error("Failed to refresh Google tokens:", error);
@@ -100,7 +103,8 @@ export class TokenManager {
       refreshToken?: string;
       expiresAt: Date;
     },
-    userId: string
+    userId: string,
+    app: OAuthAppKind
   ): Promise<string> {
     const account = await prisma.connectedAccount.upsert({
       where: {
@@ -114,6 +118,7 @@ export class TokenManager {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         expiresAt: tokens.expiresAt,
+        oauthApp: app,
       },
       create: {
         provider,
@@ -121,6 +126,7 @@ export class TokenManager {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         expiresAt: tokens.expiresAt,
+        oauthApp: app,
         userId,
       },
     });
@@ -140,18 +146,24 @@ export class TokenManager {
       return null;
     }
 
-    // Get credentials using the helper function
-    const { clientId, clientSecret } = await getOutlookCredentials();
-
+    // Only the app that issued a refresh token can redeem it. Sigwald's own
+    // is a public client, so it sends no secret.
+    const app = await oauthApp("OUTLOOK", appOf(account));
+    if (!app) {
+      console.error(
+        `The Outlook sign-in app this account used (${appOf(account)}) isn't set up here anymore`
+      );
+      return null;
+    }
     const params = new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: app.clientId,
       refresh_token: account.refreshToken,
       grant_type: "refresh_token",
     });
+    if (app.clientSecret) params.set("client_secret", app.clientSecret);
 
     try {
-      const response = await fetch(MICROSOFT_GRAPH_AUTH_ENDPOINTS.token, {
+      const response = await fetch(microsoftEndpoints(app.tenantId).token, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -180,6 +192,7 @@ export class TokenManager {
         accessToken: updatedAccount.accessToken,
         refreshToken: updatedAccount.refreshToken || undefined,
         expiresAt: updatedAccount.expiresAt,
+        oauthApp: appOf(updatedAccount),
       };
     } catch (error) {
       console.error("Failed to refresh Outlook tokens:", error);
@@ -205,6 +218,7 @@ export class TokenManager {
     return {
       accessToken: account.accessToken,
       expiresAt: account.expiresAt,
+      oauthApp: appOf(account),
     };
   }
 }

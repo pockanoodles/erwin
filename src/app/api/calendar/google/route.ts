@@ -8,6 +8,9 @@ import { authenticateRequest } from "@/lib/auth/api-auth";
 import { createAllDayDate, newDate, newDateFromYMD } from "@/lib/date-utils";
 import { createGoogleOAuthClient } from "@/lib/google";
 import { getGoogleCalendarClient } from "@/lib/google-calendar";
+import { oauthApp } from "@/lib/oauth/apps";
+import { finishOAuth } from "@/lib/oauth/finish";
+import { claimOAuth } from "@/lib/oauth/requests";
 import { prisma } from "@/lib/prisma";
 import { TokenManager } from "@/lib/token-manager";
 
@@ -64,114 +67,117 @@ async function fetchAllEvents(
   return items;
 }
 
-// Handle Google OAuth callback and account connection
+// Handle Google OAuth callback and account connection. The user comes from the
+// sign-in's `state`, not the session: in the desktop app this request arrives
+// in the system browser, which isn't signed in to Sigwald.
 export async function GET(request: NextRequest) {
-  try {
-    const url = new URL(request.url);
-    const codeParam = url.searchParams.get("code");
-
-    if (!codeParam) {
-      return NextResponse.json({ error: "No code provided" }, { status: 400 });
-    }
-    const auth = await authenticateRequest(request, LOG_SOURCE);
-    if ("response" in auth) {
-      return auth.response;
-    }
-
-    const userId = auth.userId;
-
-    const oauth2Client = await createGoogleOAuthClient({
-      redirectUrl: `${process.env.NEXTAUTH_URL}/api/calendar/google`,
+  const url = new URL(request.url);
+  const pending = await claimOAuth(url.searchParams.get("state"), "GOOGLE");
+  if (!pending) {
+    return finishOAuth("GOOGLE", {
+      ok: false,
+      code: "google-auth-expired",
+      failure: "This sign-in link expired or was already used.",
     });
+  }
+  const code = url.searchParams.get("code");
+  if (!code) {
+    return finishOAuth("GOOGLE", {
+      ok: false,
+      code: "google-auth-declined",
+      failure: "Google didn't give Sigwald access.",
+    });
+  }
 
-    try {
-      // Exchange code for tokens
-      const code: string = codeParam;
-      const tokenResponse = await oauth2Client.getToken(code);
-      const tokens = tokenResponse.tokens;
-      oauth2Client.setCredentials(tokens);
+  try {
+    const app = await oauthApp("GOOGLE", pending.app);
+    if (!app) throw new Error(`The ${pending.app} Google app isn't set up`);
+    const oauth2Client = await createGoogleOAuthClient(app);
+    const { userId } = pending;
 
-      const { google } = await import("googleapis");
+    // Exchange code for tokens, on the exact redirect the sign-in left with
+    const { tokens } = await oauth2Client.getToken({
+      code,
+      codeVerifier: pending.codeVerifier,
+      redirect_uri: pending.redirectUri,
+    });
+    oauth2Client.setCredentials(tokens);
 
-      // Get user info to get email
-      const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
-      const userInfo = await oauth2.userinfo.get();
+    const { google } = await import("googleapis");
 
-      if (!userInfo.data.email) {
-        return NextResponse.json(
-          { error: "Could not get user email" },
-          { status: 400 }
-        );
-      }
+    // Get user info to get email
+    const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+    const userInfo = await oauth2.userinfo.get();
 
-      // Store tokens
-      const tokenManager = TokenManager.getInstance();
-      const accountId = await tokenManager.storeTokens(
-        "GOOGLE",
-        userInfo.data.email,
-        {
-          accessToken: tokens.access_token!,
-          refreshToken: tokens.refresh_token!,
-          // expiry_date from google-auth-library is an absolute epoch-ms
-          // timestamp, not a duration. Adding Date.now() pushed expiry decades
-          // out, so the token never refreshed and later calls 401'd silently.
-          expiresAt: newDate(tokens.expiry_date || Date.now() + 3600 * 1000),
-        },
-        userId ?? "unknown"
-      );
+    if (!userInfo.data.email) {
+      return finishOAuth("GOOGLE", {
+        ok: false,
+        code: "google-no-email",
+        failure: "Google didn't share the account's email address.",
+      });
+    }
 
-      // Get list of calendars
-      const calendar = google.calendar({ version: "v3", auth: oauth2Client });
-      const calendarList = await calendar.calendarList.list();
+    // Store tokens
+    const tokenManager = TokenManager.getInstance();
+    const accountId = await tokenManager.storeTokens(
+      "GOOGLE",
+      userInfo.data.email,
+      {
+        accessToken: tokens.access_token!,
+        refreshToken: tokens.refresh_token!,
+        // expiry_date from google-auth-library is an absolute epoch-ms
+        // timestamp, not a duration. Adding Date.now() pushed expiry decades
+        // out, so the token never refreshed and later calls 401'd silently.
+        expiresAt: newDate(tokens.expiry_date || Date.now() + 3600 * 1000),
+      },
+      userId,
+      app.kind
+    );
 
-      // Store calendars
-      if (calendarList.data.items) {
-        for (const cal of calendarList.data.items) {
-          if (cal.id && cal.summary) {
-            // Check if calendar feed already exists
-            const existingFeed = await prisma.calendarFeed.findFirst({
-              where: {
-                type: "GOOGLE",
+    // Get list of calendars
+    const calendar = google.calendar({ version: "v3", auth: oauth2Client });
+    const calendarList = await calendar.calendarList.list();
+
+    // Store calendars
+    if (calendarList.data.items) {
+      for (const cal of calendarList.data.items) {
+        if (cal.id && cal.summary) {
+          // Check if calendar feed already exists
+          const existingFeed = await prisma.calendarFeed.findFirst({
+            where: {
+              type: "GOOGLE",
+              url: cal.id,
+              accountId,
+              userId,
+            },
+          });
+
+          // Only create if it doesn't exist
+          if (!existingFeed) {
+            await prisma.calendarFeed.create({
+              data: {
+                id: uuidv4(),
+                name: cal.summary,
                 url: cal.id,
+                type: "GOOGLE",
+                color: cal.backgroundColor ?? undefined,
                 accountId,
                 userId,
               },
             });
-
-            // Only create if it doesn't exist
-            if (!existingFeed) {
-              await prisma.calendarFeed.create({
-                data: {
-                  id: uuidv4(),
-                  name: cal.summary,
-                  url: cal.id,
-                  type: "GOOGLE",
-                  color: cal.backgroundColor ?? undefined,
-                  accountId,
-                  userId,
-                },
-              });
-            }
           }
         }
       }
-
-      return NextResponse.redirect(
-        new URL("/settings", process.env.NEXTAUTH_URL!)
-      );
-    } catch (error) {
-      console.error("Failed to exchange code for tokens:", error);
-      return NextResponse.json(
-        { error: "Failed to authenticate with Google" },
-        { status: 401 }
-      );
     }
+
+    return finishOAuth("GOOGLE", { ok: true });
   } catch (error) {
     console.error("Google Calendar OAuth error:", error);
-    return NextResponse.json(
-      { error: "Failed to authenticate with Google" },
-      { status: 500 }
-    );
+    return finishOAuth("GOOGLE", {
+      ok: false,
+      code: "google-auth-failed",
+      failure: "Sigwald couldn't finish signing in to Google.",
+    });
   }
 }
 

@@ -289,15 +289,15 @@ flowchart TB
     Server --> EXT
 ```
 
-Pick the desktop app if you want a download that works offline with no account. Pick the server if you want the same data on a phone and a laptop, or two-way Google and Outlook sync. The desktop app reads Google and Outlook calendars by their iCal links.
+Pick the desktop app if you want a download that works offline with no account. Pick the server if you want the same data on a phone and a laptop.
 
 ## Connecting services
 
 **Canvas** comes with the School module. Turn on School in Modules, then add your Canvas base URL (such as `https://your-school.instructure.com`) and a personal access token on its row (in Canvas, Account, then Settings, then New access token). Sigwald keeps only current courses, judged by the term in the course name or an upcoming due date. The token is stored encrypted and is only ever used to read. An OAuth connection is planned for distributed builds, so that the app can connect without a token you paste in.
 
-**CalDAV** (iCloud, Fastmail, Nextcloud). In Settings, open Accounts, choose CalDAV, and enter the server URL with an app-specific password.
+**Calendars.** In Settings, open Accounts and enter your email, and Sigwald picks the way in: Google and Microsoft sign in on their own page, and iCloud, Yahoo, AOL, Fastmail, Zoho, mailbox.org, Posteo, GMX, WEB.DE, Yandex and Naver connect over CalDAV with the server already filled in, so all you add is an app-specific password (the form links to where each service makes one). An address Sigwald doesn't recognize, Nextcloud and any other CalDAV server work from the tiles below it, and pasting a link works out whether it is an iCal link or a server. The list lives in `src/lib/calendar-providers.ts`.
 
-**An iCal link** works for any calendar that publishes one, with no account and no OAuth app, in the desktop app too. In Settings, open Accounts, choose iCal link, and paste the address. The calendar is read only, and Sigwald reads it again every 15 minutes. A moved occurrence of a repeating event shows once, at its new time.
+**An iCal link** works for any calendar that publishes one, with no account and no OAuth app, in the desktop app too. In Settings, open Accounts, and paste the address under Paste a link. The calendar is read only, and Sigwald reads it again every 15 minutes. A moved occurrence of a repeating event shows once, at its new time.
 
 - Google Calendar: Settings, the calendar, Integrate calendar, then Secret address in iCal format.
 - Outlook: Settings, Calendar, Shared calendars, Publish a calendar, then the ICS link.
@@ -305,21 +305,23 @@ Pick the desktop app if you want a download that works offline with no account. 
 
 A secret address lets anyone who has it read that calendar, so treat it like a password. Sigwald only fetches public addresses, never one on your machine or your local network.
 
-**Google Calendar** needs your own OAuth app.
+**Google and Outlook** sign in through Sigwald's own apps wherever Sigwald runs on your own computer: the desktop app, `dev:local`, or a server you open at localhost. Sign-in opens in your browser, and the tokens come straight back to your machine. A server at its own domain needs its own apps, because Sigwald's can only send you back to localhost; the steps follow.
+
+**Google Calendar** on your own server needs your own OAuth app.
 
 1. In the [Google Cloud Console](https://console.cloud.google.com), create a project and enable the Google Calendar API and the Google Tasks API.
 2. Configure the OAuth consent screen as External, add the scopes `calendar`, `calendar.events`, `userinfo.email` and `openid` (and `tasks` for Google Tasks), and add yourself as a test user.
 3. Create an OAuth client ID of type Web application, with `http://localhost:3000` as an origin and `http://localhost:3000/api/calendar/google` as a redirect URI (and the same pair for your own domain).
 4. Enter the client ID and secret in Settings, under System, or set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`.
 
-**Outlook** needs an Azure app registration.
+**Outlook** on your own server needs an Azure app registration.
 
 1. In the [Azure portal](https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade), register a multitenant app that also allows personal Microsoft accounts.
-2. Add a Web platform with the redirect URI `http://localhost:3000/api/auth/callback/azure-ad` (and your own domain's), and enable access and ID tokens.
+2. Add a Web platform with the redirect URI `https://your-domain/api/calendar/outlook` (the calendar connection) and `https://your-domain/api/auth/callback/azure-ad` (signing in to Sigwald with Microsoft, if you use it), and enable access and ID tokens.
 3. Add the delegated Microsoft Graph permissions `Calendars.ReadWrite`, `Tasks.ReadWrite`, `User.Read` and `offline_access`.
 4. Create a client secret and enter the client ID, secret and tenant in Settings, under System.
 
-In the desktop app, Canvas, CalDAV and iCal links connect today. Google and Outlook sign-in can't finish inside it yet, so the desktop app reads those calendars by their iCal links, and two-way sync with them, Google Tasks and Microsoft To Do needs a self-hosted server for now.
+In the desktop app, Google and Microsoft sign-in opens in your default browser, which then says you can go back to the app; Settings shows the new account when you do.
 
 ## How the desktop app works
 

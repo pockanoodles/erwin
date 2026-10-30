@@ -3,11 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { format } from "date-fns";
-import { AlertCircle } from "lucide-react";
-
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
+import type { CalendarProvider } from "@/lib/calendar-providers";
 import { logger } from "@/lib/logger";
 
 import { useResource } from "@/hooks/use-resource";
@@ -15,6 +13,7 @@ import { useResource } from "@/hooks/use-resource";
 import { useCalendarStore } from "@/store/calendar";
 import { useSettingsStore } from "@/store/settings";
 
+import { AddCalendar } from "./AddCalendar";
 import { AvailableCalendars } from "./AvailableCalendars";
 import { CalDAVAccountForm } from "./CalDAVAccountForm";
 import { ICalCalendarForm } from "./ICalCalendarForm";
@@ -24,21 +23,28 @@ const LOG_SOURCE = "AccountManager";
 
 /** `/api/integration-status`; the Settings page reads it too. */
 export interface IntegrationStatus {
-  google: { configured: boolean };
-  outlook: { configured: boolean };
+  /** The app a new connection signs in through, null when there's none. */
+  google: { app: "sigwald" | "custom" | null };
+  outlook: { app: "sigwald" | "custom" | null };
   desktop: boolean;
+  /** Sigwald serves from this machine, where its own sign-in apps work. */
+  loopback: boolean;
 }
+
+type OpenForm =
+  | { kind: "caldav"; preset: CalendarProvider; email?: string; serverUrl?: string }
+  | { kind: "ical"; url?: string; help?: string };
 
 /** Connected calendar accounts and the ways to add another. */
 export function AccountManager() {
   const { accounts, refreshAccounts, removeAccount } = useSettingsStore();
   const [showAvailableFor, setShowAvailableFor] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState<"caldav" | "ical" | null>(null);
+  const [form, setForm] = useState<OpenForm | null>(null);
   const status = useResource<IntegrationStatus>("/api/integration-status");
   const isLoading = status.loading;
   const desktop = status.data?.desktop ?? false;
-  const googleConfigured = status.data?.google.configured ?? false;
-  const outlookConfigured = status.data?.outlook.configured ?? false;
+  const googleAvailable = !!status.data?.google.app;
+  const outlookAvailable = !!status.data?.outlook.app;
 
   // iCal subscriptions are feeds, not accounts, so they list on their own.
   const feeds = useCalendarStore((state) => state.feeds);
@@ -48,6 +54,14 @@ export function AccountManager() {
 
   useEffect(() => {
     refreshAccounts();
+  }, [refreshAccounts]);
+
+  // The desktop app finishes Google and Microsoft sign-in in the system
+  // browser, so a new account shows up when the user switches back.
+  useEffect(() => {
+    const onFocus = () => refreshAccounts();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [refreshAccounts]);
 
   useEffect(() => {
@@ -91,111 +105,64 @@ export function AccountManager() {
   }, []);
 
   const handleCalDAVSuccess = () => {
-    setShowForm(null);
+    setForm(null);
     refreshAccounts();
   };
+
+  // Sigwald's own sign-in apps only redirect to this machine, so a server at
+  // its own domain needs one registered under System. The desktop app has no
+  // System page, and there a missing app is a build without one.
+  const unavailableNote = isLoading
+    ? undefined
+    : desktop
+      ? "This build doesn't include Sigwald's sign-in apps. Add the calendar by its iCal link instead."
+      : status.data?.loopback
+        ? "Add an OAuth app under System to connect it, or add the calendar by its iCal link."
+        : "A server at its own domain needs its own OAuth app: add one under System, or add the calendar by its iCal link.";
 
   return (
     <SettingsSection
       title="Accounts"
-      description={
-        desktop
-          ? "Add a calendar by its iCal link, or connect a CalDAV account, and Sigwald mirrors it locally."
-          : "Connect Google, Outlook or CalDAV, or subscribe by iCal link, so Sigwald can mirror your calendars locally."
-      }
+      description="Connect the calendars you already use, and Sigwald mirrors them locally."
     >
-      {desktop ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Google and Outlook calendars come in by iCal link</AlertTitle>
-          <AlertDescription>
-            Both publish any calendar as an iCal link, which Sigwald reads every
-            15 minutes. Changing their events from Sigwald, and Google Tasks or
-            Microsoft To Do, needs a self-hosted Sigwald for now.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {/* A provider that is not set up is a choice, not an error, so these
-          read as notes. Every server brings its own OAuth app. */}
-      {!desktop && !isLoading && !googleConfigured ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Google Calendar is not set up</AlertTitle>
-          <AlertDescription>
-            Google needs an OAuth app first. Add its client ID and secret under
-            System to connect it here.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {!desktop && !isLoading && !outlookConfigured ? (
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Outlook is not set up</AlertTitle>
-          <AlertDescription>
-            Outlook needs an app registration first. Add its client ID and
-            secret under System to connect it here.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
       <SettingRow
         label="Add a calendar"
-        description="Pick the service your calendar lives on. iCloud, Fastmail and Nextcloud connect over CalDAV, and any calendar with an iCal link subscribes read-only."
+        description="Enter your email and Sigwald picks the way in, or pick where the calendar lives. Any calendar with an iCal link subscribes read-only."
       >
-        <div className="flex flex-wrap gap-2">
-          {!desktop ? (
-            <>
-              <Button
-                variant="secondary"
-                onClick={() => handleConnect("GOOGLE")}
-                disabled={!googleConfigured || isLoading}
-                className="font-mono text-[11px] uppercase tracking-[0.08em]"
-              >
-                Google
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => handleConnect("OUTLOOK")}
-                disabled={!outlookConfigured || isLoading}
-                className="font-mono text-[11px] uppercase tracking-[0.08em]"
-              >
-                Outlook
-              </Button>
-            </>
-          ) : null}
-          <Button
-            onClick={() => setShowForm("ical")}
-            variant="outline"
-            className="font-mono text-[11px] uppercase tracking-[0.08em]"
-          >
-            iCal link
-          </Button>
-          <Button
-            onClick={() => setShowForm("caldav")}
-            variant="outline"
-            className="font-mono text-[11px] uppercase tracking-[0.08em]"
-          >
-            CalDAV
-          </Button>
-        </div>
+        <AddCalendar
+          googleAvailable={googleAvailable && !isLoading}
+          outlookAvailable={outlookAvailable && !isLoading}
+          unavailableNote={unavailableNote}
+          onConnect={handleConnect}
+          onCalDAV={(preset, email, serverUrl) =>
+            setForm({ kind: "caldav", preset, email, serverUrl })
+          }
+          onICal={(initial) => setForm({ kind: "ical", ...initial })}
+        />
       </SettingRow>
 
-      {showForm === "caldav" ? (
+      {form?.kind === "caldav" ? (
         <div className="border border-border bg-raised p-4">
           <CalDAVAccountForm
+            // A new preset is a new form, not the old one's typing.
+            key={`${form.preset.id}:${form.serverUrl ?? ""}`}
+            preset={form.preset}
+            email={form.email}
+            serverUrl={form.serverUrl}
             onSuccess={handleCalDAVSuccess}
-            onCancel={() => setShowForm(null)}
+            onCancel={() => setForm(null)}
           />
         </div>
       ) : null}
 
-      {showForm === "ical" ? (
+      {form?.kind === "ical" ? (
         <div className="border border-border bg-raised p-4">
           <ICalCalendarForm
-            onSuccess={() => setShowForm(null)}
-            onCancel={() => setShowForm(null)}
+            key={form.url ?? form.help ?? "ical"}
+            initialUrl={form.url}
+            help={form.help}
+            onSuccess={() => setForm(null)}
+            onCancel={() => setForm(null)}
           />
         </div>
       ) : null}

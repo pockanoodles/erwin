@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { authenticateRequest } from "@/lib/auth/api-auth";
 import { logger } from "@/lib/logger";
-import { prisma } from "@/lib/prisma";
+import { appForNewConnection, servesFromLoopback } from "@/lib/oauth/apps";
 
 const LOG_SOURCE = "IntegrationStatusAPI";
 
@@ -14,40 +14,22 @@ export async function GET(request: NextRequest) {
       return auth.response;
     }
 
-    // Get system settings
-    const settings = await prisma.systemSettings.findFirst();
+    const [google, outlook] = await Promise.all([
+      appForNewConnection("GOOGLE"),
+      appForNewConnection("OUTLOOK"),
+    ]);
 
-    const hasGoogleFromSettings = !!(
-      settings?.googleClientId && settings?.googleClientSecret
-    );
-    const hasGoogleFromEnv = !!(
-      process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-    );
-
-    const hasOutlookFromSettings = !!(
-      settings?.outlookClientId &&
-      settings?.outlookClientSecret &&
-      settings?.outlookTenantId
-    );
-    const hasOutlookFromEnv = !!(
-      process.env.AZURE_AD_CLIENT_ID &&
-      process.env.AZURE_AD_CLIENT_SECRET &&
-      process.env.AZURE_AD_TENANT_ID
-    );
-
-    // Return whether each provider is configured from system settings or environment variables
+    // Which app a new connection would sign in through, or null when neither
+    // Sigwald's own (loopback only) nor a custom one is set up here.
     return NextResponse.json({
-      google: {
-        configured: hasGoogleFromSettings || hasGoogleFromEnv,
-      },
-      outlook: {
-        configured: hasOutlookFromSettings || hasOutlookFromEnv,
-      },
-      // The desktop app and dev:local: one local user on a loopback server.
-      // Google and Outlook sign-in can't finish there (it opens in a browser
-      // without the app's session), and accounts for other people mean
-      // nothing, so Settings leaves both out.
+      google: { app: google?.kind ?? null },
+      outlook: { app: outlook?.kind ?? null },
+      // The desktop app: one local user on a loopback server, so Settings
+      // leaves out what only a server has (other people's accounts, email).
       desktop: process.env.SIGWALD_RUNTIME === "desktop",
+      // Sigwald's own apps can't redirect to a server's own domain, so there
+      // the only way in is an app registered under System.
+      loopback: servesFromLoopback(),
     });
   } catch (error) {
     logger.error(

@@ -11,11 +11,6 @@ export const MICROSOFT_GRAPH_SCOPES = [
   "Tasks.ReadWrite",
 ];
 
-export const MICROSOFT_GRAPH_AUTH_ENDPOINTS = {
-  auth: "https://login.microsoftonline.com/common/oauth2/v2.0/authorize",
-  token: "https://login.microsoftonline.com/common/oauth2/v2.0/token",
-};
-
 // Types for Microsoft Graph API responses
 export interface MSGraphUser {
   id: string;
