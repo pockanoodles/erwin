@@ -1,10 +1,10 @@
 import {
-  assertSafeIcalHost,
   expandIcalEvents,
   fetchIcalEvents,
   normalizeIcalUrl,
   parseIcalEvents,
 } from "@/lib/ical-feed";
+import { assertPublicHost } from "@/lib/net/public-host";
 
 const SINGLE_EVENT_ICS = `BEGIN:VCALENDAR
 VERSION:2.0
@@ -307,50 +307,50 @@ END:VEVENT`;
   });
 });
 
-describe("assertSafeIcalHost", () => {
+describe("assertPublicHost", () => {
   it("allows ordinary public hostnames", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("https://calendar.example.com/cal.ics"))
+      assertPublicHost(new URL("https://calendar.example.com/cal.ics"))
     ).not.toThrow();
   });
 
   it("rejects localhost", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("http://localhost/cal.ics"))
+      assertPublicHost(new URL("http://localhost/cal.ics"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://LOCALHOST:8080/cal.ics"))
+      assertPublicHost(new URL("http://LOCALHOST:8080/cal.ics"))
     ).toThrow();
   });
 
   it("rejects loopback IPs", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("http://127.0.0.1/cal.ics"))
+      assertPublicHost(new URL("http://127.0.0.1/cal.ics"))
     ).toThrow();
-    expect(() => assertSafeIcalHost(new URL("http://[::1]/cal.ics"))).toThrow();
+    expect(() => assertPublicHost(new URL("http://[::1]/cal.ics"))).toThrow();
   });
 
   it("rejects private IPv4 ranges", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("http://10.0.0.5/cal.ics"))
+      assertPublicHost(new URL("http://10.0.0.5/cal.ics"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://192.168.1.10/cal.ics"))
+      assertPublicHost(new URL("http://192.168.1.10/cal.ics"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://172.16.5.5/cal.ics"))
+      assertPublicHost(new URL("http://172.16.5.5/cal.ics"))
     ).toThrow();
   });
 
   it("rejects link-local and cloud metadata addresses", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("http://169.254.169.254/latest/meta-data/"))
+      assertPublicHost(new URL("http://169.254.169.254/latest/meta-data/"))
     ).toThrow();
   });
 
   it("rejects the .internal TLD", () => {
     expect(() =>
-      assertSafeIcalHost(new URL("http://metadata.internal/cal.ics"))
+      assertPublicHost(new URL("http://metadata.internal/cal.ics"))
     ).toThrow();
   });
 
@@ -359,26 +359,26 @@ describe("assertSafeIcalHost", () => {
     // (::ffff:127.0.0.1 -> ::ffff:7f00:1), which an earlier dotted-only check
     // missed - letting a user reach loopback/metadata via a mapped literal.
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:127.0.0.1]/cal.ics"))
+      assertPublicHost(new URL("http://[::ffff:127.0.0.1]/cal.ics"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:7f00:1]/cal.ics"))
+      assertPublicHost(new URL("http://[::ffff:7f00:1]/cal.ics"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:169.254.169.254]/meta"))
+      assertPublicHost(new URL("http://[::ffff:169.254.169.254]/meta"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:a9fe:a9fe]/meta"))
+      assertPublicHost(new URL("http://[::ffff:a9fe:a9fe]/meta"))
     ).toThrow();
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:10.0.0.1]/cal.ics"))
+      assertPublicHost(new URL("http://[::ffff:10.0.0.1]/cal.ics"))
     ).toThrow();
   });
 
   it("still allows an IPv4-mapped IPv6 public address", () => {
     // A mapped public address (8.8.8.8 -> ::ffff:808:808) must NOT be rejected.
     expect(() =>
-      assertSafeIcalHost(new URL("http://[::ffff:808:808]/cal.ics"))
+      assertPublicHost(new URL("http://[::ffff:808:808]/cal.ics"))
     ).not.toThrow();
   });
 });

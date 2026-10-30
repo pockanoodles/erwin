@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+import type { Discovery } from "@/lib/calendar-discovery";
 import {
   CALENDAR_PROVIDERS,
   classifyPastedLink,
@@ -63,6 +64,7 @@ export function AddCalendar({
   const [email, setEmail] = useState("");
   const [unknownProvider, setUnknownProvider] = useState(false);
   const [unavailable, setUnavailable] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
   const [pastedLink, setPastedLink] = useState("");
   const [invalidLink, setInvalidLink] = useState(false);
 
@@ -70,16 +72,49 @@ export function AddCalendar({
     (provider.method !== "google" || googleAvailable) &&
     (provider.method !== "outlook" || outlookAvailable);
 
-  const handleEmailContinue = (e: React.FormEvent) => {
+  /**
+   * A domain Sigwald doesn't know asks the server, which reads its mail
+   * records and CalDAV announcements (calendar-discovery.ts).
+   */
+  const discover = async (address: string): Promise<Discovery> => {
+    try {
+      const response = await fetch("/api/calendar/discover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: address }),
+      });
+      return response.ok ? ((await response.json()) as Discovery) : { kind: "unknown" };
+    } catch {
+      return { kind: "unknown" };
+    }
+  };
+
+  const handleEmailContinue = async (e: React.FormEvent) => {
     e.preventDefault();
     setUnknownProvider(false);
     setUnavailable(null);
     setInvalidLink(false);
 
-    const provider = providerForEmail(email);
+    const address = email.trim();
+    let provider = providerForEmail(address);
     if (!provider) {
-      setUnknownProvider(true);
-      return;
+      setLookingUp(true);
+      const found = await discover(address);
+      setLookingUp(false);
+      if (found.kind === "caldav") {
+        onCalDAV(providerById("caldav")!, address, found.serverUrl);
+        return;
+      }
+      provider = found.kind === "provider" ? providerById(found.providerId) : undefined;
+      if (!provider) {
+        setUnknownProvider(true);
+        return;
+      }
+      // A regional server (Zoho's EU accounts) overrides the preset's.
+      if (found.kind === "provider" && found.serverUrl && provider.method === "caldav") {
+        onCalDAV(provider, address, found.serverUrl);
+        return;
+      }
     }
     if (!isAvailable(provider)) {
       setUnavailable(
@@ -88,7 +123,7 @@ export function AddCalendar({
       return;
     }
 
-    activateProvider(provider, email.trim(), { onConnect, onCalDAV, onICal });
+    activateProvider(provider, address, { onConnect, onCalDAV, onICal });
   };
 
   const handleTileClick = (provider: CalendarProvider) => {
@@ -139,15 +174,16 @@ export function AddCalendar({
           <Button
             type="submit"
             variant="secondary"
+            disabled={lookingUp}
             className={TILE_CLASS}
           >
-            Continue
+            {lookingUp ? "Looking up" : "Continue"}
           </Button>
         </div>
         {unknownProvider ? (
           <p className="text-[13px] text-muted-foreground">
-            We don&apos;t know that provider yet. Pick it below, or use Other
-            CalDAV server.
+            Sigwald couldn&apos;t tell where that address keeps its calendar.
+            Pick the service below, or use Other CalDAV server.
           </p>
         ) : null}
         {unavailable ? (

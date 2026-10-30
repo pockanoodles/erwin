@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { format } from "date-fns";
+import { AlertCircle } from "lucide-react";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
 import type { CalendarProvider } from "@/lib/calendar-providers";
@@ -31,6 +34,53 @@ export interface IntegrationStatus {
   loopback: boolean;
 }
 
+/**
+ * What a server's sign-in callback reported (src/lib/oauth/finish.ts), keyed by
+ * the code it puts in `?error=`. The desktop app shows these in the browser
+ * instead.
+ */
+const SIGN_IN_ERRORS: Record<string, string> = {
+  "google-not-available": "Google sign-in isn't set up on this server.",
+  "outlook-not-available": "Microsoft sign-in isn't set up on this server.",
+  "google-auth-expired": "That sign-in link expired or was already used.",
+  "outlook-auth-expired": "That sign-in link expired or was already used.",
+  "google-auth-declined": "Google didn't give Sigwald access.",
+  "outlook-auth-declined": "Microsoft didn't give Sigwald access.",
+  "google-no-email": "Google didn't share the account's email address.",
+  "profile-fetch-failed": "Microsoft didn't share the account's email address.",
+  "token-exchange-failed": "Microsoft refused the sign-in.",
+  "google-auth-failed": "Sigwald couldn't finish signing in to Google.",
+  "callback-failed": "Sigwald couldn't finish signing in to Microsoft.",
+  "oauth-signed-out": "The browser that came back wasn't signed in to Sigwald.",
+  "oauth-wrong-user": "Another Sigwald account started that sign-in.",
+};
+
+type SignInResult = { ok: boolean; message: string };
+
+/** Reads the callback's `?connected=` or `?error=` once, then drops it from the address. */
+function takeSignInResult(): SignInResult | null {
+  const params = new URLSearchParams(window.location.search);
+  const connected = params.get("connected");
+  const error = params.get("error");
+  if (!connected && !error) return null;
+  params.delete("connected");
+  params.delete("error");
+  const query = params.toString();
+  window.history.replaceState(
+    null,
+    "",
+    `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`
+  );
+  if (connected) {
+    const name = connected === "google" ? "Google" : "Microsoft";
+    return { ok: true, message: `${name} is connected. Its calendars are listed below.` };
+  }
+  return {
+    ok: false,
+    message: SIGN_IN_ERRORS[error!] ?? "The sign-in didn't finish.",
+  };
+}
+
 type OpenForm =
   | { kind: "caldav"; preset: CalendarProvider; email?: string; serverUrl?: string }
   | { kind: "ical"; url?: string; help?: string };
@@ -40,6 +90,7 @@ export function AccountManager() {
   const { accounts, refreshAccounts, removeAccount } = useSettingsStore();
   const [showAvailableFor, setShowAvailableFor] = useState<string | null>(null);
   const [form, setForm] = useState<OpenForm | null>(null);
+  const [signIn, setSignIn] = useState<SignInResult | null>(null);
   const status = useResource<IntegrationStatus>("/api/integration-status");
   const isLoading = status.loading;
   const desktop = status.data?.desktop ?? false;
@@ -55,6 +106,10 @@ export function AccountManager() {
   useEffect(() => {
     refreshAccounts();
   }, [refreshAccounts]);
+
+  useEffect(() => {
+    setSignIn(takeSignInResult());
+  }, []);
 
   // The desktop app finishes Google and Microsoft sign-in in the system
   // browser, so a new account shows up when the user switches back.
@@ -125,6 +180,14 @@ export function AccountManager() {
       title="Accounts"
       description="Connect the calendars you already use, and Sigwald mirrors them locally."
     >
+      {signIn ? (
+        <Alert variant={signIn.ok ? "default" : "destructive"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{signIn.ok ? "Connected" : "Not connected"}</AlertTitle>
+          <AlertDescription>{signIn.message}</AlertDescription>
+        </Alert>
+      ) : null}
+
       <SettingRow
         label="Add a calendar"
         description="Enter your email and Sigwald picks the way in, or pick where the calendar lives. Any calendar with an iCal link subscribes read-only."

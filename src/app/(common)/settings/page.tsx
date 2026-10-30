@@ -40,10 +40,10 @@ export default function SettingsPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const { isAdmin, isLoading: isAdminLoading } = useAdmin();
   const { initializeSettings } = useSettingsStore();
-  // The desktop app has one local user: System holds only the Google and
-  // Outlook OAuth apps (which can't sign in there) and the signed-out
-  // homepage, Task Sync only takes Google and Outlook accounts, and Users
-  // manages other people. All three stay off its index.
+  // The desktop app has one local user: System holds only a server's own
+  // Google and Outlook apps (the desktop signs in through Sigwald's) and the
+  // signed-out homepage, and Users manages other people. Both stay off its
+  // index.
   const desktop =
     useResource<IntegrationStatus>("/api/integration-status").data?.desktop ??
     false;
@@ -63,11 +63,9 @@ export default function SettingsPage() {
     ] as const;
 
     if (desktop) {
-      const local = baseTabs
-        .filter((tab) => tab.id !== "task-sync")
-        .map((tab) =>
-          tab.id === "import-export" ? { ...tab, label: "Backups" } : tab
-        );
+      const local = baseTabs.map((tab) =>
+        tab.id === "import-export" ? { ...tab, label: "Backups" } : tab
+      );
       return isAdmin ? [...local, { id: "logs", label: "Logs" } as const] : local;
     }
 
