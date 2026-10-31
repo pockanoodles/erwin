@@ -25,7 +25,7 @@ export const channels: Channel[] = [
   { id: "dmg", group: "mac", name: "Disk image (Apple silicon and Intel)", href: RELEASES, live: true },
   { id: "winget", group: "windows", name: "winget", command: ["winget install KaitoSoeno.Sigwald"], live: false },
   { id: "exe", group: "windows", name: "Installer (.exe)", href: RELEASES, live: true },
-  { id: "snap", group: "linux", name: "Snap Store", command: ["sudo snap install sigwald"], live: false },
+  { id: "snap", group: "linux", name: "Snap Store", command: ["sudo snap install sigwald"], live: true },
   { id: "aur", group: "linux", name: "AUR", command: ["yay -S sigwald-bin"], live: false },
   { id: "appimage", group: "linux", name: "AppImage, .deb, .rpm", href: RELEASES, live: true },
   { id: "docker", group: "server", name: "Docker Compose", href: "https://github.com/pockanoodles/sigwald#self-host", live: true },
