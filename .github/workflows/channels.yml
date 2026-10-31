@@ -323,10 +323,13 @@ jobs:
         run: |
           set -euo pipefail
           sudo snap install snapcraft --classic
-          # Columns: Rev., Uploaded, Arches, Version, Channels. Newest first.
-          revisions="$(snapcraft list-revisions sigwald)"
+          # Newest first. Columns are found by their headers, since snapcraft
+          # has renamed this command before (list-revisions, 9.x).
+          revisions="$(snapcraft revisions sigwald --arch amd64)"
           echo "$revisions"
-          rev="$(awk -v v="$VERSION" 'NR > 1 && $3 == "amd64" && $4 == v { print $1; exit }' <<< "$revisions")"
+          rev="$(awk -v v="$VERSION" '
+            NR == 1 { for (i = 1; i <= NF; i++) { if ($i == "Rev.") r = i; if ($i == "Version") c = i }; next }
+            r && c && $c == v { print $r; exit }' <<< "$revisions")"
           if [ -z "$rev" ]; then
             echo "::error::No amd64 revision of sigwald has version $VERSION"
             exit 1
