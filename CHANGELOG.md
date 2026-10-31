@@ -4,11 +4,13 @@ Sigwald's changes are listed here, newest first. The format follows [Keep a Chan
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-31
+
 Sigwald reads your calendar, your Canvas courses and your goals, then tells you the one thing to do next.
 
 ### Changed
 
-- **Renamed from Erwin to Sigwald**, before the first release. The app, the packages, the repository (`pockanoodles/sigwald`), the image (`ghcr.io/pockanoodles/sigwald`) and the `SIGWALD_*` settings all carry the new name. `/api/erwin/*` and each Focus task's `erwin` field still answer for now and will be removed in a later release.
+- **Renamed from Erwin to Sigwald**, before the first release. The app, the packages, the repository (`pockanoodles/sigwald`), the image (`ghcr.io/pockanoodles/sigwald`) and the `SIGWALD_*` settings all carry the new name. `/api/erwin/*` and each Focus task's `erwin` field are gone.
 
 ### Added
 
@@ -25,6 +27,7 @@ Sigwald reads your calendar, your Canvas courses and your goals, then tells you 
 - **Boss proof:** a boss can name a Canvas gradebook item or another task as its proof. Handing the work in, a grade or an excusal fells it, the item's due date becomes its date, and the Ladder says what proved it ("Graded 90 / 100"). The boss form suggests the Canvas item a boss looks like, and a boss with no proof has a Done box. `GET /api/sigwald/goals/sources` lists what can be claimed and proved. Migration `20261025040000_boss_proof`.
 - **XP report:** `GET /api/sigwald/xp?from=&to=` gives the XP a span of days added and all XP through its last day, per stat, with the goals, unlinked work and felled bosses behind it, so a local tool can report on XP without working it out again.
 - **Calendar and tasks:** Google, Outlook and CalDAV calendars, task sync with Outlook and Google Tasks, auto-scheduling, subtasks, and deferred tasks.
+- **Add a calendar by where it lives:** enter an email and Sigwald finds the way in, pick a provider tile, or paste a link. A custom domain's CalDAV server is found through its well-known address. Google and Outlook can sign in through Sigwald's own apps with PKCE, which this release ships without, so they fall back to an app under System. Migration `20261030120000_oauth_apps`.
 - **iCal links:** subscribe to any calendar by its iCal address (Google's secret address, Outlook's published ICS link, an Apple public calendar), read-only, refreshed with the background sync. It's how Google and Outlook calendars reach the desktop app. Sigwald fetches only public addresses, checks each redirect, and caps the time and size of a read. Repeating events keep their time zone across daylight saving, a moved occurrence shows once at its new time, and cancelled events stay off. Ported from FluidCalendar (dotnetfactory/fluid-calendar#212).
 - **Desktop app:** Electron around the same server, with an embedded database and no account or setup. It backs up the database once a day while it's open, before any migration that changes it, and on Back up now, and Settings restores any copy by restarting into it, keeping the database it replaced.
 - **Self-host:** Docker Compose with Postgres and a background sync worker, or a single container with the in-process scheduler.
