@@ -21,13 +21,13 @@ export interface Channel {
 const RELEASES = "https://github.com/pockanoodles/sigwald/releases/latest";
 
 export const channels: Channel[] = [
-  { id: "brew", group: "mac", name: "Homebrew", command: ["brew install --cask pockanoodles/tap/sigwald"], live: false },
-  { id: "dmg", group: "mac", name: "Disk image (Apple silicon and Intel)", href: RELEASES, live: false },
+  { id: "brew", group: "mac", name: "Homebrew", command: ["brew install --cask pockanoodles/tap/sigwald"], live: true },
+  { id: "dmg", group: "mac", name: "Disk image (Apple silicon and Intel)", href: RELEASES, live: true },
   { id: "winget", group: "windows", name: "winget", command: ["winget install KaitoSoeno.Sigwald"], live: false },
-  { id: "exe", group: "windows", name: "Installer (.exe)", href: RELEASES, live: false },
+  { id: "exe", group: "windows", name: "Installer (.exe)", href: RELEASES, live: true },
   { id: "snap", group: "linux", name: "Snap Store", command: ["sudo snap install sigwald"], live: false },
   { id: "aur", group: "linux", name: "AUR", command: ["yay -S sigwald-bin"], live: false },
-  { id: "appimage", group: "linux", name: "AppImage, .deb, .rpm", href: RELEASES, live: false },
+  { id: "appimage", group: "linux", name: "AppImage, .deb, .rpm", href: RELEASES, live: true },
   { id: "docker", group: "server", name: "Docker Compose", href: "https://github.com/pockanoodles/sigwald#self-host", live: true },
   { id: "source", group: "server", name: "From source", command: ["git clone https://github.com/pockanoodles/sigwald", "cd sigwald", "npm install", "npm run dev:local"], live: true },
 ];
