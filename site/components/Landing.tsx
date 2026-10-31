@@ -13,7 +13,6 @@ import { Bar } from "./Bar";
 import { Dial, type DayBlock } from "./Dial";
 import { Downloads, detectGroup } from "./Downloads";
 import { Foot } from "./Foot";
-import { SiteMenu } from "./SiteMenu";
 
 // One example day for the dial, in minutes after midnight.
 const DAY: DayBlock[] = [
@@ -48,7 +47,6 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
         <section className="hero" data-hero>
           <div className="hero__visual">
             <Dial blocks={DAY} label={DIAL_LABEL[locale]} />
-            <p className="label hero__caption">{t.hero.dial.caption}</p>
           </div>
           <div className="hero__words">
             <p className="label">{t.hero.label}</p>
@@ -135,7 +133,7 @@ export function Landing({ t, locale }: { t: Dict; locale: Locale }) {
 
       <Foot t={t} locale={locale} page="landing" />
 
-      <SiteMenu t={t.menu} />
+      <site-menu lang={locale} />
     </>
   );
 }

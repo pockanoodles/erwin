@@ -16,7 +16,7 @@ export interface Dict {
     sub: string;
     cta: { mac: string; windows: string; linux: string; other: string; source: string };
     more: string;
-    dial: { caption: string; now: string; next: string; free: string };
+    dial: { now: string; next: string; free: string };
   };
   how: { eyebrow: string; title: string; steps: { title: string; body: string }[] };
   app: { eyebrow: string; title: string; note: string; shots: Record<ShotId, { tab: string; caption: string; alt: string }> };
@@ -33,8 +33,7 @@ export interface Dict {
     groups: Record<"mac" | "windows" | "linux" | "server", string>;
   };
   open: { eyebrow: string; title: string; body: string; cta: string; by: string; more: string };
-  footer: { rights: string; license: string; source: string; privacy: string; portfolio: string; product: string; maker: string };
-  menu: { menu: string; close: string; items: { href: string; label: string }[] };
+  footer: { rights: string; license: string; source: string; privacy: string; portfolio: string; contact: string; product: string; maker: string };
 }
 
 const en: Dict = {
@@ -50,7 +49,7 @@ const en: Dict = {
     sub: "Sigwald reads your calendar, your tasks and the modules you turn on, then names the one thing to do next.",
     cta: { mac: "Download for macOS", windows: "Download for Windows", linux: "Download for Linux", other: "Download Sigwald", source: "Run it from source" },
     more: "or see every way to install",
-    dial: { caption: "Example day", now: "Now", next: "Next", free: "Free until" },
+    dial: { now: "Now", next: "Next", free: "Free until" },
   },
   how: {
     eyebrow: "How it works",
@@ -111,15 +110,7 @@ const en: Dict = {
     by: "Made by Kaito Soeno.",
     more: "See more of my work",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", privacy: "Privacy", portfolio: "Portfolio", product: "Sigwald", maker: "Kaito Soeno" },
-  menu: {
-    menu: "Menu",
-    close: "Close",
-    items: [
-      { href: "/", label: "Contact" },
-      { href: "/portfolio", label: "Portfolio" },
-    ],
-  },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "Source", privacy: "Privacy", portfolio: "Portfolio", contact: "Contact", product: "Sigwald", maker: "Kaito Soeno" },
 };
 
 const ja: Dict = {
@@ -135,7 +126,7 @@ const ja: Dict = {
     sub: "Sigwald はカレンダーとタスク、オンにしたモジュールを読み取り、次にやるべきことをひとつだけ示します。",
     cta: { mac: "macOS 版をダウンロード", windows: "Windows 版をダウンロード", linux: "Linux 版をダウンロード", other: "Sigwald をダウンロード", source: "ソースから動かす" },
     more: "インストール方法をすべて見る",
-    dial: { caption: "1 日の例", now: "今", next: "次", free: "空き時間" },
+    dial: { now: "今", next: "次", free: "空き時間" },
   },
   how: {
     eyebrow: "しくみ",
@@ -196,15 +187,7 @@ const ja: Dict = {
     by: "制作は Kaito Soeno です。",
     more: "ほかの作品を見る",
   },
-  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", privacy: "プライバシー", portfolio: "作品", product: "Sigwald", maker: "Kaito Soeno" },
-  menu: {
-    menu: "メニュー",
-    close: "閉じる",
-    items: [
-      { href: "/ja", label: "お問い合わせ" },
-      { href: "/ja/portfolio", label: "作品" },
-    ],
-  },
+  footer: { rights: "© 2026 Kaito Soeno", license: "MIT License", source: "ソース", privacy: "プライバシー", portfolio: "作品", contact: "お問い合わせ", product: "Sigwald", maker: "Kaito Soeno" },
 };
 
 export const copy: Record<Locale, Dict> = { en, ja };
